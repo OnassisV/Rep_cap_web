@@ -24,17 +24,29 @@ def env_bool(name: str, default: bool = False) -> bool:
     return raw_value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def env_str(name: str, default: str = "") -> str:
+    """Lee strings desde entorno tratando vacios como ausencia de valor."""
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    cleaned_value = raw_value.strip()
+    return cleaned_value if cleaned_value else default
+
+
 def env_int(name: str, default: int) -> int:
     """Convierte variables numericas a entero con fallback seguro."""
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-    return int(raw_value)
+    cleaned_value = raw_value.strip()
+    if not cleaned_value:
+        return default
+    return int(cleaned_value)
 
 
 def split_env_list(name: str, default: str = "") -> list[str]:
     """Divide una variable separada por comas en lista limpia."""
-    raw_value = os.getenv(name, default)
+    raw_value = env_str(name, default)
     return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
@@ -61,7 +73,7 @@ def resolve_shared_mysql_url() -> dict[str, str | int] | None:
     """Devuelve la primera URL de entorno que realmente sea MySQL."""
     candidate_names = ["RAILWAY_MYSQL_URL", "MYSQL_URL", "DATABASE_URL"]
     for name in candidate_names:
-        raw_url = os.getenv(name, "").strip()
+        raw_url = env_str(name)
         if not raw_url:
             continue
         try:
@@ -75,11 +87,11 @@ def build_mysql_connection(env_prefix: str, fallback: dict[str, str | int] | Non
     """Construye una configuracion MySQL desde variables sueltas con fallback opcional."""
     fallback = fallback or {}
     return {
-        "host": os.getenv(f"{env_prefix}_HOST", str(fallback.get("host", ""))),
+        "host": env_str(f"{env_prefix}_HOST", str(fallback.get("host", ""))),
         "port": env_int(f"{env_prefix}_PORT", int(fallback.get("port", 3306))),
-        "user": os.getenv(f"{env_prefix}_USER", str(fallback.get("user", ""))),
-        "password": os.getenv(f"{env_prefix}_PASSWORD", str(fallback.get("password", ""))),
-        "database": os.getenv(f"{env_prefix}_NAME", str(fallback.get("database", ""))),
+        "user": env_str(f"{env_prefix}_USER", str(fallback.get("user", ""))),
+        "password": env_str(f"{env_prefix}_PASSWORD", str(fallback.get("password", ""))),
+        "database": env_str(f"{env_prefix}_NAME", str(fallback.get("database", ""))),
     }
 
 
@@ -87,10 +99,10 @@ def build_django_database_config(fallback_mysql: dict[str, str | int] | None = N
     """Resuelve la base principal de Django: MySQL remoto o SQLite local como respaldo."""
     fallback_mysql = fallback_mysql or {}
 
-    host = os.getenv("DJANGO_DB_HOST", str(fallback_mysql.get("host", "")))
-    name = os.getenv("DJANGO_DB_NAME", str(fallback_mysql.get("database", "")))
-    user = os.getenv("DJANGO_DB_USER", str(fallback_mysql.get("user", "")))
-    password = os.getenv("DJANGO_DB_PASSWORD", str(fallback_mysql.get("password", "")))
+    host = env_str("DJANGO_DB_HOST", str(fallback_mysql.get("host", "")))
+    name = env_str("DJANGO_DB_NAME", str(fallback_mysql.get("database", "")))
+    user = env_str("DJANGO_DB_USER", str(fallback_mysql.get("user", "")))
+    password = env_str("DJANGO_DB_PASSWORD", str(fallback_mysql.get("password", "")))
     port = env_int("DJANGO_DB_PORT", int(fallback_mysql.get("port", 3306)))
 
     if host and name and user:
