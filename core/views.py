@@ -580,14 +580,6 @@ def _construir_estado_plantilla(
             "anchor": "sec-plataforma",
         },
         {
-            "slug": "fuera",
-            "titulo": "Actividades fuera de plataforma",
-            "icono": "📁",
-            "resumen": fuera_resumen,
-            "ok": fuera_ok,
-            "anchor": "sec-fuera",
-        },
-        {
             "slug": "nominal",
             "titulo": "Configuración de reporte nominal",
             "icono": "⚙️",
@@ -598,8 +590,8 @@ def _construir_estado_plantilla(
     ]
 
     # Estado general para habilitar boton de generar plantilla.
-    # Solo se consideran requeridos: plataforma, fuera y nominal.
-    slugs_requeridos_generacion = {"plataforma", "fuera", "nominal"}
+    # Solo se consideran requeridos: plataforma y nominal.
+    slugs_requeridos_generacion = {"plataforma", "nominal"}
     pendientes = [
         item["titulo"]
         for item in checkpoints
