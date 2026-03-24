@@ -2298,6 +2298,105 @@ h1 {
     background: linear-gradient(165deg, #edf6ff 0%, #e6f1ff 100%);
 }
 
+.plantilla-generate-panel.is-syncing {
+    border-color: #e7c98f;
+    background: linear-gradient(165deg, #fffef9 0%, #fff6df 100%);
+}
+
+.sync-status-strip {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.46rem;
+}
+
+.sync-status-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    border-radius: 0.78rem;
+    border: 1px solid #d3e0ed;
+    padding: 0.62rem 0.7rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.sync-status-chip__dot {
+    width: 0.72rem;
+    height: 0.72rem;
+    margin-top: 0.2rem;
+    border-radius: 999px;
+    background: #8ea6bd;
+    box-shadow: 0 0 0 4px rgba(142, 166, 189, 0.16);
+    flex: 0 0 auto;
+}
+
+.sync-status-chip__body {
+    display: grid;
+    gap: 0.12rem;
+}
+
+.sync-status-chip__body strong {
+    color: #23425f;
+    font-size: 0.82rem;
+}
+
+.sync-status-chip__body small {
+    color: #61768d;
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
+.sync-status-chip--success {
+    border-color: #b8dfcf;
+    background: linear-gradient(165deg, #fbfffd 0%, #eefaf4 100%);
+}
+
+.sync-status-chip--success .sync-status-chip__dot {
+    background: #1d8d72;
+    box-shadow: 0 0 0 4px rgba(29, 141, 114, 0.14);
+}
+
+.sync-status-chip--warning {
+    border-color: #efd8a7;
+    background: linear-gradient(165deg, #fffef8 0%, #fff6dd 100%);
+}
+
+.sync-status-chip--warning .sync-status-chip__dot {
+    background: #db9d17;
+    box-shadow: 0 0 0 4px rgba(219, 157, 23, 0.16);
+}
+
+.sync-status-chip--danger {
+    border-color: #e9c0c0;
+    background: linear-gradient(165deg, #fffdfd 0%, #fff0f0 100%);
+}
+
+.sync-status-chip--danger .sync-status-chip__dot {
+    background: #d34f4f;
+    box-shadow: 0 0 0 4px rgba(211, 79, 79, 0.14);
+}
+
+.sync-runtime-banner {
+    width: 100%;
+    border: 1px dashed #e0b766;
+    border-radius: 0.82rem;
+    padding: 0.72rem 0.82rem;
+    background: linear-gradient(165deg, #fffdf7 0%, #fff4d8 100%);
+    color: #6f531f;
+}
+
+.sync-runtime-banner strong {
+    display: block;
+    color: #7a5310;
+    font-size: 0.84rem;
+}
+
+.sync-runtime-banner p {
+    margin: 0.22rem 0 0;
+    font-size: 0.77rem;
+    line-height: 1.45;
+}
+
 /* Resumen textual del panel de generacion. */
 .plantilla-generate-panel__summary {
     flex: 1 1 340px;
@@ -2368,6 +2467,15 @@ h1 {
     white-space: nowrap;
 }
 
+.plantilla-last-file__action.is-disabled,
+.year-filter__item.is-disabled {
+    border-color: #d8dfe7;
+    background: linear-gradient(150deg, #f3f5f7 0%, #eaedf1 100%);
+    color: #7a8896;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 /* Boton principal de generar plantilla. */
 .btn-generate {
     min-width: 220px;
@@ -2380,6 +2488,12 @@ h1 {
     border-color: #becddc;
     background: linear-gradient(135deg, #9fb5cc 0%, #92a7be 100%);
     color: #eef2f1;
+}
+
+@media (max-width: 920px) {
+    .sync-status-strip {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Grilla de bloques operativos para el tab de generacion de plantilla. */

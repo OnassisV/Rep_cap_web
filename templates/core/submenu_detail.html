@@ -725,11 +725,44 @@
                                     {% endfor %}
                                 </div>
 
-                                <section class="plantilla-generate-panel{% if seguimiento_plantilla_estado.ready %} is-ready{% else %} is-blocked{% endif %}">
+                                <section class="plantilla-generate-panel{% if seguimiento_plantilla_estado.ready %} is-ready{% else %} is-blocked{% endif %}{% if seguimiento_sync_status.is_running %} is-syncing{% endif %}">
+                                    {% if seguimiento_sync_status and seguimiento_sync_status.states %}
+                                        <div class="sync-status-strip" aria-label="Estado de sincronizacion incremental">
+                                            {% for item in seguimiento_sync_status.states %}
+                                                <article class="sync-status-chip sync-status-chip--{{ item.tone }}">
+                                                    <span class="sync-status-chip__dot" aria-hidden="true"></span>
+                                                    <div class="sync-status-chip__body">
+                                                        <strong>{{ item.label }}</strong>
+                                                        <small>{{ item.detail }}</small>
+                                                    </div>
+                                                </article>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    {% if seguimiento_sync_status.is_running %}
+                                        <div
+                                            class="sync-runtime-banner"
+                                            data-sync-runtime
+                                            data-sync-started-at="{{ seguimiento_sync_status.running_since_epoch }}"
+                                            data-sync-refresh-seconds="{{ seguimiento_sync_status.auto_refresh_seconds }}"
+                                        >
+                                            <strong>Actualizando datos antes de habilitar la generación.</strong>
+                                            <p>
+                                                Sincronización iniciada a las {{ seguimiento_sync_status.running_since }}.
+                                                Tiempo transcurrido: <span data-sync-elapsed>{{ seguimiento_sync_status.running_elapsed_label }}</span>.
+                                                Los botones se activarán cuando termine la carga incremental.
+                                            </p>
+                                        </div>
+                                    {% endif %}
                                     <div class="plantilla-generate-panel__summary">
                                         <strong>Progreso (requisitos de generación): {{ seguimiento_plantilla_estado.completados }}/{{ seguimiento_plantilla_estado.total }} bloques completos.</strong>
-                                        {% if seguimiento_plantilla_estado.ready %}
+                                        {% if seguimiento_sync_status.is_running %}
+                                            <p>La capacitación seleccionada ya disparó una sincronización incremental. Espera a que finalice para generar y descargar con datos actualizados.</p>
+                                        {% elif seguimiento_plantilla_estado.ready %}
                                             <p>Todos los bloques requeridos para generar están completos. Ya puedes ejecutar la generación.</p>
+                                            {% if seguimiento_sync_status.enabled and seguimiento_sync_status.source_available %}
+                                                <p>Al seleccionar otra capacitación desde la barra lateral se iniciará una nueva sincronización incremental en este equipo.</p>
+                                            {% endif %}
                                             {% if seguimiento_plantilla_estado.pendientes_cierre %}
                                                 <p>Para cierre administrativo aún falta: {{ seguimiento_plantilla_estado.pendientes_cierre|join:", " }}.</p>
                                             {% endif %}
@@ -748,8 +781,12 @@
                                         <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
                                         <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                         <input type="hidden" name="tab" value="plantilla">
-                                        <button type="submit" class="btn-primary-soft btn-generate" {% if not seguimiento_plantilla_estado.ready %}disabled{% endif %}>
-                                            Generar plantilla
+                                        <button type="submit" class="btn-primary-soft btn-generate" {% if not seguimiento_plantilla_estado.ready or seguimiento_sync_status.block_generation %}disabled{% endif %}>
+                                            {% if seguimiento_sync_status.block_generation %}
+                                                Sincronizando datos...
+                                            {% else %}
+                                                Generar plantilla
+                                            {% endif %}
                                         </button>
                                     </form>
 
@@ -765,12 +802,18 @@
                                                 {% if file.exists %}
                                                     <div class="plantilla-last-file__row">
                                                         <span class="plantilla-last-file__name">{{ file.file_name }} ({{ file.size_bytes }} bytes)</span>
-                                                        <a
-                                                            class="year-filter__item plantilla-last-file__action"
-                                                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=plantilla&download={{ file.download_kind }}"
-                                                        >
-                                                            Descargar {{ file.label }}
-                                                        </a>
+                                                        {% if seguimiento_sync_status.block_downloads %}
+                                                            <span class="year-filter__item plantilla-last-file__action is-disabled" aria-disabled="true">
+                                                                Disponible al terminar la sincronización
+                                                            </span>
+                                                        {% else %}
+                                                            <a
+                                                                class="year-filter__item plantilla-last-file__action"
+                                                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=plantilla&download={{ file.download_kind }}"
+                                                            >
+                                                                Descargar {{ file.label }}
+                                                            </a>
+                                                        {% endif %}
                                                     </div>
                                                 {% endif %}
                                             {% endfor %}
@@ -1233,6 +1276,47 @@
             collapse.addEventListener("toggle", syncState);
             syncState();
         });
+
+        (function () {
+            var runtime = document.querySelector("[data-sync-runtime]");
+            if (!runtime) {
+                return;
+            }
+
+            var elapsedNode = runtime.querySelector("[data-sync-elapsed]");
+            var startedAt = parseInt(runtime.dataset.syncStartedAt || "0", 10);
+            var refreshSeconds = parseInt(runtime.dataset.syncRefreshSeconds || "15", 10);
+
+            var formatElapsed = function (totalSeconds) {
+                var safeSeconds = Math.max(parseInt(totalSeconds || 0, 10), 0);
+                var hours = Math.floor(safeSeconds / 3600);
+                var minutes = Math.floor((safeSeconds % 3600) / 60);
+                var seconds = safeSeconds % 60;
+
+                var two = function (value) {
+                    return String(value).padStart(2, "0");
+                };
+
+                if (hours > 0) {
+                    return two(hours) + ":" + two(minutes) + ":" + two(seconds);
+                }
+                return two(minutes) + ":" + two(seconds);
+            };
+
+            var updateElapsed = function () {
+                if (!elapsedNode || !startedAt) {
+                    return;
+                }
+                var now = Math.floor(Date.now() / 1000);
+                elapsedNode.textContent = formatElapsed(now - startedAt);
+            };
+
+            updateElapsed();
+            window.setInterval(updateElapsed, 1000);
+            window.setTimeout(function () {
+                window.location.reload();
+            }, Math.max(refreshSeconds, 5) * 1000);
+        })();
 
         (function () {
             // Muestra u oculta campos de oficio cuando la solicitud es externa.
