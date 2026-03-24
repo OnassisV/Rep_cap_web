@@ -1,0 +1,25 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#123859"/>
+      <stop offset="100%" stop-color="#1b5d86"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g1)"/>
+  <g opacity="0.14" fill="#ffffff">
+    <polygon points="100,40 220,40 280,140 220,240 100,240 40,140"/>
+    <polygon points="980,430 1100,430 1160,530 1100,630 980,630 920,530"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="12" stroke-linejoin="round">
+    <rect x="170" y="230" width="280" height="190" rx="20"/>
+    <path d="M220 230v-38h180v38"/>
+    <line x1="240" y1="288" x2="380" y2="288"/>
+    <line x1="240" y1="336" x2="350" y2="336"/>
+    <line x1="240" y1="384" x2="330" y2="384"/>
+  </g>
+  <g fill="#ffffff">
+    <text x="510" y="312" font-size="68" font-family="DM Sans, Arial, sans-serif" font-weight="700">Gesti&#243;n de</text>
+    <text x="510" y="386" font-size="68" font-family="DM Sans, Arial, sans-serif" font-weight="700">Capacitaci&#243;n</text>
+  </g>
+</svg>
+

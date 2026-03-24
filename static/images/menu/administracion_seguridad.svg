@@ -1,0 +1,24 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g6" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5a2c2a"/>
+      <stop offset="100%" stop-color="#8a4333"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g6)"/>
+  <g opacity="0.14" fill="#ffffff">
+    <rect x="70" y="70" width="180" height="180" rx="24"/>
+    <rect x="960" y="420" width="190" height="190" rx="24"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="230" cy="300" r="48"/>
+    <path d="M160 390c25-35 45-52 70-52s45 17 70 52"/>
+    <path d="M420 250l90-35 90 35v95c0 88-56 138-90 160-34-22-90-72-90-160z"/>
+    <path d="M468 315l26 28 50-54"/>
+  </g>
+  <g fill="#ffffff">
+    <text x="650" y="302" font-size="60" font-family="DM Sans, Arial, sans-serif" font-weight="700">Administraci&#243;n</text>
+    <text x="650" y="376" font-size="60" font-family="DM Sans, Arial, sans-serif" font-weight="700">y Seguridad</text>
+  </g>
+</svg>
+

@@ -1,0 +1,24 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#26396f"/>
+      <stop offset="100%" stop-color="#3558a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g3)"/>
+  <g opacity="0.14" fill="#ffffff">
+    <rect x="60" y="70" width="190" height="190" rx="24"/>
+    <rect x="940" y="420" width="200" height="200" rx="24"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="12" stroke-linejoin="round">
+    <rect x="120" y="230" width="330" height="220" rx="18"/>
+    <line x1="120" y1="300" x2="450" y2="300"/>
+    <line x1="230" y1="230" x2="230" y2="450"/>
+    <circle cx="300" cy="365" r="35"/>
+    <line x1="325" y1="390" x2="365" y2="430"/>
+  </g>
+  <g fill="#ffffff">
+    <text x="505" y="302" font-size="66" font-family="DM Sans, Arial, sans-serif" font-weight="700">Laboratorio</text>
+    <text x="505" y="376" font-size="66" font-family="DM Sans, Arial, sans-serif" font-weight="700">de Datos</text>
+  </g>
+</svg>

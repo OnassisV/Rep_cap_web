@@ -1,0 +1,2781 @@
+﻿/* Tokens visuales del nuevo GeoMenu y pagina de detalle. */
+:root {
+    /* Paleta inspirada en Edutalentos: azul/celeste con acentos naranja y dorado. */
+    --bg-a: #ffffff;
+    --bg-b: #ffffff;
+    --ink: #11263f;
+    --muted: #4f6378;
+    --teal: #0d5fb8;
+    --brand-cyan: #09b3df;
+    --brand-blue-deep: #0a2f57;
+    --brand-blue-mid: #0d5fb8;
+    --brand-blue-soft: #d9eaff;
+    --orange: #ef7d32;
+    --orange-strong: #d85d20;
+    --sun: #f2ba42;
+    --line: #dbe5f1;
+    --line-strong: #c3d3e6;
+    --card: #ffffff;
+    --shadow-soft: 0 30px 54px -34px rgba(13, 63, 122, 0.5);
+    --shadow-geo: 0 26px 42px -30px rgba(11, 56, 111, 0.54);
+}
+
+/* Normalizacion universal del box model. */
+* {
+    box-sizing: border-box;
+}
+
+/* Base global de tipografia y fondo. */
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "DM Sans", sans-serif;
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--bg-a) 0%, var(--bg-b) 100%);
+}
+
+/* Halo desactivado para mantener un fondo base limpio en blanco. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: transparent;
+    z-index: 0;
+}
+
+/* Capa decorativa de lineas suaves en todo el viewport. */
+.scene-grid {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(26, 72, 120, 0.09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(26, 72, 120, 0.09) 1px, transparent 1px);
+    background-size: 32px 32px;
+    z-index: 0;
+}
+
+/* Contenedor principal de la pantalla inicial. */
+.geo-shell {
+    position: relative;
+    z-index: 2;
+    width: min(calc(100vw - 2.8rem), 1830px);
+    max-width: 1830px;
+    margin: 0 auto;
+    padding: 2.1rem 1.4rem 3rem;
+}
+
+/* Cabecera superior con identidad y acciones. */
+.geo-hero {
+    background:
+        linear-gradient(132deg, rgba(255, 255, 255, 0.98) 0%, rgba(238, 247, 255, 0.98) 55%, rgba(255, 247, 235, 0.94) 100%);
+    border: 1px solid var(--line-strong);
+    border-radius: 1.2rem;
+    padding: 1.35rem 1.45rem;
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    animation: fade-up 420ms ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Franja cromatica superior para reforzar identidad visual del hero. */
+.geo-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand-blue-mid) 0%, var(--brand-cyan) 52%, var(--orange) 100%);
+}
+
+/* Etiqueta superior pequena. */
+.eyebrow {
+    margin: 0;
+    font-size: 0.76rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--teal);
+    font-weight: 700;
+}
+
+/* Titular principal de hero. */
+h1 {
+    margin: 0.28rem 0 0.16rem;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(1.72rem, 3.6vw, 2.65rem);
+    line-height: 1.05;
+}
+
+/* Subtitulo descriptivo del hero. */
+.subtitle {
+    margin: 0;
+    color: var(--muted);
+    max-width: 710px;
+    line-height: 1.45;
+}
+
+/* Columna de acciones de cabecera. */
+.hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Insignia de rol activo. */
+.role-pill {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.48rem 0.78rem;
+    border: 1px solid rgba(13, 95, 184, 0.28);
+    border-radius: 999px;
+    color: var(--brand-blue-deep);
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.98) 0%, rgba(235, 245, 255, 0.93) 100%);
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+
+/* Contenedor del selector de rol con menu desplegable. */
+.role-switcher {
+    position: relative;
+}
+
+/* Boton visual del selector de rol. */
+.role-switcher > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+/* Oculta marcador nativo del elemento summary en navegadores WebKit. */
+.role-switcher > summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Flecha de estado para indicar apertura del menu. */
+.role-switcher > summary::after {
+    content: "v";
+    margin-left: 0.42rem;
+    font-size: 0.72rem;
+    line-height: 1;
+    transition: transform 160ms ease;
+}
+
+/* Rota flecha cuando el selector esta abierto. */
+.role-switcher[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+/* Caja flotante con opciones de rol. */
+.role-switcher__menu {
+    position: absolute;
+    top: calc(100% + 0.42rem);
+    right: 0;
+    min-width: 212px;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.76rem;
+    background: #fff;
+    box-shadow: 0 24px 34px -24px rgba(11, 56, 111, 0.44);
+    padding: 0.34rem;
+    z-index: 16;
+}
+
+/* Formulario individual por opcion de rol. */
+.role-switcher__form {
+    margin: 0;
+}
+
+/* Boton de opcion de rol dentro del menu. */
+.role-switcher__item {
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 0.56rem;
+    background: transparent;
+    color: #2b4258;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-align: left;
+    padding: 0.46rem 0.58rem;
+    cursor: pointer;
+}
+
+/* Estado hover/focus para opcion seleccionable. */
+.role-switcher__item:hover,
+.role-switcher__item:focus-visible {
+    background: #edf5ff;
+    border-color: #cfdef0;
+}
+
+/* Estado visual para la opcion activa actual. */
+.role-switcher__item.is-active,
+.role-switcher__item:disabled {
+    background: #e2f0ff;
+    border-color: #bfd6f0;
+    color: var(--brand-blue-mid);
+    cursor: default;
+}
+
+/* Boton principal de cierre de sesion. */
+.logout-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0.95rem;
+    border-radius: 0.72rem;
+    background: linear-gradient(135deg, var(--orange) 0%, var(--orange-strong) 100%);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+/* Franja de resumen rapido. */
+.summary-band {
+    margin-top: 0.92rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.78rem;
+}
+
+/* Tarjeta de metrica resumida. */
+.summary-item {
+    border: 1px solid var(--line-strong);
+    border-radius: 0.95rem;
+    padding: 0.9rem 1rem;
+    background: linear-gradient(162deg, rgba(255, 255, 255, 0.98) 0%, rgba(237, 246, 255, 0.95) 100%);
+    box-shadow: inset 0 0 0 1px rgba(13, 95, 184, 0.05);
+    position: relative;
+}
+
+/* Barra superior de color en tarjetas de resumen para darle mayor presencia. */
+.summary-item::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    border-radius: 0.95rem 0.95rem 0 0;
+    background: linear-gradient(90deg, var(--brand-blue-mid) 0%, var(--brand-cyan) 75%);
+}
+
+/* Valor numerico en tarjeta de resumen. */
+.summary-item h2 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.95rem;
+    line-height: 1;
+}
+
+/* Etiqueta descriptiva en tarjeta de resumen. */
+.summary-item p {
+    margin: 0.3rem 0 0;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+/* Grilla principal del menu geometrico. */
+.geo-grid {
+    margin-top: 0.95rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+/* Tarjeta geometrica clicable de cada seccion. */
+.geo-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--line-strong);
+    background: linear-gradient(148deg, #ffffff 0%, #f4f9ff 72%, #eef6ff 100%);
+    box-shadow: var(--shadow-geo);
+    border-radius: 1rem;
+    overflow: hidden;
+    clip-path: none;
+    transition: transform 180ms ease, box-shadow 180ms ease;
+    animation: fade-up 420ms ease-out both;
+    animation-delay: calc(var(--delay) * 70ms);
+    position: relative;
+}
+
+/* Franja de acento por tarjeta para dar variacion visual sin perder coherencia. */
+.geo-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand-blue-mid) 0%, var(--brand-cyan) 100%);
+    z-index: 2;
+}
+
+.geo-card:nth-child(3n + 2)::before {
+    background: linear-gradient(90deg, var(--orange) 0%, var(--sun) 100%);
+}
+
+.geo-card:nth-child(3n)::before {
+    background: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-blue-mid) 100%);
+}
+
+/* Efecto hover/focus de tarjeta. */
+.geo-card:hover,
+.geo-card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 34px 52px -30px rgba(11, 56, 111, 0.62);
+}
+
+/* Imagen alusiva del bloque. */
+.geo-card__image {
+    width: 100%;
+    height: 126px;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: center 50%;
+    display: block;
+    border-bottom: 1px solid var(--line-strong);
+}
+
+/* Cuerpo textual del bloque. */
+.geo-card__body {
+    padding: 0.72rem 0.86rem 0.8rem;
+}
+
+/* Subtitulo de bloque. */
+.geo-card__kicker {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand-blue-mid);
+    font-weight: 700;
+}
+
+/* Titulo de bloque. */
+.geo-card h3 {
+    margin: 0.26rem 0 0.12rem;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.06rem;
+}
+
+/* Descripcion de bloque. */
+.geo-card p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.34;
+    font-size: 0.96rem;
+}
+
+/* Lista compacta de modulos del bloque. */
+.geo-card__list {
+    margin: 0.62rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+/* Chip de modulo individual. */
+.geo-card__list li {
+    border: 1px solid #ccdeef;
+    border-radius: 999px;
+    background: linear-gradient(160deg, #ffffff 0%, #f3f9ff 100%);
+    padding: 0.2rem 0.58rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #35526b;
+}
+
+/* Contenedor principal de pagina detalle. */
+.detail-shell {
+    position: relative;
+    z-index: 2;
+    width: min(calc(100vw - 2.8rem), 1560px);
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: 2rem 1.4rem 3rem;
+}
+
+/* Variante compacta para la vista de detalle de sección. */
+.detail-shell--section {
+    padding-top: 1.25rem;
+}
+
+/* Flecha de regreso ubicada dentro del bloque izquierdo de la cabecera. */
+.detail-back-arrow {
+    position: absolute;
+    top: 0.8rem;
+    left: 0.8rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border: 1px solid rgba(10, 47, 87, 0.28);
+    border-radius: 0.82rem;
+    background: linear-gradient(145deg, #0f63bc 0%, #0a3f7d 100%);
+    box-shadow: 0 14px 24px -14px rgba(7, 39, 77, 0.58);
+    z-index: 6;
+    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+/* Icono SVG interno del botón de retorno. */
+.detail-back-arrow svg {
+    width: 1.18rem;
+    height: 1.18rem;
+}
+
+.detail-back-arrow svg path {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Interacción visual del botón de retorno. */
+.detail-back-arrow:hover,
+.detail-back-arrow:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 28px -16px rgba(7, 39, 77, 0.62);
+    filter: saturate(1.04);
+}
+
+/* Cabecera visual de detalle de seccion. */
+.detail-hero {
+    border: 1px solid var(--line-strong);
+    border-radius: 1.2rem;
+    background: linear-gradient(148deg, #ffffff 0%, #f2f8ff 74%, #fff3e6 100%);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    position: relative;
+}
+
+/* Franja superior para coherencia cromatica en vistas de detalle y submenu. */
+.detail-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand-blue-mid) 0%, var(--brand-cyan) 50%, var(--orange) 100%);
+    z-index: 2;
+}
+
+/* Imagen de cabecera del detalle. */
+.detail-hero__image {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    min-height: 220px;
+}
+
+/* Cuerpo textual de la cabecera detalle. */
+.detail-hero__body {
+    padding: 0.88rem 1rem 0.82rem;
+}
+
+/* Titular del encabezado de detalle en tamaño compacto. */
+.detail-hero h1 {
+    margin: 0;
+    font-size: clamp(1.74rem, 2.55vw, 2.4rem);
+    line-height: 1.03;
+}
+
+/* Separación más corta entre título y descripción dentro del encabezado. */
+.detail-hero .subtitle {
+    margin-top: 0.24rem;
+}
+
+/* Contenedor de acciones en detalle. */
+.detail-hero__actions {
+    margin-top: 0.68rem;
+    display: flex;
+    gap: 0.62rem;
+    flex-wrap: wrap;
+}
+
+/* Reduce el alto de la cabecera en sección para un bloque de titulo mas compacto. */
+.detail-shell--section .detail-hero {
+    grid-template-columns: 0.98fr 1.02fr;
+}
+
+.detail-shell--section .detail-hero__image {
+    height: 192px;
+    min-height: 192px;
+}
+
+.detail-shell--section .detail-hero__body {
+    padding: 0.76rem 0.94rem 0.72rem;
+}
+
+.detail-shell--section .detail-hero h1 {
+    font-size: clamp(1.62rem, 2.35vw, 2.16rem);
+}
+
+.detail-shell--section .detail-hero__actions {
+    margin-top: 0.54rem;
+}
+
+/* Boton secundario para volver a inicio. */
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.58rem 0.92rem;
+    border-radius: 0.72rem;
+    border: 1px solid #bfd4e8;
+    background: linear-gradient(150deg, #ffffff 0%, #f4f9ff 100%);
+    color: #224360;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+
+/* Barra de pestanas para saltar entre secciones del GeoMenu. */
+.section-tabs {
+    margin-top: 0.82rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.95rem;
+    background: linear-gradient(168deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 247, 255, 0.95) 100%);
+    padding: 0.42rem;
+    display: flex;
+    align-items: center;
+    gap: 0.44rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #9cb8d6 transparent;
+}
+
+/* Scroll horizontal estilizado para barra principal de secciones. */
+.section-tabs::-webkit-scrollbar {
+    height: 8px;
+}
+
+.section-tabs::-webkit-scrollbar-thumb {
+    background: #9cb8d6;
+    border-radius: 999px;
+}
+
+.section-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Enlace individual de cada pestana. */
+.section-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #2b4258;
+    border: 1px solid transparent;
+    border-radius: 0.66rem;
+    padding: 0.46rem 0.72rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+/* Estado hover/focus de pestana inactiva. */
+.section-tab:hover,
+.section-tab:focus-visible {
+    background: #ebf4ff;
+    border-color: #c9ddf2;
+}
+
+/* Estado activo para la seccion actualmente abierta. */
+.section-tab.is-active {
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    border-color: var(--brand-blue-deep);
+    color: #fff;
+}
+
+/* Contenedor relativo por pestaña para habilitar dropdown en hover. */
+.section-tab-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Menu desplegable de submenus por pestaña. */
+.section-tab-dropdown {
+    position: absolute;
+    top: calc(100% + 0.36rem);
+    left: 0;
+    min-width: 270px;
+    border: 1px solid #bfd4e8;
+    border-radius: 0.78rem;
+    background: #fff;
+    box-shadow: 0 24px 34px -24px rgba(11, 56, 111, 0.48);
+    padding: 0.34rem;
+    z-index: 20;
+    display: none;
+}
+
+/* Muestra dropdown al pasar mouse o enfocar teclado sobre la pestaña. */
+.section-tab-wrap:hover .section-tab-dropdown,
+.section-tab-wrap:focus-within .section-tab-dropdown {
+    display: block;
+}
+
+/* Enlace interno de cada item del dropdown. */
+.section-tab-dropdown__item {
+    display: block;
+    text-decoration: none;
+    color: #2c455d;
+    border: 1px solid transparent;
+    border-radius: 0.58rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.44rem 0.54rem;
+}
+
+/* Hover/focus del item de dropdown. */
+.section-tab-dropdown__item:hover,
+.section-tab-dropdown__item:focus-visible {
+    background: #edf5ff;
+    border-color: #ccdef0;
+}
+
+/* Item activo dentro del dropdown. */
+.section-tab-dropdown__item.is-active {
+    background: #e5f1ff;
+    border-color: #bfd6f0;
+    color: var(--brand-blue-deep);
+}
+
+/* Panel de submenus visible en detalle de seccion. */
+.submenu-panel {
+    margin-top: 0.84rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 1rem;
+    padding: 1rem 1.05rem;
+    background: linear-gradient(168deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 248, 255, 0.9) 100%);
+}
+
+/* Variante de panel para la fila compacta de acciones de sección. */
+.submenu-panel--actions {
+    padding: 0.76rem 0.84rem 0.82rem;
+}
+
+/* Grilla de tarjetas de submenu. */
+.submenu-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.62rem;
+}
+
+/* En detalle de sección se muestran los 6 submenús en una sola fila de botones. */
+.submenu-grid--section-actions {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.46rem;
+}
+
+/* Tarjeta clicable de submenu. */
+.submenu-card {
+    display: block;
+    border: 1px solid #c8dcf0;
+    border-radius: 0.84rem;
+    background: linear-gradient(162deg, #ffffff 0%, #f4f9ff 100%);
+    text-decoration: none;
+    color: #253f57;
+    padding: 0.72rem 0.78rem;
+}
+
+/* Estilo tipo botón para acciones rápidas de la sección. */
+.submenu-card--action {
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.42rem 0.54rem;
+    border-radius: 0.72rem;
+}
+
+/* Titulo de tarjeta submenu. */
+.submenu-card h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+/* Texto compacto para los 6 botones en fila única. */
+.submenu-card--action h3 {
+    font-size: 0.88rem;
+    line-height: 1.22;
+}
+
+/* Texto secundario de tarjeta submenu. */
+.submenu-card p {
+    margin: 0.34rem 0 0;
+    color: #576d84;
+    font-size: 0.83rem;
+    line-height: 1.36;
+}
+
+/* Foco visual de tarjeta de submenu. */
+.submenu-card:hover,
+.submenu-card:focus-visible {
+    border-color: var(--brand-blue-mid);
+    box-shadow: 0 18px 28px -24px rgba(11, 56, 111, 0.42);
+}
+
+/* Navegacion secundaria de submenus en pantalla dedicada. */
+.submenu-inline {
+    margin-top: 0.8rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.9rem;
+    background: linear-gradient(167deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 247, 255, 0.94) 100%);
+    padding: 0.4rem;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.42rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #9cb8d6 transparent;
+}
+
+/* Scroll horizontal estilizado para la barra secundaria de submenus. */
+.submenu-inline::-webkit-scrollbar {
+    height: 8px;
+}
+
+.submenu-inline::-webkit-scrollbar-thumb {
+    background: #9cb8d6;
+    border-radius: 999px;
+}
+
+.submenu-inline::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Item individual de barra secundaria de submenu. */
+.submenu-inline__item {
+    text-decoration: none;
+    color: #2a455f;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.38rem 0.62rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* Hover/focus de item secundario. */
+.submenu-inline__item:hover,
+.submenu-inline__item:focus-visible {
+    background: #edf5ff;
+    border-color: #ccdef0;
+}
+
+/* Estado activo en barra secundaria de submenu. */
+.submenu-inline__item.is-active {
+    background: #e5f1ff;
+    border-color: #bfd6f0;
+    color: var(--brand-blue-deep);
+}
+
+/* Filtro anual para submenus con data historica. */
+.year-filter {
+    margin: 0.8rem 0 0.86rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+}
+
+/* Etiqueta del filtro anual. */
+.year-filter__label {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #3a5370;
+}
+
+/* Enlace de anio en el selector. */
+.year-filter__item {
+    text-decoration: none;
+    border: 1px solid #c8dcf0;
+    border-radius: 999px;
+    color: #2a4560;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.28rem 0.58rem;
+    background: #fff;
+}
+
+/* Estado activo de anio seleccionado. */
+.year-filter__item.is-active {
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    border-color: var(--brand-blue-deep);
+    color: #fff;
+}
+
+/* Tarjetas de metricas pequenas para submenus adaptados. */
+.mini-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.58rem;
+}
+
+/* Tarjeta individual de metrica compacta. */
+.mini-metric {
+    border: 1px solid #c1d6ea;
+    border-radius: 0.78rem;
+    padding: 0.68rem 0.72rem;
+    background: linear-gradient(166deg, #ffffff 0%, #eff6ff 100%);
+}
+
+/* Valor de metrica compacta. */
+.mini-metric h3 {
+    margin: 0;
+    font-size: 1.26rem;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+/* Etiqueta de metrica compacta. */
+.mini-metric p {
+    margin: 0.24rem 0 0;
+    color: #5a7087;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Subtitulo de bloque en submenus adaptados. */
+.subsection-title {
+    margin: 0.92rem 0 0.48rem;
+    font-size: 1rem;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+/* Lista compacta tipo chips para acciones legacy. */
+.chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.36rem;
+}
+
+/* Chip individual de accion. */
+.chip-item {
+    border: 1px solid #c8dcf0;
+    border-radius: 999px;
+    background: linear-gradient(160deg, #ffffff 0%, #f3f9ff 100%);
+    padding: 0.24rem 0.56rem;
+    font-size: 0.77rem;
+    font-weight: 700;
+    color: #35526c;
+}
+
+/* Tabla simplificada para listados de submenus. */
+.simple-table {
+    margin-top: 0.3rem;
+    border: 1px solid #c1d6ea;
+    border-radius: 0.84rem;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* Cabecera de tabla simplificada. */
+.simple-table__head {
+    display: grid;
+    grid-template-columns: 130px minmax(230px, 1.8fr) minmax(170px, 1fr) 120px;
+    gap: 0.56rem;
+    background: linear-gradient(165deg, #edf5ff 0%, #e4f0ff 100%);
+    color: #23455f;
+    font-size: 0.77rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.52rem 0.62rem;
+}
+
+/* Fila de tabla simplificada. */
+.simple-table__row {
+    display: grid;
+    grid-template-columns: 130px minmax(230px, 1.8fr) minmax(170px, 1fr) 120px;
+    gap: 0.56rem;
+    border-top: 1px solid #deebf7;
+    padding: 0.54rem 0.62rem;
+    align-items: start;
+    color: #2d475f;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+/* Realce de fila para lectura mas clara en tablas operativas. */
+.simple-table__row:hover {
+    background: #f8fbff;
+}
+
+/* Variante de estructura: N° compacto (3 digitos) y columna Tipo acotada. */
+.simple-table--estructura .simple-table__head,
+.simple-table--estructura .simple-table__row {
+    grid-template-columns: 4.2ch minmax(260px, 1fr) 23ch 170px;
+}
+
+/* Evita que N° y Tipo crezcan mas de lo requerido en Gestion de estructura. */
+.simple-table--estructura .simple-table__head > span:nth-child(1),
+.simple-table--estructura .simple-table__row > span:nth-child(1),
+.simple-table--estructura .simple-table__head > span:nth-child(3),
+.simple-table--estructura .simple-table__row > span:nth-child(3) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Variante para estandares con columna de completitud mas ancha. */
+.simple-table--estandares .simple-table__head,
+.simple-table--estandares .simple-table__row {
+    grid-template-columns: 120px minmax(220px, 1.4fr) minmax(240px, 1.5fr) 90px;
+}
+
+/* Texto de porcentaje en barra de completitud. */
+.progress-label {
+    display: inline-block;
+    margin-right: 0.3rem;
+    font-weight: 700;
+    color: #1f4866;
+}
+
+/* Pista de barra de progreso. */
+.progress-track {
+    display: inline-block;
+    vertical-align: middle;
+    width: 130px;
+    height: 8px;
+    border-radius: 999px;
+    background: #deebf8;
+    overflow: hidden;
+}
+
+/* Valor relleno de barra de progreso. */
+.progress-value {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-cyan) 100%);
+}
+
+/* Texto secundario bajo barra de completitud. */
+.progress-sub {
+    display: block;
+    margin-top: 0.2rem;
+    color: #61768d;
+    font-size: 0.73rem;
+    font-weight: 600;
+}
+
+/* Contenedor de mensajes flash de operaciones POST. */
+.flash-stack {
+    margin: 0.46rem 0 0.7rem;
+    display: grid;
+    gap: 0.34rem;
+}
+
+/* Mensaje individual (exito/error) para feedback inmediato. */
+.flash-item {
+    margin: 0;
+    border: 1px solid #c6d9eb;
+    border-radius: 0.62rem;
+    padding: 0.48rem 0.62rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+/* Variante de exito para mensaje flash. */
+.flash-item--success {
+    background: #e9f4ff;
+    border-color: #bfd7f0;
+    color: #12466f;
+}
+
+/* Variante de error para mensaje flash. */
+.flash-item--error {
+    background: #fff1e8;
+    border-color: #f2c9b3;
+    color: #8a361a;
+}
+
+
+/* Layout en dos columnas para seguimiento (lista + area de trabajo). */
+.seguimiento-layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 0.74rem;
+    margin-top: 0.62rem;
+}
+
+/* Cuando el panel lateral esta minimizado, reduce ancho y amplia el panel derecho. */
+.seguimiento-layout.is-collapsed {
+    grid-template-columns: 74px minmax(0, 1fr);
+}
+
+/* Columna lateral con listado de capacitaciones. */
+.seguimiento-sidebar {
+    border: 1px solid #c0d6ea;
+    border-radius: 0.86rem;
+    background: linear-gradient(170deg, #ffffff 0%, #f1f8ff 100%);
+    padding: 0.74rem;
+}
+
+/* Contenedor colapsable del panel de capacitaciones. */
+.seguimiento-collapse {
+    margin: 0;
+}
+
+/* Resumen clicable para minimizar/expandir listado de capacitaciones. */
+.seguimiento-collapse__summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.15rem;
+    color: #1f3f5a;
+}
+
+/* Oculta marcador nativo del summary en WebKit. */
+.seguimiento-collapse__summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Vineta solicitada para la accion de colapso. */
+.seguimiento-collapse__bullet {
+    color: var(--brand-cyan);
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+/* Texto auxiliar a la derecha del resumen. */
+.seguimiento-collapse__hint {
+    margin-left: auto;
+    border: 1px solid #c4d8eb;
+    border-radius: 999px;
+    background: #fff;
+    color: #3f5c76;
+    font-size: 0.73rem;
+    font-weight: 700;
+    padding: 0.14rem 0.48rem;
+}
+
+/* Texto de accion visible solo cuando el panel esta expandido. */
+.seguimiento-collapse__hint--closed {
+    display: none;
+}
+
+/* Ajustes visuales del resumen y texto cuando el panel esta minimizado. */
+.seguimiento-layout.is-collapsed .seguimiento-sidebar {
+    padding: 0.52rem;
+}
+
+.seguimiento-layout.is-collapsed .seguimiento-collapse__summary {
+    justify-content: center;
+    gap: 0.24rem;
+}
+
+.seguimiento-layout.is-collapsed .seguimiento-collapse__title {
+    display: none;
+}
+
+.seguimiento-layout.is-collapsed .seguimiento-collapse__hint--open {
+    display: none;
+}
+
+.seguimiento-layout.is-collapsed .seguimiento-collapse__hint--closed {
+    display: inline-flex;
+    margin-left: 0;
+}
+
+/* Estado visual cuando el panel esta colapsado. */
+.seguimiento-collapse:not([open]) .seguimiento-collapse__hint {
+    color: var(--brand-blue-mid);
+    border-color: #aecdeb;
+}
+
+/* Descripcion breve en sidebar de seguimiento. */
+.seguimiento-sidebar p {
+    margin: 0.3rem 0 0.62rem;
+    color: #5b7289;
+    font-size: 0.81rem;
+}
+
+/* Stack de tarjetas de capacitaciones seleccionables. */
+.seguimiento-cards {
+    display: grid;
+    gap: 0.42rem;
+}
+
+/* Tarjeta selectable por codigo dentro de seguimiento. */
+.cap-card {
+    display: block;
+    text-decoration: none;
+    border: 1px solid #c0d5ea;
+    border-radius: 0.74rem;
+    background: linear-gradient(162deg, #ffffff 0%, #f4f9ff 100%);
+    padding: 0.54rem 0.6rem;
+    color: #2c4760;
+}
+
+/* Estado activo del codigo seleccionado. */
+.cap-card.is-active {
+    border-color: var(--brand-blue-mid);
+    box-shadow: inset 0 0 0 1px rgba(13, 95, 184, 0.24);
+    background: linear-gradient(165deg, #ecf5ff 0%, #e2efff 100%);
+}
+
+/* Variante para capacitaciones cerradas con acento naranja. */
+.cap-card.is-cerrado {
+    border-left: 5px solid #e08b3c;
+}
+
+/* Variante para capacitaciones abiertas/en implementacion con acento cian. */
+.cap-card.is-abierto {
+    border-left: 5px solid #0a9eca;
+}
+
+/* Codigo en tarjeta lateral de seguimiento. */
+.cap-card__code {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #1d3f5f;
+}
+
+/* Nombre del proceso en tarjeta lateral. */
+.cap-card__name {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+/* Meta secundaria de tarjeta lateral. */
+.cap-card__meta {
+    display: block;
+    margin-top: 0.26rem;
+    color: #607a91;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+/* Badge de estado de condicion para diferenciar cerrado vs abierto. */
+.cap-card__status {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 0.24rem;
+    border-radius: 999px;
+    padding: 0.14rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    width: fit-content;
+}
+
+/* Estado cerrado para badge de condicion. */
+.cap-card__status--cerrado {
+    border: 1px solid #f2cfad;
+    background: #fff2e7;
+    color: #91501d;
+}
+
+/* Estado abierto/en implementacion para badge de condicion. */
+.cap-card__status--abierto {
+    border: 1px solid #bde6f1;
+    background: #e9f8fd;
+    color: #0f6c8c;
+}
+
+/* Columna principal de trabajo del seguimiento. */
+.seguimiento-main {
+    border: 1px solid #c0d6ea;
+    border-radius: 0.86rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f4f9ff 100%);
+    padding: 0.74rem;
+}
+
+/* Barra de tabs funcionales en seguimiento (alertas, estructura, etc.). */
+.seguimiento-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    margin-bottom: 0.72rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.12rem;
+    scrollbar-width: thin;
+    scrollbar-color: #95b5d5 transparent;
+}
+
+/* Scroll horizontal de tabs funcionales de seguimiento. */
+.seguimiento-tabs::-webkit-scrollbar {
+    height: 8px;
+}
+
+.seguimiento-tabs::-webkit-scrollbar-thumb {
+    background: #95b5d5;
+    border-radius: 999px;
+}
+
+.seguimiento-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Boton-tab individual del flujo seguimiento. */
+.seguimiento-tab {
+    text-decoration: none;
+    border: 1px solid #c7dbef;
+    border-radius: 999px;
+    color: #2a4761;
+    background: #fff;
+    font-size: 0.79rem;
+    font-weight: 700;
+    padding: 0.3rem 0.56rem;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+/* Estado activo del tab de seguimiento. */
+.seguimiento-tab.is-active {
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    border-color: var(--brand-blue-deep);
+    color: #fff;
+}
+
+/* Formulario editor para estructura/formula dentro de seguimiento. */
+.editor-form {
+    margin-top: 0.52rem;
+    border: 1px solid #c7daec;
+    border-radius: 0.8rem;
+    background: linear-gradient(168deg, #ffffff 0%, #f5faff 100%);
+    padding: 0.7rem;
+    display: grid;
+    gap: 0.42rem;
+}
+
+/* Etiquetas de campo del formulario editor. */
+.editor-form label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #36526a;
+}
+
+/* Inputs de texto/select/textarea del formulario editor (excluye checkbox/radio). */
+.editor-form input:not([type="checkbox"]):not([type="radio"]),
+.editor-form select,
+.editor-form textarea {
+    width: 100%;
+    border: 1px solid #c5daec;
+    border-radius: 0.56rem;
+    font: inherit;
+    font-size: 0.82rem;
+    color: #1f3e59;
+    padding: 0.44rem 0.52rem;
+    background: #fff;
+}
+
+/* Panel auxiliar para construir formula usando listas desplegables. */
+.formula-builder {
+    border: 1px dashed #bdd3e8;
+    border-radius: 0.7rem;
+    background: #f2f8ff;
+    padding: 0.58rem;
+    display: grid;
+    gap: 0.34rem;
+}
+
+/* Fila de controles del constructor de formula. */
+.formula-builder__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.38rem;
+    align-items: center;
+}
+
+/* Variante para fila con tres controles (numero + dos botones). */
+.formula-builder__row--triple {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+/* Resumen rapido de magnitud del formulario de registro inicial. */
+.registro-summary {
+    margin-top: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+/* Variante superior del resumen cuando el flujo se muestra como solicitud + expediente. */
+.registro-summary--solicitud .mini-metric {
+    background: linear-gradient(165deg, #ffffff 0%, #eef6ff 100%);
+}
+
+/* Barra de navegacion horizontal por bloques del formulario de registro. */
+.registro-nav {
+    margin-top: 0.52rem;
+    border: 1px solid #c6daec;
+    border-radius: 0.74rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f3f9ff 100%);
+    padding: 0.36rem;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.36rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #9cb8d6 transparent;
+}
+
+/* Enlace de bloque dentro de la barra de navegacion del registro. */
+.registro-nav__item {
+    text-decoration: none;
+    border: 1px solid #c9dcef;
+    border-radius: 999px;
+    background: #fff;
+    color: #2e4b64;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.28rem 0.62rem;
+    white-space: nowrap;
+}
+
+/* Hover/focus de navegacion del registro. */
+.registro-nav__item:hover,
+.registro-nav__item:focus-visible {
+    border-color: #9fc2e7;
+    background: #eef6ff;
+}
+
+/* Contenedor de la linea de tiempo principal del registro. */
+.registro-roadmap {
+    margin-top: 0.62rem;
+    border: 1px solid #c7dbee;
+    border-radius: 1rem;
+    background: linear-gradient(160deg, #ffffff 0%, #f5faff 100%);
+    padding: 0.7rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #9cb8d6 transparent;
+}
+
+/* Pista horizontal con las etapas del flujo. */
+.registro-roadmap__track {
+    min-width: 1040px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.62rem;
+}
+
+/* Tarjeta individual de etapa de la linea de tiempo. */
+.registro-roadmap__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.62rem;
+    align-items: start;
+    border: 1px solid #cfdfef;
+    border-radius: 0.96rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f7fbff 100%);
+    padding: 0.78rem;
+}
+
+/* Realce para la etapa activa del flujo. */
+.registro-roadmap__step.is-current {
+    border-color: #8bb8ea;
+    box-shadow: 0 16px 32px -24px rgba(13, 95, 184, 0.5);
+}
+
+/* Realce para etapas ya consolidadas. */
+.registro-roadmap__step.is-complete {
+    border-color: #9bd3c1;
+    background: linear-gradient(165deg, #f7fffc 0%, #edf9f4 100%);
+}
+
+/* Etapa con informacion parcial. */
+.registro-roadmap__step.is-started:not(.is-current):not(.is-complete) {
+    border-color: #d6c9ef;
+    background: linear-gradient(165deg, #fffefe 0%, #f7f1ff 100%);
+}
+
+/* Nodo numerico de la linea de tiempo. */
+.registro-roadmap__dot {
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    color: #ffffff;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+/* Nodo numerico para etapa completada. */
+.registro-roadmap__step.is-complete .registro-roadmap__dot {
+    background: linear-gradient(135deg, #1e8d73 0%, #0f6f59 100%);
+}
+
+/* Nodo numerico para etapa parcial. */
+.registro-roadmap__step.is-started:not(.is-current):not(.is-complete) .registro-roadmap__dot {
+    background: linear-gradient(135deg, #7b66b4 0%, #55458d 100%);
+}
+
+/* Texto interior de cada etapa. */
+.registro-roadmap__body h3 {
+    margin: 0.08rem 0 0;
+    font-size: 1rem;
+}
+
+/* Descripcion corta de cada etapa. */
+.registro-roadmap__body p {
+    margin: 0.18rem 0 0;
+    color: #5a7087;
+    font-size: 0.79rem;
+    line-height: 1.35;
+}
+
+/* Etiqueta superior de etapa. */
+.registro-roadmap__eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand-blue-mid);
+    font-weight: 700;
+}
+
+/* Pie operativo de cada etapa. */
+.registro-roadmap__meta {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    align-items: center;
+}
+
+/* Texto de apoyo para conteos de obligatorios. */
+.registro-roadmap__meta small,
+.registro-block__meta small {
+    color: #667b91;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+/* Contenedor general del formulario largo de registro. */
+.registro-form {
+    margin-top: 0.54rem;
+    gap: 0.72rem;
+}
+
+/* Bloque visual por seccion del formulario de registro. */
+.registro-block {
+    border: 1px solid #c5d9ec;
+    border-radius: 0.98rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f4f9ff 100%);
+    padding: 0.82rem;
+}
+
+/* Variante principal para la apertura de solicitud. */
+.registro-block--solicitud {
+    padding: 0;
+    overflow: hidden;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.99) 0%, rgba(243, 249, 255, 0.98) 100%),
+        linear-gradient(90deg, rgba(13, 95, 184, 0.08) 0%, rgba(9, 179, 223, 0.05) 52%, rgba(239, 125, 50, 0.06) 100%);
+}
+
+/* Cabecera del bloque para separar titulo/descripción del contenido. */
+.registro-block__header {
+    margin-bottom: 0.42rem;
+}
+
+/* Cabecera mas rica del primer bloque de solicitud. */
+.registro-block__header--solicitud {
+    padding: 1rem 1rem 0.48rem;
+}
+
+/* Cabecera dividida entre texto y estado del bloque. */
+.registro-block__header--split {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: flex-start;
+}
+
+/* Etiqueta superior compacta para encabezados internos. */
+.registro-block__eyebrow {
+    margin: 0 0 0.16rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand-blue-mid);
+    font-weight: 700;
+}
+
+/* Layout principal del bloque de solicitud. */
+.registro-solicitud {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    gap: 0.82rem;
+    padding: 0 1rem 1rem;
+}
+
+/* Columna principal del bloque de solicitud. */
+.registro-solicitud__main {
+    display: grid;
+    gap: 0.7rem;
+}
+
+/* Tarjeta introductoria antes de los campos de solicitud. */
+.registro-solicitud__intro {
+    border: 1px solid #cfe0ef;
+    border-radius: 0.92rem;
+    background: linear-gradient(165deg, #ffffff 0%, #eef7ff 100%);
+    padding: 0.78rem 0.86rem;
+}
+
+/* Titulos de apoyo en paneles especiales. */
+.registro-solicitud__intro h4,
+.registro-solicitud__decisions-head h4,
+.decision-card__head h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* Texto de apoyo en paneles especiales. */
+.registro-solicitud__intro p,
+.registro-solicitud__decisions-head p,
+.decision-card__head p {
+    margin: 0.24rem 0 0;
+    color: #5b7187;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+/* Ajuste del grid interno de la solicitud. */
+.registro-grid--solicitud {
+    gap: 0.46rem 0.58rem;
+}
+
+/* Columna lateral con decisiones que dirigen el flujo. */
+.registro-solicitud__decisions {
+    border: 1px solid #cfe0ef;
+    border-radius: 0.92rem;
+    background: linear-gradient(165deg, #ffffff 0%, #fff7f1 100%);
+    padding: 0.78rem;
+    display: grid;
+    gap: 0.62rem;
+}
+
+/* Contenedor vertical para las decisiones binarias. */
+.registro-solicitud__decision-list {
+    display: grid;
+    gap: 0.58rem;
+}
+
+/* Grid de opciones visuales para origen u otras elecciones compactas. */
+.choice-grid {
+    display: grid;
+    gap: 0.52rem;
+}
+
+/* Variante del selector de origen institucional. */
+.choice-grid--origin {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Tarjeta clicable para opciones visuales. */
+.choice-card {
+    position: relative;
+    cursor: pointer;
+}
+
+/* Oculta el radio nativo manteniendo accesibilidad. */
+.choice-card input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+}
+
+/* Cuerpo visible de cada tarjeta de opcion. */
+.choice-card__body {
+    display: grid;
+    gap: 0.16rem;
+    min-height: 100%;
+    padding: 0.72rem 0.78rem;
+    border: 1px solid #ccdff0;
+    border-radius: 0.92rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f7fbff 100%);
+    position: relative;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+/* Estado seleccionado del origen institucional. */
+.choice-card input:checked + .choice-card__body {
+    border-color: var(--brand-blue-mid);
+    background: linear-gradient(165deg, #eef6ff 0%, #deecff 100%);
+    box-shadow:
+        inset 0 0 0 1px rgba(13, 95, 184, 0.28),
+        0 16px 28px -22px rgba(13, 95, 184, 0.62);
+    transform: translateY(-1px);
+}
+
+/* Marca visual en la opcion seleccionada. */
+.choice-card input:checked + .choice-card__body::after {
+    content: "Seleccionado";
+    position: absolute;
+    top: 0.56rem;
+    right: 0.6rem;
+    padding: 0.14rem 0.42rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+/* Tipografia de la opcion principal. */
+.choice-card__body strong {
+    font-size: 0.9rem;
+    padding-right: 5.6rem;
+}
+
+/* Texto de apoyo de la opcion. */
+.choice-card__body small {
+    color: #5c7188;
+    line-height: 1.28;
+    font-size: 0.77rem;
+}
+
+/* Grilla base de campos del formulario de registro. */
+.registro-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.56rem;
+}
+
+/* Campo individual del registro con etiqueta sobre control. */
+.registro-field {
+    display: grid;
+    gap: 0.16rem;
+    align-content: start;
+}
+
+/* Cabecera compacta del campo para reducir aire entre titulo, ayuda y control. */
+.registro-field__head {
+    display: grid;
+    gap: 0.1rem;
+}
+
+/* Etiqueta principal del campo. */
+.registro-field__label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #28445e;
+}
+
+/* Ayuda corta debajo de la etiqueta. */
+.registro-field__help {
+    color: #6b7f95;
+    font-size: 0.72rem;
+    line-height: 1.24;
+}
+
+/* Campos largos ocupan el ancho completo para mejorar lectura. */
+.registro-field--full {
+    grid-column: 1 / -1;
+}
+
+/* Permite ocultar temporalmente campos que dependen del origen de solicitud. */
+.registro-field.is-hidden {
+    display: none;
+}
+
+/* Tarjeta para decisiones Si/No en la columna lateral. */
+.decision-card {
+    border: 1px solid #d8ddf1;
+    border-radius: 0.92rem;
+    background: linear-gradient(165deg, #ffffff 0%, #fbf8ff 100%);
+    padding: 0.72rem 0.8rem;
+    display: grid;
+    gap: 0.52rem;
+}
+
+/* Realce cuando una decision ya fue contestada. */
+.decision-card.is-answered {
+    border-color: #9dbde7;
+    background: linear-gradient(165deg, #f8fbff 0%, #eef5ff 100%);
+    box-shadow: 0 14px 30px -24px rgba(13, 95, 184, 0.42);
+}
+
+/* Cabecera interna de la decision con mejor compactacion. */
+.decision-card__head {
+    display: grid;
+    gap: 0.1rem;
+}
+
+/* Botonera de radios estilizados. */
+.radio-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.46rem;
+}
+
+/* Envoltura de cada opcion binaria. */
+.radio-pill {
+    position: relative;
+    cursor: pointer;
+}
+
+/* Oculta el radio nativo manteniendo el foco/semantica. */
+.radio-pill input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+}
+
+/* Chip visible de cada opcion. */
+.radio-pill span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.3rem;
+    padding: 0.45rem 0.82rem;
+    border: 1px solid #cadcef;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #2f4b64;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+/* Estado activo de la opcion elegida. */
+.radio-pill input:checked + span {
+    border-color: var(--brand-blue-mid);
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    color: #ffffff;
+    box-shadow: 0 12px 20px -16px rgba(13, 95, 184, 0.65);
+}
+
+/* Franja de titulo con numero para mantener la secuencia visual. */
+.registro-question-title {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.46rem;
+}
+
+/* Pastilla numerica de cada pregunta visible. */
+.registro-question-number {
+    width: 1.45rem;
+    height: 1.45rem;
+    flex: 0 0 1.45rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 10px 20px -16px rgba(13, 95, 184, 0.75);
+}
+
+/* Ajuste fino para que el numero no empuje demasiado el contenido. */
+.registro-field--question .registro-field__label,
+.decision-card--question .decision-card__head h4 {
+    line-height: 1.2;
+}
+
+/* Grupo que envuelve las demas secciones del expediente. */
+.registro-sections-shell {
+    display: grid;
+    gap: 0.66rem;
+}
+
+/* Cabecera general del expediente tecnico posterior a la solicitud. */
+.registro-sections-shell__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.82rem;
+    align-items: flex-end;
+}
+
+/* Metadatos de estado mostrados al costado del titulo de cada bloque. */
+.registro-block__meta {
+    display: grid;
+    justify-items: end;
+    gap: 0.18rem;
+    text-align: right;
+}
+
+/* Estado compacto de bloque o etapa. */
+.registro-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.24rem 0.56rem;
+    border-radius: 999px;
+    border: 1px solid #cadcef;
+    background: #ffffff;
+    color: #43607a;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+/* Estado completo del registro. */
+.registro-status--complete {
+    border-color: #99d1c0;
+    background: #ecfbf5;
+    color: #0c6a53;
+}
+
+/* Estado actual o en progreso del registro. */
+.registro-status--current {
+    border-color: #f0c28f;
+    background: #fff4e9;
+    color: #a15a15;
+}
+
+/* Estado con avance parcial pero no actual. */
+.registro-status--started {
+    border-color: #cebff0;
+    background: #f5efff;
+    color: #60469d;
+}
+
+/* Fila de accion final del formulario de registro. */
+.registro-form__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.82rem;
+    margin-top: 0.12rem;
+    flex-wrap: wrap;
+}
+
+/* Nota operativa previa al guardado final. */
+.registro-form__hint {
+    margin: 0;
+    color: #5a7087;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+/* Linea compacta para checkbox con texto. */
+.checkbox-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
+    font-size: 0.82rem;
+    color: #2f4b64;
+}
+
+/* Contenedor horizontal para checkboxes del modal de estructura. */
+.checkbox-grid {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+
+/* Checkbox compacto para opciones binarias de la estructura. */
+.checkbox-line input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    min-width: 1rem;
+    flex: 0 0 1rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    accent-color: var(--brand-blue-mid);
+}
+
+/* Boton principal suave para guardar formularios internos. */
+.btn-primary-soft {
+    border: 1px solid var(--brand-blue-deep);
+    border-radius: 0.6rem;
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    color: #fff;
+    font-weight: 700;
+    padding: 0.46rem 0.66rem;
+    cursor: pointer;
+}
+
+/* Boton secundario suave para acciones de cancelar/cerrar modal. */
+.btn-secondary-soft {
+    border: 1px solid #c3d8ec;
+    border-radius: 0.6rem;
+    background: linear-gradient(150deg, #ffffff 0%, #f3f9ff 100%);
+    color: #2f4b64;
+    font-weight: 700;
+    padding: 0.46rem 0.66rem;
+    cursor: pointer;
+}
+
+/* Ventana flotante para formulario de registro/edicion de actividad. */
+.actividad-modal {
+    border: none;
+    padding: 0;
+    background: transparent;
+    width: min(880px, calc(100vw - 2rem));
+}
+
+/* Fondo oscurecido cuando la ventana flotante esta abierta. */
+.actividad-modal::backdrop {
+    background: rgba(7, 28, 51, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+/* Contenedor visual interno de la ventana flotante. */
+.actividad-modal__panel {
+    border: 1px solid #c3d8ec;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 28px 46px -24px rgba(8, 43, 83, 0.58);
+    padding: 0.8rem;
+    max-height: calc(100vh - 4rem);
+    overflow: auto;
+}
+
+/* Cabecera del modal con titulo y boton de cierre. */
+.actividad-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+/* Titulo del formulario dentro del modal. */
+.actividad-modal__header h3 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.05rem;
+}
+
+/* Boton redondo de cierre en esquina del modal. */
+.actividad-modal__close {
+    border: 1px solid #bdd4e8;
+    border-radius: 999px;
+    background: #fff;
+    color: #2f4c66;
+    font-weight: 800;
+    font-size: 0.82rem;
+    width: 28px;
+    height: 28px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* Ajuste de margenes del formulario cuando esta dentro del modal. */
+.actividad-modal__form {
+    margin-top: 0.62rem;
+}
+
+/* Fila de acciones del modal (guardar/cancelar). */
+.actividad-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.46rem;
+    margin-top: 0.32rem;
+}
+
+/* Form inline para acciones secundarias dentro de tablas/listas. */
+.inline-form {
+    display: inline-block;
+    margin-left: 0.3rem;
+}
+
+/* Agrupa acciones de una fila en horizontal para compactar altura. */
+.table-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    flex-wrap: nowrap;
+}
+
+/* Quita margen lateral cuando el formulario vive dentro de acciones de tabla. */
+.table-actions .inline-form {
+    margin-left: 0;
+}
+
+/* Boton inline de eliminacion. */
+.inline-btn-danger {
+    border: 1px solid #f0bda2;
+    border-radius: 999px;
+    background: #fff3ea;
+    color: #93421b;
+    font-weight: 700;
+    font-size: 0.74rem;
+    padding: 0.22rem 0.48rem;
+    cursor: pointer;
+}
+
+/* Banda de enlaces de accion para descargas y accesos auxiliares. */
+.action-links {
+    margin: 0.4rem 0 0.62rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+/* Ajusta margenes de formularios inline dentro de franja de acciones. */
+.action-links .inline-form {
+    margin-left: 0;
+}
+
+/* Bloque de alerta para recomendaciones de confiabilidad. */
+.warning-box {
+    margin: 0.58rem 0;
+    border: 1px solid #f1ca95;
+    border-radius: 0.74rem;
+    background: #fff7e6;
+    color: #7a4b15;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.52rem 0.62rem;
+}
+
+/* Bloque positivo para estado sin observaciones. */
+.ok-box {
+    margin: 0.58rem 0;
+    border: 1px solid #bfd8ed;
+    border-radius: 0.74rem;
+    background: #e9f4ff;
+    color: #12466f;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.52rem 0.62rem;
+}
+
+/* Lista de chips para DNIs de retiros manuales. */
+.dni-chip-list {
+    margin-top: 0.56rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.36rem;
+    align-items: center;
+}
+
+/* Chip individual de DNI con accion de borrado. */
+.dni-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    border: 1px solid #c8dcef;
+    border-radius: 999px;
+    background: #fff;
+    color: #2f4a63;
+    padding: 0.22rem 0.5rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+/* Variante de tabla para confiabilidad (6 columnas). */
+.simple-table--kr20 .simple-table__head,
+.simple-table--kr20 .simple-table__row {
+    grid-template-columns: minmax(210px, 1.4fr) 110px 110px 120px 120px 90px;
+}
+
+/* Variante de tabla para certificados nominales (5 columnas). */
+.simple-table--cert .simple-table__head,
+.simple-table--cert .simple-table__row {
+    grid-template-columns: 110px minmax(220px, 1.4fr) minmax(180px, 1.15fr) 110px 150px;
+}
+
+/* Variante de tabla para alertas de actividades pendientes en plataforma. */
+.simple-table--alertas-pendientes .simple-table__head,
+.simple-table--alertas-pendientes .simple-table__row {
+    grid-template-columns: 110px 130px minmax(260px, 1.6fr) 170px;
+}
+
+/* Variante de tabla para actividades del bloque de generacion de plantilla. */
+.simple-table--plantilla-actividades .simple-table__head,
+.simple-table--plantilla-actividades .simple-table__row {
+    grid-template-columns: minmax(240px, 1.8fr) 140px 170px 110px;
+}
+
+/* Panel de modulos en la vista detalle. */
+.module-panel {
+    margin-top: 0.88rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 1rem;
+    padding: 1rem 1.05rem;
+    background: linear-gradient(170deg, rgba(255, 255, 255, 0.97) 0%, rgba(242, 249, 255, 0.94) 100%);
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Linea de acento superior para paneles de contenido principal. */
+.module-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 95, 184, 0.75) 0%, rgba(9, 179, 223, 0.75) 72%);
+}
+
+/* Titulo del panel de modulos. */
+.module-panel h2 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+/* Copia de contexto del panel. */
+.module-panel__copy {
+    margin: 0.4rem 0 0.72rem;
+    color: var(--muted);
+}
+
+/* Lista vertical de modulos. */
+.module-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.48rem;
+}
+
+/* Item individual de modulo. */
+.module-list li {
+    border: 1px solid #c5d8eb;
+    border-radius: 0.72rem;
+    background: #fff;
+    padding: 0.6rem 0.76rem;
+    font-weight: 700;
+    color: #2f4962;
+}
+
+/* Texto secundario dentro de item de modulo/oferta. */
+.module-list__meta {
+    color: #628099;
+    font-weight: 600;
+}
+
+/* Nota final del panel detalle. */
+.module-panel__note {
+    margin: 0.76rem 0 0;
+    color: var(--muted);
+}
+
+/* Grilla de checkpoints iconograficos para resumir avance de plantilla. */
+.plantilla-checkpoints {
+    margin-top: 0.58rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+/* Tarjeta de checkpoint (clic para saltar al bloque correspondiente). */
+.checkpoint-card {
+    text-decoration: none;
+    border: 1px solid #c5d9ec;
+    border-radius: 0.8rem;
+    background: #fff;
+    color: #244963;
+    cursor: pointer;
+    padding: 0.52rem 0.58rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.46rem;
+    align-items: center;
+}
+
+/* Microinteraccion para que el resumen se perciba realmente clicable. */
+.checkpoint-card:hover,
+.checkpoint-card:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 28px -24px rgba(11, 56, 111, 0.5);
+}
+
+/* Estado pendiente de checkpoint. */
+.checkpoint-card.is-pending {
+    border-color: #f0cdae;
+    background: linear-gradient(160deg, #fffdfb 0%, #fff4e9 100%);
+}
+
+/* Estado completado de checkpoint (resalte visual de bloque listo). */
+.checkpoint-card.is-complete {
+    border-color: #b8d4ee;
+    background: linear-gradient(160deg, #edf6ff 0%, #e5f1ff 100%);
+    box-shadow: inset 0 0 0 1px rgba(13, 95, 184, 0.12);
+}
+
+/* Icono visual de checkpoint. */
+.checkpoint-card__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eaf3ff;
+    font-size: 1.02rem;
+}
+
+/* Bloque textual central del checkpoint. */
+.checkpoint-card__body {
+    display: grid;
+    gap: 0.14rem;
+}
+
+/* Titulo del checkpoint. */
+.checkpoint-card__body strong {
+    font-size: 0.82rem;
+    line-height: 1.2;
+}
+
+/* Resumen breve del checkpoint. */
+.checkpoint-card__body small {
+    color: #59728b;
+    font-size: 0.74rem;
+    line-height: 1.2;
+}
+
+/* Estado textual de checkpoint. */
+.checkpoint-card__state {
+    border: 1px solid #c5d9ec;
+    border-radius: 999px;
+    padding: 0.12rem 0.42rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #3a5470;
+    background: #fff;
+}
+
+/* Color de estado cuando ya esta listo el checkpoint. */
+.checkpoint-card.is-complete .checkpoint-card__state {
+    border-color: #b8d4ee;
+    background: #f0f7ff;
+    color: #12466f;
+}
+
+/* Panel de control para habilitar o bloquear generacion de plantilla. */
+.plantilla-generate-panel {
+    margin-top: 0.58rem;
+    border: 1px solid #c5d9ec;
+    border-radius: 0.84rem;
+    padding: 0.62rem 0.68rem;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.72rem;
+    flex-wrap: wrap;
+}
+
+/* Estado bloqueado cuando faltan bloques por completar. */
+.plantilla-generate-panel.is-blocked {
+    border-color: #f0cdae;
+    background: linear-gradient(165deg, #fffdfb 0%, #fff3e8 100%);
+}
+
+/* Estado listo para generacion cuando el checklist esta completo. */
+.plantilla-generate-panel.is-ready {
+    border-color: #b8d4ee;
+    background: linear-gradient(165deg, #edf6ff 0%, #e6f1ff 100%);
+}
+
+/* Resumen textual del panel de generacion. */
+.plantilla-generate-panel__summary {
+    flex: 1 1 340px;
+}
+
+/* Texto base del resumen de generacion. */
+.plantilla-generate-panel__summary p {
+    margin: 0.22rem 0 0;
+    color: #516b83;
+    font-size: 0.8rem;
+}
+
+/* Lista de pendientes del checklist de generacion. */
+.plantilla-generate-panel__summary ul {
+    margin: 0.28rem 0 0;
+    padding-left: 1.06rem;
+    color: #6b4a2f;
+    font-size: 0.78rem;
+}
+
+/* Form del boton de generacion. */
+.plantilla-generate-panel__form {
+    margin: 0;
+}
+
+/* Resumen del ultimo archivo generado para descarga directa. */
+.plantilla-last-file {
+    width: 100%;
+    display: grid;
+    gap: 0.34rem;
+    margin-top: 0.42rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #bed3e9;
+    color: #2b4861;
+    font-size: 0.78rem;
+}
+
+.plantilla-last-file strong {
+    color: #1d3f5b;
+}
+
+/* Fila de metadatos generales de la última generación. */
+.plantilla-last-file__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.46rem;
+}
+
+/* Fila por archivo generado: texto a la izquierda y botón a la derecha. */
+.plantilla-last-file__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Nombre de archivo con ajuste seguro de línea para rutas largas. */
+.plantilla-last-file__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Fuerza la acción de descarga al extremo derecho de cada fila. */
+.plantilla-last-file__action {
+    justify-self: end;
+    white-space: nowrap;
+}
+
+/* Boton principal de generar plantilla. */
+.btn-generate {
+    min-width: 220px;
+    padding: 0.58rem 1rem;
+}
+
+/* Estado deshabilitado del boton de generar plantilla. */
+.btn-generate:disabled {
+    cursor: not-allowed;
+    border-color: #becddc;
+    background: linear-gradient(135deg, #9fb5cc 0%, #92a7be 100%);
+    color: #eef2f1;
+}
+
+/* Grilla de bloques operativos para el tab de generacion de plantilla. */
+.plantilla-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin-top: 0.58rem;
+}
+
+/* Modal para mostrar detalle de cada bloque al pulsar los resumenes. */
+.plantilla-detalle-modal {
+    width: min(980px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+}
+
+.plantilla-detalle-modal__panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+/* Contenedor con scroll para formularios largos de configuracion. */
+.plantilla-detalle-modal__body {
+    max-height: calc(90vh - 88px);
+    overflow: auto;
+    overflow-x: hidden;
+    padding-right: 0.24rem;
+}
+
+/* En modal se renderiza un solo bloque visible por vez. */
+.plantilla-grid--modal {
+    display: block !important;
+    margin-top: 0;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Oculta bloques no seleccionados dentro del modal. */
+.plantilla-grid--modal .plantilla-card {
+    display: none !important;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+}
+
+/* Muestra únicamente el bloque activo seleccionado desde el resumen. */
+.plantilla-grid--modal .plantilla-card.is-active {
+    display: block !important;
+    max-width: none;
+    margin: 0;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* Para reporte nominal se amplia el panel y la grilla de columnas. */
+.plantilla-detalle-modal.is-nominal {
+    width: min(1080px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+}
+
+.plantilla-detalle-modal.is-nominal .plantilla-detalle-modal__panel {
+    width: 100%;
+}
+
+.plantilla-detalle-modal.is-nominal .plantilla-grid--modal .plantilla-card.is-active {
+    max-width: none;
+    margin: 0;
+}
+
+.plantilla-detalle-modal.is-nominal .nominal-columns {
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+/* Tarjeta interna de cada bloque funcional de plantilla. */
+.plantilla-card {
+    border: 1px solid #c1d6ea;
+    border-radius: 0.88rem;
+    background: linear-gradient(166deg, #ffffff 0%, #f2f8ff 100%);
+    padding: 0.74rem;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Estado completado de bloque operativo en el tab de plantilla. */
+.plantilla-card.is-complete {
+    border-color: #b8d4ee;
+    background: linear-gradient(165deg, #ecf5ff 0%, #e2efff 100%);
+    box-shadow: inset 0 0 0 1px rgba(13, 95, 184, 0.1);
+}
+
+/* Titulo de cada tarjeta del flujo de plantilla. */
+.plantilla-card h4 {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1rem;
+}
+
+/* Texto descriptivo del bloque de plantilla. */
+.plantilla-card p {
+    margin: 0.36rem 0 0.54rem;
+    color: #526c83;
+    font-size: 0.82rem;
+}
+
+/* Badge resumen del archivo actualmente cargado. */
+.plantilla-file-status {
+    border: 1px dashed #c1d6ea;
+    border-radius: 0.7rem;
+    background: #f9fcff;
+    color: #3f5b73;
+    padding: 0.42rem 0.56rem;
+    display: grid;
+    gap: 0.12rem;
+    font-size: 0.78rem;
+    margin-bottom: 0.44rem;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.plantilla-file-status strong,
+.plantilla-file-status span {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Estado de archivo cargado correctamente. */
+.plantilla-file-status.is-ok {
+    border-style: solid;
+    border-color: #b8d4ee;
+    background: #ebf5ff;
+    color: #12466f;
+}
+
+/* Lista de actividades de origen Fuera en bloque de plantilla. */
+.plantilla-fuera-list {
+    display: grid;
+    gap: 0.54rem;
+}
+
+/* Tarjeta individual por actividad de origen Fuera. */
+.plantilla-fuera-item {
+    border: 1px solid #c4d8ec;
+    border-radius: 0.72rem;
+    background: #fff;
+    padding: 0.56rem;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Cabecera de tarjeta de actividad fuera. */
+.plantilla-fuera-item__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.8rem;
+    color: #445f78;
+}
+
+/* Grilla de checkboxes para columnas del reporte nominal. */
+.nominal-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.42rem;
+    border: 1px solid #c4d8ec;
+    border-radius: 0.7rem;
+    background: #fff;
+    padding: 0.52rem;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Chip checkbox de una columna nominal seleccionable. */
+.nominal-columns__item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.32rem;
+    border: 1px solid #d0dfef;
+    border-radius: 0.66rem;
+    padding: 0.24rem 0.5rem;
+    font-size: 0.75rem;
+    color: #34526b;
+    min-width: 0;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.nominal-columns__item span {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    line-height: 1.24;
+}
+
+/* Corrige checkbox de columnas nominales: evita que herede estilos de input texto. */
+.nominal-columns__item input[type="checkbox"] {
+    width: 0.95rem;
+    height: 0.95rem;
+    min-width: 0.95rem;
+    flex: 0 0 0.95rem;
+    margin: 0.03rem 0 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    accent-color: var(--brand-blue-mid);
+}
+
+/* Evita desborde horizontal en formularios del modal de generacion de plantilla. */
+.plantilla-detalle-modal .editor-form,
+.plantilla-detalle-modal .editor-form label,
+.plantilla-detalle-modal .editor-form input:not([type="checkbox"]):not([type="radio"]),
+.plantilla-detalle-modal .editor-form select,
+.plantilla-detalle-modal .editor-form textarea,
+.plantilla-detalle-modal .editor-form button,
+.plantilla-detalle-modal .action-links {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Grilla de denominaciones por grupo. */
+.group-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem;
+}
+
+/* Item de entrada de nombre por grupo. */
+.group-grid__item {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.77rem;
+    color: #36546d;
+}
+
+/* Animacion suave de entrada. */
+@keyframes fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Adaptacion para tablet y laptops pequenas. */
+@media (max-width: 1300px) {
+    .submenu-grid--section-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* Adaptacion para tablet y laptops pequenas. */
+@media (max-width: 1024px) {
+    .geo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .submenu-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Adaptacion para moviles. */
+@media (max-width: 760px) {
+    .geo-shell,
+    .detail-shell {
+        padding: 1.2rem 1rem 2rem;
+    }
+
+    .geo-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-actions {
+        justify-content: flex-start;
+    }
+
+    .role-switcher__menu {
+        left: 0;
+        right: auto;
+    }
+
+    .summary-band {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-roadmap__track {
+        min-width: 880px;
+    }
+
+    .geo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .geo-card {
+        clip-path: none;
+        border-radius: 1rem;
+    }
+
+    .detail-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-hero__image {
+        height: 168px;
+        min-height: 168px;
+    }
+
+    .detail-back-arrow {
+        top: 0.62rem;
+        left: 0.62rem;
+        width: 2.3rem;
+        height: 2.3rem;
+    }
+
+    .submenu-grid,
+    .mini-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-solicitud {
+        grid-template-columns: 1fr;
+    }
+
+    .choice-grid--origin {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-sections-shell__header,
+    .registro-block__header--split,
+    .registro-form__actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .registro-block__meta {
+        justify-items: start;
+        text-align: left;
+    }
+
+    .submenu-grid--section-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .plantilla-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .plantilla-checkpoints {
+        grid-template-columns: 1fr;
+    }
+
+    .nominal-columns,
+    .group-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .seguimiento-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .section-tab-dropdown {
+        min-width: 230px;
+    }
+
+    .simple-table {
+        overflow-x: auto;
+    }
+
+    .simple-table__head,
+    .simple-table__row {
+        min-width: 680px;
+    }
+}
+
+

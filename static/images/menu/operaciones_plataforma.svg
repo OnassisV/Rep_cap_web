@@ -1,0 +1,24 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f4a72"/>
+      <stop offset="100%" stop-color="#1e6f9f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g4)"/>
+  <g opacity="0.14" fill="#ffffff">
+    <polygon points="140,50 260,110 260,230 140,290 20,230 20,110"/>
+    <polygon points="1060,370 1180,430 1180,550 1060,610 940,550 940,430"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="130" y="240" width="180" height="110" rx="18"/>
+    <rect x="350" y="180" width="180" height="110" rx="18"/>
+    <rect x="350" y="300" width="180" height="110" rx="18"/>
+    <line x1="310" y1="295" x2="350" y2="235"/>
+    <line x1="310" y1="295" x2="350" y2="355"/>
+  </g>
+  <g fill="#ffffff">
+    <text x="590" y="302" font-size="64" font-family="DM Sans, Arial, sans-serif" font-weight="700">Operaciones</text>
+    <text x="590" y="376" font-size="64" font-family="DM Sans, Arial, sans-serif" font-weight="700">de Plataforma</text>
+  </g>
+</svg>
