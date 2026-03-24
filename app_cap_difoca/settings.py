@@ -57,6 +57,20 @@ def parse_mysql_url(raw_url: str) -> dict[str, str | int]:
     }
 
 
+def resolve_shared_mysql_url() -> dict[str, str | int] | None:
+    """Devuelve la primera URL de entorno que realmente sea MySQL."""
+    candidate_names = ["RAILWAY_MYSQL_URL", "MYSQL_URL", "DATABASE_URL"]
+    for name in candidate_names:
+        raw_url = os.getenv(name, "").strip()
+        if not raw_url:
+            continue
+        try:
+            return parse_mysql_url(raw_url)
+        except ValueError:
+            continue
+    return None
+
+
 def build_mysql_connection(env_prefix: str, fallback: dict[str, str | int] | None = None) -> dict[str, str | int]:
     """Construye una configuracion MySQL desde variables sueltas con fallback opcional."""
     fallback = fallback or {}
@@ -98,12 +112,7 @@ def build_django_database_config(fallback_mysql: dict[str, str | int] | None = N
     }
 
 
-raw_shared_mysql_url = (
-    os.getenv("RAILWAY_MYSQL_URL")
-    or os.getenv("MYSQL_URL")
-    or os.getenv("DATABASE_URL")
-)
-SHARED_MYSQL = parse_mysql_url(raw_shared_mysql_url) if raw_shared_mysql_url else None
+SHARED_MYSQL = resolve_shared_mysql_url()
 
 # Clave secreta usada por Django para sesiones y firmado criptografico.
 SECRET_KEY = os.getenv(
