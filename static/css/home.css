@@ -1525,7 +1525,7 @@ h1 {
 /* Layout principal del bloque de solicitud. */
 .registro-solicitud {
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    grid-template-columns: 1fr;
     gap: 0.82rem;
     padding: 0 1rem 1rem;
 }
@@ -1577,9 +1577,10 @@ h1 {
     gap: 0.62rem;
 }
 
-/* Contenedor vertical para las decisiones binarias. */
+/* Contenedor horizontal para las decisiones binarias. */
 .registro-solicitud__decision-list {
     display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.58rem;
 }
 
@@ -1710,7 +1711,9 @@ h1 {
     background: linear-gradient(165deg, #ffffff 0%, #fbf8ff 100%);
     padding: 0.72rem 0.8rem;
     display: grid;
+    align-content: start;
     gap: 0.52rem;
+    min-height: 100%;
 }
 
 /* Realce cuando una decision ya fue contestada. */
@@ -1729,7 +1732,7 @@ h1 {
 /* Botonera de radios estilizados. */
 .radio-pills {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.46rem;
 }
 
@@ -2850,6 +2853,10 @@ h1 {
         grid-template-columns: 1fr;
     }
 
+    .registro-solicitud__decision-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .choice-grid--origin {
         grid-template-columns: 1fr;
     }
@@ -2884,6 +2891,16 @@ h1 {
     }
 
     .seguimiento-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .radio-pills {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 760px) {
+    .registro-solicitud__decision-list {
         grid-template-columns: 1fr;
     }
 
