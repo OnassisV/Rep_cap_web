@@ -215,9 +215,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"  # Compr
 # Ajustes basicos de proxy/HTTPS para despliegues en Railway u otro PaaS.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
-# En Railway ya hay terminacion HTTPS delante de la app. Si el proxy no expone
-# el esquema como espera Django, forzar redirect aqui produce bucles 301.
-SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
+# En Railway ya hay terminacion HTTPS delante de la app. Forzar redirect aqui
+# produce bucles 301 porque la app recibe trafico interno detras del proxy.
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", default=not DEBUG)
 CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", default=not DEBUG)
 SECURE_HSTS_SECONDS = env_int("DJANGO_SECURE_HSTS_SECONDS", 0 if DEBUG else 3600)
