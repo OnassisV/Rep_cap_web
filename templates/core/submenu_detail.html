@@ -1,0 +1,1597 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <!-- Metadatos base para codificacion y responsive. -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Titulo dinamico del submenu activo. -->
+    <title>{{ submenu.titulo }} | {{ section.titulo }} | CAP DIFOCA</title>
+    <!-- Precarga de fuentes usadas por la interfaz. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Tipografia del dashboard. -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Hoja de estilos principal compartida. -->
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+</head>
+<body>
+    <!-- Fondo decorativo comun del sitio. -->
+    <div class="scene-grid"></div>
+
+    <!-- Contenedor principal de la vista de submenu. -->
+    <main class="detail-shell">
+        <!-- Cabecera de contexto (seccion + submenu). -->
+        <header class="detail-hero">
+            <!-- Flecha de retorno dentro del bloque visual izquierdo (zona naranja). -->
+            <a href="{% url 'core:section_detail' section.slug %}" class="detail-back-arrow" aria-label="Volver a la sección">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M10.75 5.75 4.5 12m0 0 6.25 6.25M4.5 12h15"></path>
+                </svg>
+            </a>
+            <img
+                class="detail-hero__image"
+                src="{% static section.imagen %}?v=20260313a"
+                alt="Imagen de {{ section.titulo }}"
+            >
+            <div class="detail-hero__body">
+                <h1>{{ submenu.titulo }}</h1>
+                <p class="subtitle">{{ submenu.descripcion }}</p>
+                <div class="detail-hero__actions">
+                    <!-- Selector de rol reusable en vista de submenu. -->
+                    {% if can_switch_role %}
+                        <details class="role-switcher">
+                            <summary class="role-pill" aria-label="Cambiar rol de trabajo">
+                                Rol: {{ role_effective }}
+                            </summary>
+                            <div class="role-switcher__menu" role="menu" aria-label="Opciones de rol">
+                                {% for role_option in role_options %}
+                                    <form method="post" action="{% url 'core:switch_role' %}" class="role-switcher__form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="role" value="{{ role_option }}">
+                                        <input type="hidden" name="next" value="{{ current_path }}">
+                                        <button
+                                            type="submit"
+                                            class="role-switcher__item{% if role_option == role_effective %} is-active{% endif %}"
+                                            {% if role_option == role_effective %}disabled{% endif %}
+                                        >
+                                            {{ role_option }}
+                                        </button>
+                                    </form>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% else %}
+                        <p class="role-pill">Rol: {{ role_effective }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <!-- Barra de pestañas principal con dropdown por hover. -->
+        <nav class="section-tabs" aria-label="Navegacion entre menus">
+            {% for nav_section in menu_sections %}
+                <div class="section-tab-wrap">
+                    <a
+                        href="{% url 'core:section_detail' nav_section.slug %}"
+                        class="section-tab{% if nav_section.slug == section.slug %} is-active{% endif %}"
+                        {% if nav_section.slug == section.slug %}aria-current="page"{% endif %}
+                    >
+                        {{ nav_section.titulo }}
+                    </a>
+                    {% if nav_section.submenus %}
+                        <div class="section-tab-dropdown" role="menu" aria-label="Submenu de {{ nav_section.titulo }}">
+                            {% for nav_submenu in nav_section.submenus %}
+                                <a
+                                    class="section-tab-dropdown__item{% if nav_section.slug == section.slug and nav_submenu.slug == submenu.slug %} is-active{% endif %}"
+                                    href="{% url 'core:submenu_detail' nav_section.slug nav_submenu.slug %}"
+                                >
+                                    {{ nav_submenu.titulo }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </nav>
+
+        <!-- Barra secundaria de submenus de la seccion actual. -->
+        {% if section_submenus %}
+            <nav class="submenu-inline" aria-label="Acciones de {{ section.titulo }}">
+                {% for item in section_submenus %}
+                    <a
+                        href="{% url 'core:submenu_detail' section.slug item.slug %}"
+                        class="submenu-inline__item{% if item.slug == submenu.slug %} is-active{% endif %}"
+                        {% if item.slug == submenu.slug %}aria-current="page"{% endif %}
+                    >
+                        {{ item.titulo }}
+                    </a>
+                {% endfor %}
+            </nav>
+        {% endif %}
+
+        <!-- Panel principal del contenido adaptado del submenu. -->
+        <section class="module-panel">
+            <h2>{{ submenu.titulo }}</h2>
+            <!-- Mensajes de resultado para operaciones CRUD del submenu. -->
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for message in messages %}
+                        <p class="flash-item flash-item--{{ message.tags }}">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Filtro anual comun para submenus adaptados con oferta formativa. -->
+            {% if mostrar_filtro_anio and anios_disponibles and adapter_kind != "seguimiento" %}
+                <div class="year-filter">
+                    <span class="year-filter__label">Año:</span>
+                    {% for anio in anios_disponibles %}
+                        <a
+                            class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
+                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}"
+                        >
+                            {{ anio }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Flujo de registro inicial de nuevas capacitaciones (solo creacion). -->
+            {% if adapter_kind == "registro_capacitacion" %}
+                <p class="module-panel__note">
+                    La solicitud de capacitación se abre primero como una etapa preliminar y luego continúa con la ficha técnica completa. Los campos con <strong>*</strong> son obligatorios en esta fase inicial.
+                </p>
+
+                <form method="post" class="editor-form registro-form" data-registro-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_capacitacion">
+                    {{ registro_iged_catalogo|json_script:"registro-iged-catalogo" }}
+
+                    <div class="registro-summary registro-summary--solicitud">
+                        <article class="mini-metric">
+                            <h3>{{ registro_timeline|length }}</h3>
+                            <p>Etapas del proceso</p>
+                        </article>
+                        <article class="mini-metric">
+                            <h3>{{ registro_campos_obligatorios|default:0 }}</h3>
+                            <p>Campos obligatorios</p>
+                        </article>
+                        <article class="mini-metric">
+                            <h3>{{ registro_campos_total|default:0 }}</h3>
+                            <p>Campos del expediente</p>
+                        </article>
+                    </div>
+
+                    {% if registro_timeline %}
+                        <section class="registro-roadmap" aria-label="Linea de tiempo del registro">
+                            <div class="registro-roadmap__track">
+                                {% for etapa in registro_timeline %}
+                                    <article class="registro-roadmap__step{% if etapa.is_complete %} is-complete{% elif etapa.is_current %} is-current{% elif etapa.is_started %} is-started{% endif %}">
+                                        <div class="registro-roadmap__dot">
+                                            <span>{{ etapa.index }}</span>
+                                        </div>
+                                        <div class="registro-roadmap__body">
+                                            <p class="registro-roadmap__eyebrow">Etapa {{ etapa.index }}</p>
+                                            <h3>{{ etapa.titulo }}</h3>
+                                            <p>{{ etapa.descripcion }}</p>
+                                            <div class="registro-roadmap__meta">
+                                                {% if etapa.is_complete %}
+                                                    <span class="registro-status registro-status--complete">Completa</span>
+                                                {% elif etapa.is_current %}
+                                                    <span class="registro-status registro-status--current">En curso</span>
+                                                {% elif etapa.is_started %}
+                                                    <span class="registro-status registro-status--started">Avance parcial</span>
+                                                {% else %}
+                                                    <span class="registro-status">Pendiente</span>
+                                                {% endif %}
+                                                <small>{{ etapa.required_done }}/{{ etapa.required_count }} obligatorios</small>
+                                            </div>
+                                        </div>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endif %}
+
+                    {% if registro_solicitud %}
+                        <section class="registro-block registro-block--solicitud" id="registro-{{ registro_solicitud.slug }}">
+                            <header class="registro-block__header registro-block__header--solicitud">
+                                <div>
+                                    <p class="registro-block__eyebrow">Fase preliminar</p>
+                                    <h3 class="subsection-title">Solicitud de la capacitación</h3>
+                                </div>
+                                <p class="module-panel__note">
+                                    Primero definimos el origen del requerimiento y las decisiones de entrada. Con eso la capacitación queda lista para pasar al desarrollo técnico.
+                                </p>
+                            </header>
+
+                            <div class="registro-solicitud">
+                                <section class="registro-solicitud__main">
+                                    <div class="registro-grid registro-grid--solicitud">
+                                        {% for campo in registro_solicitud.campos_left %}
+                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                        {% endfor %}
+                                    </div>
+                                </section>
+
+                                <aside class="registro-solicitud__decisions">
+                                    <div class="registro-solicitud__decisions-head">
+                                        <p class="registro-block__eyebrow">Decisiones diferenciadas</p>
+                                        <h4>Respuestas que orientan el flujo</h4>
+                                        <p>Estas definiciones nos ayudan a ordenar si habrá réplica, matriz de sustento o diagnóstico antes de entrar al diseño de la capacitación.</p>
+                                    </div>
+                                    <div class="registro-solicitud__decision-list">
+                                        {% for campo in registro_solicitud.campos_right %}
+                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                        {% endfor %}
+                                    </div>
+                                </aside>
+                            </div>
+                        </section>
+                    {% endif %}
+
+                    <section class="registro-sections-shell">
+                        <header class="registro-sections-shell__header">
+                            <div>
+                                <p class="registro-block__eyebrow">Ficha técnica</p>
+                                <h3 class="subsection-title">Desarrollo del expediente</h3>
+                            </div>
+                            <p class="module-panel__note">
+                                Una vez abierta la solicitud, completa los bloques técnicos que darán forma a la capacitación dentro de Gestión de la Capacitación.
+                            </p>
+                        </header>
+
+                        {% for bloque in registro_form_sections_restantes %}
+                            <section class="registro-block" id="registro-{{ bloque.slug }}">
+                                <header class="registro-block__header registro-block__header--split">
+                                    <div>
+                                        <h3 class="subsection-title">{{ bloque.titulo }}</h3>
+                                        <p class="module-panel__note">{{ bloque.descripcion }}</p>
+                                    </div>
+                                    <div class="registro-block__meta">
+                                        {% if bloque.is_complete %}
+                                            <span class="registro-status registro-status--complete">Completo</span>
+                                        {% elif bloque.is_started %}
+                                            <span class="registro-status registro-status--current">En progreso</span>
+                                        {% else %}
+                                            <span class="registro-status">Pendiente</span>
+                                        {% endif %}
+                                        <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
+                                    </div>
+                                </header>
+
+                                <div class="registro-grid">
+                                    {% for campo in bloque.campos %}
+                                        {% include "core/_registro_field.html" with field=campo %}
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endfor %}
+                    </section>
+
+                    <div class="registro-form__actions">
+                        <p class="registro-form__hint">La capacitación se guardará como borrador inicial dentro del flujo de Gestión de la Capacitación.</p>
+                        <button type="submit" class="btn-primary-soft">
+                            Guardar nueva capacitacion
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+
+            <!-- Adaptacion inicial de Seguimiento (plantillas.py). -->
+            {% if adapter_kind == "seguimiento" %}
+                <!-- Selector de anio para seguimiento preservando codigo/tab actual. -->
+                {% if anios_disponibles %}
+                    <div class="year-filter">
+                        <span class="year-filter__label">Año:</span>
+                        {% for anio in anios_disponibles %}
+                            <a
+                                class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
+                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}&codigo={{ seguimiento_codigo_sel }}&tab={{ seguimiento_tab_activo }}"
+                            >
+                                {{ anio }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if seguimiento_cards %}
+                    <div class="seguimiento-layout" data-seguimiento-layout>
+                        <aside class="seguimiento-sidebar">
+                            <details class="seguimiento-collapse" open data-seguimiento-collapse>
+                                <summary class="seguimiento-collapse__summary">
+                                    <span class="seguimiento-collapse__bullet">•</span>
+                                    <span class="seguimiento-collapse__title">Capacitaciones</span>
+                                    <span class="seguimiento-collapse__hint seguimiento-collapse__hint--open">Minimizar</span>
+                                    <span class="seguimiento-collapse__hint seguimiento-collapse__hint--closed">Expandir</span>
+                                </summary>
+                                <p>Selecciona un proceso para operar las pestañas de seguimiento.</p>
+                                <div class="seguimiento-cards">
+                                    {% for card in seguimiento_cards %}
+                                        {% with condicion_txt=card.condicion|default:""|lower %}
+                                            <a
+                                                href="{{ card.url }}"
+                                                class="cap-card{% if card.is_active %} is-active{% endif %}{% if 'cerrado' in condicion_txt %} is-cerrado{% else %} is-abierto{% endif %}"
+                                            >
+                                                <span class="cap-card__code">{{ card.codigo }}</span>
+                                                <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
+                                                <span class="cap-card__status{% if 'cerrado' in condicion_txt %} cap-card__status--cerrado{% else %} cap-card__status--abierto{% endif %}">
+                                                    {% if 'cerrado' in condicion_txt %}Cerrado{% else %}Abierto{% endif %}
+                                                </span>
+                                                <span class="cap-card__meta">ID {{ card.id_simple }} | Actividades: {{ card.total_actividades }}</span>
+                                            </a>
+                                        {% endwith %}
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        </aside>
+
+                        <div class="seguimiento-main">
+                            <nav class="seguimiento-tabs" aria-label="Tabs de seguimiento">
+                                {% for tab in seguimiento_tabs %}
+                                    <a
+                                        class="seguimiento-tab{% if tab.slug == seguimiento_tab_activo %} is-active{% endif %}"
+                                        href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab={{ tab.slug }}"
+                                    >
+                                        {{ tab.titulo }}
+                                    </a>
+                                {% endfor %}
+                            </nav>
+
+                            <div class="mini-metrics">
+                                <article class="mini-metric">
+                                    <h3>{{ seguimiento_metricas.postulaciones|default:0 }}</h3>
+                                    <p>Postulaciones</p>
+                                </article>
+                                <article class="mini-metric">
+                                    <h3>{{ seguimiento_metricas.matriculaciones|default:0 }}</h3>
+                                    <p>Matriculaciones</p>
+                                </article>
+                                <article class="mini-metric">
+                                    <h3>{{ seguimiento_metricas.certificaciones|default:0 }}</h3>
+                                    <p>Certificaciones</p>
+                                </article>
+                            </div>
+
+                            {% if seguimiento_tab_activo == "alertas" %}
+                                <h3 class="subsection-title">Alertas operativas</h3>
+                                <ul class="module-list">
+                                    {% for alerta in seguimiento_alertas %}
+                                        <li>
+                                            <strong>{{ alerta.nivel|upper }}</strong> - {{ alerta.mensaje }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+
+                                <h3 class="subsection-title">Actividades en plataforma no registradas en estructura</h3>
+                                {% if seguimiento_alertas_plataforma.error %}
+                                    <p class="module-panel__note">
+                                        {{ seguimiento_alertas_plataforma.error }}
+                                    </p>
+                                {% endif %}
+
+                                {% if seguimiento_alertas_plataforma_rows %}
+                                    <div class="simple-table simple-table--alertas-pendientes">
+                                        <div class="simple-table__head">
+                                            <span>Tipo</span>
+                                            <span>ID actividad</span>
+                                            <span>Nombre en plataforma</span>
+                                            <span>Acción</span>
+                                        </div>
+                                        {% for row in seguimiento_alertas_plataforma_rows %}
+                                            <div class="simple-table__row">
+                                                <span>{{ row.tipo }}</span>
+                                                <span>{{ row.id }}</span>
+                                                <span>{{ row.nombre }}</span>
+                                                <span>Pendiente de registro</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="module-panel__note">
+                                        No hay actividades pendientes de plataforma para este código.
+                                    </p>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "estructura" %}
+                                <h3 class="subsection-title">Gestión de estructura</h3>
+                                <p class="module-panel__note">
+                                    Esta pestaña permite registrar, editar y eliminar actividades. Para editar o eliminar, usa los botones de cada fila.
+                                </p>
+                                {% if seguimiento_estructura %}
+                                    <div class="simple-table simple-table--estructura">
+                                        <div class="simple-table__head">
+                                            <span>N°</span>
+                                            <span>Actividad</span>
+                                            <span>Tipo</span>
+                                            <span>Acción</span>
+                                        </div>
+                                        {% for item in seguimiento_estructura %}
+                                            <div class="simple-table__row">
+                                                <span>{{ forloop.counter }}</span>
+                                                <span>{{ item.actividad }} ({{ item.codigo_actividad }})</span>
+                                                <span>{{ item.tipo }} / {{ item.origen }}</span>
+                                                <span class="table-actions">
+                                                    <a class="year-filter__item" href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=estructura&edit={{ item.id_estructura }}">Editar</a>
+                                                    <form method="post" class="inline-form">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="delete_estructura">
+                                                        <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                        <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                        <input type="hidden" name="tab" value="estructura">
+                                                        <input type="hidden" name="id_estructura" value="{{ item.id_estructura }}">
+                                                        <button type="submit" class="inline-btn-danger">Eliminar</button>
+                                                    </form>
+                                                </span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="module-panel__note">
+                                        No hay actividades en estructura para este código. Revisa en la lista lateral un proceso con
+                                        <strong>Actividades &gt; 0</strong> para editar/eliminar.
+                                    </p>
+                                    {% if seguimiento_es_sincronica %}
+                                        <p class="module-panel__note">
+                                            Este proceso es sincrónico. En el sistema anterior su tratamiento se resolvía en el módulo especializado de sincrónicas.
+                                        </p>
+                                    {% endif %}
+                                    {% if seguimiento_cards_con_estructura %}
+                                        <div class="action-links">
+                                            {% for card in seguimiento_cards_con_estructura|slice:":4" %}
+                                                <a class="year-filter__item" href="{{ card.url }}">{{ card.codigo }} ({{ card.total_actividades }})</a>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+
+                                <div class="action-links">
+                                    <button type="button" class="btn-primary-soft" data-open-actividad-modal>
+                                        Registrar nueva actividad
+                                    </button>
+                                    {% if seguimiento_edit %}
+                                        <a
+                                            class="year-filter__item"
+                                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=estructura"
+                                        >
+                                            Salir de edición
+                                        </a>
+                                    {% endif %}
+                                </div>
+
+                                <dialog
+                                    id="actividad-modal"
+                                    class="actividad-modal"
+                                    data-open-on-load="{% if seguimiento_modal_open %}1{% else %}0{% endif %}"
+                                >
+                                    <div class="actividad-modal__panel">
+                                        <header class="actividad-modal__header">
+                                            <h3>
+                                                {% if seguimiento_edit %}Editar actividad #{{ seguimiento_edit.id_estructura }}{% else %}Registrar nueva actividad{% endif %}
+                                            </h3>
+                                            <button type="button" class="actividad-modal__close" data-close-actividad-modal aria-label="Cerrar">x</button>
+                                        </header>
+
+                                        <form method="post" class="editor-form actividad-modal__form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="{% if seguimiento_edit %}update_estructura{% else %}add_estructura{% endif %}">
+                                            <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                            <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                            <input type="hidden" name="tab" value="estructura">
+                                            <input type="hidden" name="id_estructura" value="{{ seguimiento_edit.id_estructura }}">
+
+                                            <label>Actividad</label>
+                                            <input type="text" name="actividad" value="{{ seguimiento_estructura_form.actividad|default:'' }}">
+
+                                            <label>Código de actividad</label>
+                                            <input type="text" name="codigo_actividad" value="{{ seguimiento_estructura_form.codigo_actividad|default:'' }}">
+
+                                            <label>Tipo</label>
+                                            <select name="tipo">
+                                                <option value="Ejercicio" {% if seguimiento_estructura_form.tipo == "Ejercicio" %}selected{% endif %}>Ejercicio</option>
+                                                <option value="Tarea" {% if seguimiento_estructura_form.tipo == "Tarea" %}selected{% endif %}>Tarea</option>
+                                                <option value="Encuesta" {% if seguimiento_estructura_form.tipo == "Encuesta" %}selected{% endif %}>Encuesta</option>
+                                            </select>
+
+                                            <label>Cumplimiento/Nota</label>
+                                            <select name="cumplimiento_nota">
+                                                <option value="Cumplimiento" {% if seguimiento_estructura_form.cumplimiento_nota == "Cumplimiento" %}selected{% endif %}>Cumplimiento</option>
+                                                <option value="Nota" {% if seguimiento_estructura_form.cumplimiento_nota == "Nota" %}selected{% endif %}>Nota</option>
+                                            </select>
+
+                                            <label>Origen</label>
+                                            <select name="origen">
+                                                <option value="Plataforma" {% if seguimiento_estructura_form.origen == "Plataforma" %}selected{% endif %}>Plataforma</option>
+                                                <option value="Fuera" {% if seguimiento_estructura_form.origen == "Fuera" %}selected{% endif %}>Fuera</option>
+                                                <option value="Pre inscripción" {% if seguimiento_estructura_form.origen == "Pre inscripción" %}selected{% endif %}>Pre inscripción</option>
+                                            </select>
+
+                                            <label>Escala</label>
+                                            <select name="escala">
+                                                <option value="Vigesimal" {% if seguimiento_estructura_form.escala == "Vigesimal" %}selected{% endif %}>Vigesimal</option>
+                                                <option value="Dicotómico" {% if seguimiento_estructura_form.escala == "Dicotómico" %}selected{% endif %}>Dicotómico</option>
+                                            </select>
+
+                                            <label>Aplica a</label>
+                                            <select name="aplica_a">
+                                                <option value="Ambos" {% if seguimiento_estructura_form.aplica_a == "Ambos" %}selected{% endif %}>Ambos</option>
+                                                <option value="DRE/GRE" {% if seguimiento_estructura_form.aplica_a == "DRE/GRE" %}selected{% endif %}>DRE/GRE</option>
+                                                <option value="UGEL" {% if seguimiento_estructura_form.aplica_a == "UGEL" %}selected{% endif %}>UGEL</option>
+                                            </select>
+
+                                            <label>Inicio</label>
+                                            <input type="datetime-local" name="inicio" value="{{ seguimiento_estructura_form.inicio|default:'' }}">
+
+                                            <label>Fin</label>
+                                            <input type="datetime-local" name="fin" value="{{ seguimiento_estructura_form.fin|default:'' }}">
+
+                                            <label>Observaciones</label>
+                                            <textarea name="observaciones" rows="2">{{ seguimiento_estructura_form.observaciones|default:'' }}</textarea>
+
+                                            <div class="checkbox-grid">
+                                                <label class="checkbox-line"><input type="checkbox" name="obligatoria" {% if seguimiento_estructura_form.obligatoria %}checked{% endif %}> Actividad obligatoria</label>
+                                                <label class="checkbox-line"><input type="checkbox" name="enlace" {% if seguimiento_estructura_form.enlace %}checked{% endif %}> Con enlace</label>
+                                            </div>
+
+                                            <div class="actividad-modal__actions">
+                                                <button type="submit" class="btn-primary-soft">{% if seguimiento_edit %}Actualizar{% else %}Registrar{% endif %}</button>
+                                                <button type="button" class="btn-secondary-soft" data-close-actividad-modal>Cancelar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </dialog>
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "formula" %}
+                                <h3 class="subsection-title">Fórmula de promedio</h3>
+                                <form method="post" class="editor-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="save_formula">
+                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                    <input type="hidden" name="tab" value="formula">
+
+                                    <label>Aplica a</label>
+                                    <select name="aplica_a">
+                                        <option value="Ambos">Ambos</option>
+                                        <option value="DRE/GRE">DRE/GRE</option>
+                                        <option value="UGEL">UGEL</option>
+                                    </select>
+
+                                    <div class="formula-builder" data-formula-builder>
+                                        <label>Variables disponibles (desde estructura)</label>
+                                        <div class="formula-builder__row">
+                                            <select data-formula-variable>
+                                                {% if seguimiento_formula_variables %}
+                                                    {% for var in seguimiento_formula_variables %}
+                                                        <option value="{{ var.actividad }}" data-aplica="{{ var.aplica_a }}">
+                                                            {{ var.actividad }} ({{ var.aplica_a }})
+                                                        </option>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <option value="">Sin variables registradas</option>
+                                                {% endif %}
+                                            </select>
+                                            <button type="button" class="btn-secondary-soft" data-formula-add-variable>
+                                                Agregar variable
+                                            </button>
+                                        </div>
+
+                                        <label>Operadores</label>
+                                        <div class="formula-builder__row">
+                                            <select data-formula-operator>
+                                                <option value="+">+</option>
+                                                <option value="-">-</option>
+                                                <option value="*">*</option>
+                                                <option value="/">/</option>
+                                                <option value="("> ( </option>
+                                                <option value=")"> ) </option>
+                                            </select>
+                                            <button type="button" class="btn-secondary-soft" data-formula-add-operator>
+                                                Agregar operador
+                                            </button>
+                                        </div>
+
+                                        <label>Valor numérico</label>
+                                        <div class="formula-builder__row formula-builder__row--triple">
+                                            <input type="text" data-formula-number placeholder="Ejemplo: 0.3 o 2">
+                                            <button type="button" class="btn-secondary-soft" data-formula-add-number>
+                                                Agregar valor
+                                            </button>
+                                            <button type="button" class="btn-secondary-soft" data-formula-clear>
+                                                Limpiar
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <label>Fórmula</label>
+                                    <textarea id="formula-textarea" name="formula" rows="3" placeholder="Usa el constructor para insertar variables y operadores"></textarea>
+
+                                    <button type="submit" class="btn-primary-soft">Guardar formula</button>
+                                </form>
+
+                                {% if seguimiento_formulas %}
+                                    <ul class="module-list">
+                                        {% for row in seguimiento_formulas %}
+                                            <li>
+                                                <strong>{{ row.aplica_a }}</strong> - {{ row.formula }}
+                                                <form method="post" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_formula">
+                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                    <input type="hidden" name="tab" value="formula">
+                                                    <input type="hidden" name="id_formula" value="{{ row.id_formula }}">
+                                                    <button type="submit" class="inline-btn-danger">Eliminar</button>
+                                                </form>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="module-panel__note">No hay formulas registradas para este proceso.</p>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "retiros" %}
+                                <h3 class="subsection-title">Retiros manuales registrados</h3>
+
+                                <form method="post" class="editor-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_retiro_manual">
+                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                    <input type="hidden" name="tab" value="retiros">
+
+                                    <label>Agregar DNIs (uno por linea o separados por coma)</label>
+                                    <textarea name="dni_bulk" rows="3" placeholder="12345678&#10;87654321"></textarea>
+                                    <button type="submit" class="btn-primary-soft">Agregar retiros manuales</button>
+                                </form>
+
+                                {% if seguimiento_retiros_manual %}
+                                    <div class="dni-chip-list">
+                                        {% for dni in seguimiento_retiros_manual %}
+                                            <span class="dni-chip">
+                                                {{ dni }}
+                                                <form method="post" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_retiro_manual">
+                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                    <input type="hidden" name="tab" value="retiros">
+                                                    <input type="hidden" name="dni" value="{{ dni }}">
+                                                    <button type="submit" class="inline-btn-danger">x</button>
+                                                </form>
+                                            </span>
+                                        {% endfor %}
+                                        <form method="post" class="inline-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="clear_retiros_manual">
+                                            <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                            <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                            <input type="hidden" name="tab" value="retiros">
+                                            <button type="submit" class="inline-btn-danger">Limpiar todo</button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+
+                                <h3 class="subsection-title">Participantes en retiro</h3>
+                                {% if seguimiento_retiros %}
+                                    <div class="simple-table">
+                                        <div class="simple-table__head">
+                                            <span>DNI</span>
+                                            <span>Participante</span>
+                                            <span>Region / IGED</span>
+                                            <span>Estado / Origen</span>
+                                        </div>
+                                        {% for row in seguimiento_retiros %}
+                                            <div class="simple-table__row">
+                                                <span>{{ row.dni }}</span>
+                                                <span>{{ row.apellidos }} {{ row.nombres }}</span>
+                                                <span>{{ row.region }} / {{ row.nombre_iged }}</span>
+                                                <span>estado={{ row.estado }} | retiro={{ row.retiros }} | {{ row.origen_retiro|default:"BD" }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="module-panel__note">No hay participantes en retiro manual para el código seleccionado.</p>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "plantilla" %}
+                                <h3 class="subsection-title">Generación de plantilla</h3>
+                                <p class="module-panel__note">
+                                    Flujo operativo por bloques: completa cada uno para habilitar la generación.
+                                </p>
+
+                                <div class="plantilla-checkpoints">
+                                    {% for checkpoint in seguimiento_plantilla_estado.checkpoints %}
+                                        <a
+                                            href="#"
+                                            class="checkpoint-card{% if checkpoint.ok %} is-complete{% else %} is-pending{% endif %}"
+                                            data-open-plantilla-detalle="1"
+                                            data-detalle-target="{{ checkpoint.anchor }}"
+                                        >
+                                            <span class="checkpoint-card__icon" aria-hidden="true">{{ checkpoint.icono }}</span>
+                                            <span class="checkpoint-card__body">
+                                                <strong>{{ checkpoint.titulo }}</strong>
+                                                <small>{{ checkpoint.resumen }}</small>
+                                            </span>
+                                            <span class="checkpoint-card__state">
+                                                {% if checkpoint.ok %}Listo{% else %}Pendiente{% endif %}
+                                            </span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+
+                                <section class="plantilla-generate-panel{% if seguimiento_plantilla_estado.ready %} is-ready{% else %} is-blocked{% endif %}">
+                                    <div class="plantilla-generate-panel__summary">
+                                        <strong>Progreso (requisitos de generación): {{ seguimiento_plantilla_estado.completados }}/{{ seguimiento_plantilla_estado.total }} bloques completos.</strong>
+                                        {% if seguimiento_plantilla_estado.ready %}
+                                            <p>Todos los bloques requeridos para generar están completos. Ya puedes ejecutar la generación.</p>
+                                            {% if seguimiento_plantilla_estado.pendientes_cierre %}
+                                                <p>Para cierre administrativo aún falta: {{ seguimiento_plantilla_estado.pendientes_cierre|join:", " }}.</p>
+                                            {% endif %}
+                                        {% else %}
+                                            <p>Completa los bloques pendientes para habilitar el botón.</p>
+                                            <ul>
+                                                {% for item in seguimiento_plantilla_estado.pendientes %}
+                                                    <li>{{ item }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                    <form method="post" class="plantilla-generate-panel__form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="generate_plantilla">
+                                        <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                        <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                        <input type="hidden" name="tab" value="plantilla">
+                                        <button type="submit" class="btn-primary-soft btn-generate" {% if not seguimiento_plantilla_estado.ready %}disabled{% endif %}>
+                                            Generar plantilla
+                                        </button>
+                                    </form>
+
+                                    {% if seguimiento_plantilla_generada.exists %}
+                                        <div class="plantilla-last-file">
+                                            <div class="plantilla-last-file__meta">
+                                                <strong>Archivos generados:</strong>
+                                                {% if seguimiento_plantilla_generada.generated_at %}
+                                                    <span>Generada: {{ seguimiento_plantilla_generada.generated_at }}</span>
+                                                {% endif %}
+                                            </div>
+                                            {% for file in seguimiento_plantilla_generada.files %}
+                                                {% if file.exists %}
+                                                    <div class="plantilla-last-file__row">
+                                                        <span class="plantilla-last-file__name">{{ file.file_name }} ({{ file.size_bytes }} bytes)</span>
+                                                        <a
+                                                            class="year-filter__item plantilla-last-file__action"
+                                                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=plantilla&download={{ file.download_kind }}"
+                                                        >
+                                                            Descargar {{ file.label }}
+                                                        </a>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </section>
+
+                                <dialog id="plantilla-detalle-modal" class="actividad-modal plantilla-detalle-modal">
+                                    <div class="actividad-modal__panel plantilla-detalle-modal__panel">
+                                        <header class="actividad-modal__header">
+                                            <h3 data-plantilla-detalle-title>Detalle de bloque</h3>
+                                            <button type="button" class="actividad-modal__close" data-close-plantilla-detalle aria-label="Cerrar">x</button>
+                                        </header>
+
+                                        <div class="plantilla-detalle-modal__body">
+                                            <div class="plantilla-grid plantilla-grid--modal">
+                                    <article id="sec-postulantes" class="plantilla-card{% if seguimiento_plantilla_ok_map.postulantes %} is-complete{% endif %}" hidden>
+                                        <h4>Carga de Excel de postulantes</h4>
+                                        <p>Debe contener la columna <strong>DNI</strong> para mantener consistencia.</p>
+
+                                        <div class="plantilla-file-status{% if seguimiento_postulantes.exists %} is-ok{% endif %}">
+                                            {% if seguimiento_postulantes.exists %}
+                                                <strong>{{ seguimiento_postulantes.file_name }}</strong>
+                                                <span>{{ seguimiento_postulantes.size_bytes }} bytes</span>
+                                            {% else %}
+                                                <strong>Sin archivo de postulantes</strong>
+                                                <span>Carga un .xlsx para cerrar compromiso</span>
+                                            {% endif %}
+                                        </div>
+
+                                        <form method="post" enctype="multipart/form-data" class="editor-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="upload_postulantes_excel">
+                                            <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                            <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                            <input type="hidden" name="tab" value="plantilla">
+
+                                            <label>Subir Excel de postulantes (.xlsx)</label>
+                                            <input type="file" name="archivo_postulantes" accept=".xlsx" required>
+                                            <button type="submit" class="btn-primary-soft">Cargar archivo</button>
+                                        </form>
+
+                                        {% if seguimiento_postulantes.exists %}
+                                            <div class="action-links">
+                                                <a
+                                                    class="year-filter__item"
+                                                    href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=plantilla&download=postulantes_excel"
+                                                >
+                                                    Descargar Excel de postulantes
+                                                </a>
+                                                <form method="post" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_postulantes_excel">
+                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                    <input type="hidden" name="tab" value="plantilla">
+                                                    <button type="submit" class="inline-btn-danger">Eliminar archivo</button>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </article>
+
+                                    <article id="sec-plataforma" class="plantilla-card{% if seguimiento_plantilla_ok_map.plataforma %} is-complete{% endif %}" hidden>
+                                        <h4>Actividades dentro de plataforma</h4>
+                                        {% if seguimiento_actividades_plantilla_plataforma %}
+                                            <div class="simple-table simple-table--plantilla-actividades">
+                                                <div class="simple-table__head">
+                                                    <span>Actividad</span>
+                                                    <span>Código</span>
+                                                    <span>Cumplimiento/Nota</span>
+                                                    <span>Tipo</span>
+                                                </div>
+                                                {% for item in seguimiento_actividades_plantilla_plataforma %}
+                                                    <div class="simple-table__row">
+                                                        <span>{{ item.actividad }}</span>
+                                                        <span>{{ item.codigo_actividad|default:"-" }}</span>
+                                                        <span>{{ item.cumplimiento_nota|default:"-" }}</span>
+                                                        <span>{{ item.tipo|default:"-" }}</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <p class="module-panel__note">No hay actividades registradas con origen Plataforma.</p>
+                                        {% endif %}
+                                    </article>
+
+                                    <article id="sec-fuera" class="plantilla-card{% if seguimiento_plantilla_ok_map.fuera %} is-complete{% endif %}" hidden>
+                                        <h4>Actividades fuera de plataforma</h4>
+                                        <p>La primera fila debe contener <strong>DNI</strong> y <strong>NOTA</strong>.</p>
+                                        {% if seguimiento_actividades_plantilla_fuera %}
+                                            <div class="plantilla-fuera-list">
+                                                {% for item in seguimiento_actividades_plantilla_fuera %}
+                                                    <article class="plantilla-fuera-item">
+                                                        <div class="plantilla-fuera-item__header">
+                                                            <strong>{{ item.actividad }}</strong>
+                                                            <span>{{ item.cumplimiento_nota|default:"Cumplimiento" }} / {{ item.tipo|default:"-" }}</span>
+                                                        </div>
+                                                        <form method="post" enctype="multipart/form-data" class="editor-form">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="upload_actividad_fuera_excel">
+                                                            <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                            <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                            <input type="hidden" name="tab" value="plantilla">
+                                                            <input type="hidden" name="id_estructura" value="{{ item.id_estructura }}">
+
+                                                            <label>Subir Excel de actividad (.xlsx)</label>
+                                                            <input type="file" name="archivo_actividad_fuera" accept=".xlsx" required>
+                                                            <button type="submit" class="btn-primary-soft">Cargar archivo</button>
+                                                        </form>
+
+                                                        {% if item.archivo_existe %}
+                                                            <div class="plantilla-file-status is-ok">
+                                                                <strong>{{ item.archivo_nombre }}</strong>
+                                                                <span>{{ item.archivo_size }} bytes</span>
+                                                            </div>
+                                                            <div class="action-links">
+                                                                <a
+                                                                    class="year-filter__item"
+                                                                    href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=plantilla&download=actividad_fuera_excel&id_estructura={{ item.id_estructura }}"
+                                                                >
+                                                                    Descargar archivo
+                                                                </a>
+                                                                <form method="post" class="inline-form">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="action" value="delete_actividad_fuera_excel">
+                                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                                    <input type="hidden" name="tab" value="plantilla">
+                                                                    <input type="hidden" name="id_estructura" value="{{ item.id_estructura }}">
+                                                                    <button type="submit" class="inline-btn-danger">Eliminar archivo</button>
+                                                                </form>
+                                                            </div>
+                                                        {% endif %}
+                                                    </article>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <p class="module-panel__note">No hay actividades registradas con origen Fuera.</p>
+                                        {% endif %}
+                                    </article>
+
+                                    <article id="sec-nominal" class="plantilla-card{% if seguimiento_plantilla_ok_map.nominal %} is-complete{% endif %}" hidden>
+                                        <h4>Configuración de reporte nominal</h4>
+                                        <form method="post" class="editor-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="save_config_nominal">
+                                            <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                            <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                            <input type="hidden" name="tab" value="plantilla">
+
+                                            <label>Título del reporte nominal</label>
+                                            <input type="text" name="titulo_nominal" value="{{ seguimiento_nominal_config.titulo_nominal }}">
+
+                                            <label>Columnas del reporte nominal</label>
+                                            <div class="nominal-columns">
+                                                {% for columna in seguimiento_nominal_config.columnas_disponibles %}
+                                                    <label class="nominal-columns__item">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="columnas_nominal"
+                                                            value="{{ columna }}"
+                                                            {% if columna in seguimiento_nominal_config.columnas_seleccionadas %}checked{% endif %}
+                                                        >
+                                                        <span>{{ columna }}</span>
+                                                    </label>
+                                                {% endfor %}
+                                            </div>
+
+                                            {% if seguimiento_nominal_config.grupos_detalle %}
+                                                <label>Denominaciones de grupos</label>
+                                                <div class="group-grid">
+                                                    {% for group_item in seguimiento_nominal_config.grupos_detalle %}
+                                                        <label class="group-grid__item">
+                                                            <span>Grupo {{ group_item.grupo }}</span>
+                                                            <input
+                                                                type="text"
+                                                                name="grupo_nombre_{{ group_item.grupo }}"
+                                                                value="{{ group_item.nombre }}"
+                                                            >
+                                                        </label>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+
+                                            <button type="submit" class="btn-primary-soft">Guardar configuración nominal</button>
+                                        </form>
+                                    </article>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </dialog>
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "confiabilidad" %}
+                                <h3 class="subsection-title">Confiabilidad KR-20</h3>
+                                <div class="action-links">
+                                    <a
+                                        class="year-filter__item"
+                                        href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=confiabilidad&download=kr20_csv"
+                                    >
+                                        Descargar KR-20 CSV
+                                    </a>
+                                </div>
+
+                                {% if seguimiento_confiabilidad.ok %}
+                                    <div class="mini-metrics">
+                                        <article class="mini-metric">
+                                            <h3>{{ seguimiento_confiabilidad.kr20 }}</h3>
+                                            <p>Coeficiente KR-20</p>
+                                        </article>
+                                        <article class="mini-metric">
+                                            <h3>{{ seguimiento_confiabilidad.interpretacion }}</h3>
+                                            <p>Interpretación</p>
+                                        </article>
+                                        <article class="mini-metric">
+                                            <h3>{{ seguimiento_confiabilidad.n_estudiantes }}</h3>
+                                            <p>Estudiantes analizados</p>
+                                        </article>
+                                    </div>
+
+                                    <div class="mini-metrics">
+                                        <article class="mini-metric">
+                                            <h3>{{ seguimiento_confiabilidad.n_items }}</h3>
+                                            <p>Ítems evaluados</p>
+                                        </article>
+                                        <article class="mini-metric">
+                                            <h3>{{ seguimiento_confiabilidad.var_total }}</h3>
+                                            <p>Varianza total</p>
+                                        </article>
+                                        <article class="mini-metric">
+                                            <h3>{{ seguimiento_confiabilidad.problematicos|length }}</h3>
+                                            <p>Ítems problemáticos</p>
+                                        </article>
+                                    </div>
+
+                                    {% if seguimiento_confiabilidad.problematicos %}
+                                        <div class="warning-box">
+                                            <strong>Recomendación:</strong>
+                                            revisar primero <strong>{{ seguimiento_confiabilidad.problematicos.0.item_label }}</strong>
+                                            (impacto +{{ seguimiento_confiabilidad.problematicos.0.impacto }}) porque su eliminación mejora el KR-20.
+                                        </div>
+                                    {% else %}
+                                        <div class="ok-box">
+                                            No se detectan items que reduzcan la confiabilidad general.
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="simple-table simple-table--kr20">
+                                        <div class="simple-table__head">
+                                            <span>Item</span>
+                                            <span>Proporcion</span>
+                                            <span>Dificultad</span>
+                                            <span>Discriminacion</span>
+                                            <span>KR20 sin item</span>
+                                            <span>Impacto</span>
+                                        </div>
+                                        {% for row in seguimiento_confiabilidad.items %}
+                                            <div class="simple-table__row">
+                                                <span>{{ row.item_label }}</span>
+                                                <span>{{ row.proporcion_aciertos }}</span>
+                                                <span>{{ row.dificultad }}</span>
+                                                <span>{{ row.discriminacion }}</span>
+                                                <span>{{ row.kr20_sin_item }}</span>
+                                                <span>{{ row.impacto }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="module-panel__note">
+                                        No se pudo calcular KR-20 para este código.
+                                        {% if seguimiento_confiabilidad.error %}Detalle: {{ seguimiento_confiabilidad.error }}{% endif %}
+                                    </p>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "certificados" %}
+                                <h3 class="subsection-title">Certificados</h3>
+                                <div class="action-links">
+                                    <a
+                                        class="year-filter__item"
+                                        href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=certificados&download=certificados_csv"
+                                    >
+                                        Descargar detalle CSV
+                                    </a>
+                                    <a
+                                        class="year-filter__item"
+                                        href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ seguimiento_codigo_sel }}&tab=certificados&download=certificados_resumen_csv"
+                                    >
+                                        Descargar resumen regional CSV
+                                    </a>
+                                </div>
+
+                                <div class="mini-metrics">
+                                    <article class="mini-metric">
+                                        <h3>{{ seguimiento_certificados_total|default:0 }}</h3>
+                                        <p>Certificados emitidos</p>
+                                    </article>
+                                    <article class="mini-metric">
+                                        <h3>{{ seguimiento_certificados_promedio_nota|default:0 }}</h3>
+                                        <p>Promedio nota final</p>
+                                    </article>
+                                    <article class="mini-metric">
+                                        <h3>{{ seguimiento_certificados_region|length }}</h3>
+                                        <p>Regiones con certificados</p>
+                                    </article>
+                                </div>
+
+                                {% if seguimiento_certificados_region %}
+                                    <h3 class="subsection-title">Resumen por region</h3>
+                                    <div class="simple-table">
+                                        <div class="simple-table__head">
+                                            <span>Region</span>
+                                            <span>Total certificados</span>
+                                            <span>Nota promedio</span>
+                                            <span>Detalle</span>
+                                        </div>
+                                        {% for row in seguimiento_certificados_region %}
+                                            <div class="simple-table__row">
+                                                <span>{{ row.region }}</span>
+                                                <span>{{ row.total }}</span>
+                                                <span>{{ row.nota_promedio }}</span>
+                                                <span>Consolidado regional</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                {% if seguimiento_certificados %}
+                                    <h3 class="subsection-title">Nominal de certificados</h3>
+                                    <div class="simple-table simple-table--cert">
+                                        <div class="simple-table__head">
+                                            <span>DNI</span>
+                                            <span>Participante</span>
+                                            <span>Region / IGED</span>
+                                            <span>Nota final</span>
+                                            <span>Ultimo acceso</span>
+                                        </div>
+                                        {% for row in seguimiento_certificados %}
+                                            <div class="simple-table__row">
+                                                <span>{{ row.dni }}</span>
+                                                <span>{{ row.apellidos }} {{ row.nombres }}</span>
+                                                <span>{{ row.region }} / {{ row.nombre_iged }}</span>
+                                                <span>{{ row.promedio_final_general }}</span>
+                                                <span>{{ row.ultimo_acceso_curso }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="module-panel__note">No hay certificados para el código seleccionado.</p>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if seguimiento_tab_activo == "satisfaccion" %}
+                                <h3 class="subsection-title">Satisfaccion</h3>
+                                <div class="mini-metrics">
+                                    <article class="mini-metric">
+                                        <h3>{{ seguimiento_satisfaccion.total_respuestas|default:0 }}</h3>
+                                        <p>Respuestas registradas</p>
+                                    </article>
+                                </div>
+                                {% if seguimiento_satisfaccion.por_categoria %}
+                                    <ul class="module-list">
+                                        {% for item in seguimiento_satisfaccion.por_categoria %}
+                                            <li>{{ item.satisfaccion }}: {{ item.total }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="module-panel__note">Sin respuestas de satisfacción para este código.</p>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">
+                        No hay capacitaciones disponibles para seguimiento con el filtro seleccionado.
+                    </p>
+                {% endif %}
+            {% endif %}
+
+            <!-- Adaptacion inicial de Estandares (estandares_calidad.py). -->
+            {% if adapter_kind == "estandares" %}
+                <div class="mini-metrics">
+                    <article class="mini-metric">
+                        <h3>{{ filas_estandares|length }}</h3>
+                        <p>Total capacitaciones</p>
+                    </article>
+                    <article class="mini-metric">
+                        <h3>{{ total_con_estandares|default:0 }}</h3>
+                        <p>Con estándares</p>
+                    </article>
+                    <article class="mini-metric">
+                        <h3>{{ total_sin_estandares|default:0 }}</h3>
+                        <p>Sin estándares</p>
+                    </article>
+                </div>
+
+                {% if filas_estandares %}
+                    <div class="simple-table simple-table--estandares">
+                        <div class="simple-table__head">
+                            <span>Código</span>
+                            <span>Proceso</span>
+                            <span>Completitud</span>
+                            <span>Respuestas</span>
+                        </div>
+                        {% for fila in filas_estandares %}
+                            <div class="simple-table__row">
+                                <span>{{ fila.codigo }}</span>
+                                <span>{{ fila.proceso }}</span>
+                                <span>
+                                    <span class="progress-label">{{ fila.porcentaje_completitud }}%</span>
+                                    <span class="progress-track">
+                                        <span class="progress-value" style="width: {{ fila.porcentaje_completitud }}%;"></span>
+                                    </span>
+                                    <span class="progress-sub">{{ fila.capitulos_completados }}/{{ fila.total_capitulos }} capitulos</span>
+                                </span>
+                                <span>{{ fila.respuestas_totales }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">No hay datos de estándares para el filtro seleccionado.</p>
+                {% endif %}
+            {% endif %}
+
+            <!-- Adaptacion ligera de Oferta formativa para consulta operativa. -->
+            {% if adapter_kind == "oferta" %}
+                <h3 class="subsection-title">Oferta formativa disponible</h3>
+                {% if capacitaciones %}
+                    <ul class="module-list">
+                        {% for fila in capacitaciones %}
+                            <li>
+                                <strong>{{ fila.codigo }}</strong> -
+                                {{ fila.tipo_proceso_formativo }} {{ fila.denominacion_proceso_formativo }}
+                                <span class="module-list__meta">({{ fila.condicion }})</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="module-panel__note">No se encontraron procesos en la oferta para este filtro.</p>
+                {% endif %}
+            {% endif %}
+
+            <!-- Vista de placeholder para submenus aun no implementados en detalle. -->
+            {% if adapter_kind == "placeholder" %}
+                <p class="module-panel__note">
+                    Este submenu esta listo en navegacion y diseno. La siguiente fase es conectar su formulario operativo.
+                </p>
+            {% endif %}
+        </section>
+    </main>
+    <script>
+        document.querySelectorAll("[data-seguimiento-layout]").forEach(function (layout) {
+            var collapse = layout.querySelector("[data-seguimiento-collapse]");
+            if (!collapse) {
+                return;
+            }
+            var syncState = function () {
+                layout.classList.toggle("is-collapsed", !collapse.open);
+            };
+            collapse.addEventListener("toggle", syncState);
+            syncState();
+        });
+
+        (function () {
+            // Muestra u oculta campos de oficio cuando la solicitud es externa.
+            var form = document.querySelector("[data-registro-form]");
+            if (!form) {
+                return;
+            }
+
+            var igedCatalogNode = document.getElementById("registro-iged-catalogo");
+            var igedCatalog = {};
+            if (igedCatalogNode) {
+                try {
+                    igedCatalog = JSON.parse(igedCatalogNode.textContent || "{}");
+                } catch (error) {
+                    igedCatalog = {};
+                }
+            }
+
+            var questionItems = form.querySelectorAll("[data-question-item]");
+            var originInputs = form.querySelectorAll("input[name='sol_origen_institucional']");
+            var externalFields = form.querySelectorAll("[data-origin-dependent='external']");
+            var igedFields = form.querySelectorAll("[data-origin-dependent='iged']");
+            var regionSelect = form.querySelector("[data-iged-region-select]");
+            var igedSelect = form.querySelector("[data-iged-name-select]");
+
+            var getOrigin = function () {
+                var selected = "";
+                originInputs.forEach(function (input) {
+                    if (input.checked) {
+                        selected = String(input.value || "");
+                    }
+                });
+                return selected;
+            };
+
+            var renumberQuestions = function () {
+                var visibleIndex = 0;
+                questionItems.forEach(function (item) {
+                    var isVisible = !item.classList.contains("is-hidden");
+                    item.querySelectorAll("[data-question-number]").forEach(function (numberNode) {
+                        if (isVisible) {
+                            visibleIndex += 1;
+                            numberNode.textContent = String(visibleIndex);
+                        } else {
+                            numberNode.textContent = "";
+                        }
+                    });
+                });
+            };
+
+            var fillIgedOptions = function () {
+                if (!regionSelect || !igedSelect) {
+                    return;
+                }
+
+                var currentValue = String(igedSelect.value || "");
+                var region = String(regionSelect.value || "");
+                var rows = Array.isArray(igedCatalog[region]) ? igedCatalog[region] : [];
+
+                igedSelect.innerHTML = "";
+
+                var placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "Selecciona una opción";
+                igedSelect.appendChild(placeholder);
+
+                rows.forEach(function (row) {
+                    var option = document.createElement("option");
+                    option.value = String(row.nombre || "");
+                    option.textContent = String(row.nombre || "");
+                    igedSelect.appendChild(option);
+                });
+
+                var exists = rows.some(function (row) {
+                    return String(row.nombre || "") === currentValue;
+                });
+
+                igedSelect.value = exists ? currentValue : "";
+            };
+
+            var syncExternalFields = function () {
+                var origin = getOrigin();
+                var showExternal = origin === "IGED" || origin === "Unidad orgánica";
+                var showIged = origin === "IGED";
+
+                externalFields.forEach(function (wrapper) {
+                    wrapper.classList.toggle("is-hidden", !showExternal);
+                    wrapper.setAttribute("aria-hidden", showExternal ? "false" : "true");
+
+                    wrapper.querySelectorAll("input, select, textarea").forEach(function (control) {
+                        control.disabled = !showExternal;
+                    });
+                });
+
+                igedFields.forEach(function (wrapper) {
+                    wrapper.classList.toggle("is-hidden", !showIged);
+                    wrapper.setAttribute("aria-hidden", showIged ? "false" : "true");
+
+                    wrapper.querySelectorAll("input, select, textarea").forEach(function (control) {
+                        control.disabled = !showIged;
+                    });
+                });
+
+                fillIgedOptions();
+                renumberQuestions();
+            };
+
+            originInputs.forEach(function (input) {
+                input.addEventListener("change", syncExternalFields);
+            });
+
+            if (regionSelect) {
+                regionSelect.addEventListener("change", fillIgedOptions);
+            }
+
+            syncExternalFields();
+        })();
+
+        (function () {
+            var modal = document.getElementById("actividad-modal");
+            if (!modal) {
+                return;
+            }
+
+            var openBtn = document.querySelector("[data-open-actividad-modal]");
+            var closeBtns = modal.querySelectorAll("[data-close-actividad-modal]");
+
+            var clearEditParam = function () {
+                var url = new URL(window.location.href);
+                if (url.searchParams.has("edit")) {
+                    url.searchParams.delete("edit");
+                }
+                if (url.searchParams.has("modal")) {
+                    url.searchParams.delete("modal");
+                }
+                window.history.replaceState({}, "", url.toString());
+            };
+
+            var openModal = function () {
+                if (typeof modal.showModal === "function") {
+                    modal.showModal();
+                } else {
+                    modal.setAttribute("open", "open");
+                }
+            };
+
+            var closeModal = function () {
+                if (typeof modal.close === "function") {
+                    modal.close();
+                } else {
+                    modal.removeAttribute("open");
+                }
+                clearEditParam();
+            };
+
+            if (openBtn) {
+                openBtn.addEventListener("click", openModal);
+            }
+
+            closeBtns.forEach(function (btn) {
+                btn.addEventListener("click", closeModal);
+            });
+
+            modal.addEventListener("cancel", function (event) {
+                event.preventDefault();
+                closeModal();
+            });
+
+            if (modal.dataset.openOnLoad === "1") {
+                openModal();
+            }
+        })();
+
+        (function () {
+            // Modal emergente de detalle para bloques de "Generación de plantilla".
+            var modal = document.getElementById("plantilla-detalle-modal");
+            if (!modal) {
+                return;
+            }
+
+            var openers = document.querySelectorAll("[data-open-plantilla-detalle]");
+            var closeBtns = modal.querySelectorAll("[data-close-plantilla-detalle]");
+            var cards = modal.querySelectorAll(".plantilla-card");
+            var titleNode = modal.querySelector("[data-plantilla-detalle-title]");
+
+            var activarBloque = function (targetId, titulo) {
+                var visible = null;
+                cards.forEach(function (card) {
+                    var activo = String(card.id) === String(targetId);
+                    card.classList.toggle("is-active", activo);
+                    card.hidden = !activo;
+                    card.style.display = activo ? "block" : "none";
+                    if (activo) {
+                        visible = card;
+                    }
+                });
+
+                // Fallback defensivo: si no se encontro id, muestra el primer bloque.
+                if (!visible && cards.length > 0) {
+                    cards[0].classList.add("is-active");
+                    cards[0].hidden = false;
+                    cards[0].style.display = "block";
+                    visible = cards[0];
+                }
+
+                // Ajusta ancho del modal para el caso de configuracion nominal.
+                modal.classList.toggle("is-nominal", String(targetId) === "sec-nominal");
+
+                if (titleNode) {
+                    var title = String(titulo || "").trim();
+                    if (!title && visible) {
+                        var h4 = visible.querySelector("h4");
+                        title = h4 ? String(h4.textContent || "").trim() : "";
+                    }
+                    titleNode.textContent = title ? ("Detalle: " + title) : "Detalle de bloque";
+                }
+            };
+
+            var openModal = function (targetId, titulo) {
+                activarBloque(targetId, titulo);
+                if (typeof modal.showModal === "function") {
+                    modal.showModal();
+                } else {
+                    modal.setAttribute("open", "open");
+                }
+            };
+
+            var closeModal = function () {
+                if (typeof modal.close === "function") {
+                    modal.close();
+                } else {
+                    modal.removeAttribute("open");
+                }
+                modal.classList.remove("is-nominal");
+            };
+
+            openers.forEach(function (opener) {
+                opener.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    var targetId = String(opener.dataset.detalleTarget || "").replace(/^#/, "");
+                    var strong = opener.querySelector(".checkpoint-card__body strong");
+                    var titulo = strong ? String(strong.textContent || "").trim() : "";
+                    openModal(targetId, titulo);
+                });
+            });
+
+            closeBtns.forEach(function (btn) {
+                btn.addEventListener("click", closeModal);
+            });
+
+            modal.addEventListener("cancel", function (event) {
+                event.preventDefault();
+                closeModal();
+            });
+
+            // Permite cerrar al hacer click en el backdrop del dialog.
+            modal.addEventListener("click", function (event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+        })();
+
+        (function () {
+            var builder = document.querySelector("[data-formula-builder]");
+            if (!builder) {
+                return;
+            }
+
+            var textarea = document.getElementById("formula-textarea");
+            if (!textarea) {
+                return;
+            }
+
+            var variableSelect = builder.querySelector("[data-formula-variable]");
+            var operatorSelect = builder.querySelector("[data-formula-operator]");
+            var numberInput = builder.querySelector("[data-formula-number]");
+            var aplicaSelect = document.querySelector("select[name='aplica_a']");
+            var btnVar = builder.querySelector("[data-formula-add-variable]");
+            var btnOp = builder.querySelector("[data-formula-add-operator]");
+            var btnNum = builder.querySelector("[data-formula-add-number]");
+            var btnClear = builder.querySelector("[data-formula-clear]");
+
+            var appendToken = function (token) {
+                var text = String(token || "").trim();
+                if (!text) {
+                    return;
+                }
+                var actual = textarea.value || "";
+                textarea.value = actual.trim() ? (actual.trim() + " " + text + " ") : (text + " ");
+                textarea.focus();
+                textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+            };
+
+            var filtrarVariablesPorAplica = function () {
+                if (!variableSelect || !aplicaSelect) {
+                    return;
+                }
+
+                var aplica = String(aplicaSelect.value || "Ambos");
+                var firstValid = "";
+                Array.prototype.forEach.call(variableSelect.options, function (option) {
+                    var aplicaVar = String(option.dataset.aplica || "Ambos");
+                    var visible = (aplica === "Ambos") || (aplicaVar === "Ambos") || (aplicaVar === aplica);
+                    option.hidden = !visible;
+                    option.disabled = !visible;
+                    if (visible && !firstValid) {
+                        firstValid = option.value;
+                    }
+                });
+
+                if (
+                    variableSelect.selectedOptions.length === 0 ||
+                    variableSelect.selectedOptions[0].disabled
+                ) {
+                    variableSelect.value = firstValid;
+                }
+            };
+
+            if (btnVar) {
+                btnVar.addEventListener("click", function () {
+                    if (!variableSelect || !variableSelect.value) {
+                        return;
+                    }
+                    appendToken("'" + variableSelect.value + "'");
+                });
+            }
+
+            if (btnOp) {
+                btnOp.addEventListener("click", function () {
+                    if (!operatorSelect || !operatorSelect.value) {
+                        return;
+                    }
+                    appendToken(operatorSelect.value);
+                });
+            }
+
+            if (btnNum) {
+                btnNum.addEventListener("click", function () {
+                    if (!numberInput || !numberInput.value) {
+                        return;
+                    }
+                    appendToken(numberInput.value);
+                    numberInput.value = "";
+                });
+            }
+
+            if (btnClear) {
+                btnClear.addEventListener("click", function () {
+                    textarea.value = "";
+                    textarea.focus();
+                });
+            }
+
+            if (aplicaSelect) {
+                aplicaSelect.addEventListener("change", filtrarVariablesPorAplica);
+            }
+            filtrarVariablesPorAplica();
+        })();
+    </script>
+</body>
+</html>

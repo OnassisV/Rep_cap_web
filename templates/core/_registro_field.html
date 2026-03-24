@@ -1,0 +1,105 @@
+{% comment %}
+Parcial reutilizable para renderizar campos del registro de capacitaciones.
+Admite variantes especiales para origen institucional y decisiones binarias.
+{% endcomment %}
+{% if field.is_decision %}
+    <article class="decision-card{% if field.valor %} is-answered{% endif %}{% if solicitud_mode %} decision-card--question{% endif %}"{% if solicitud_mode %} data-question-item{% endif %}>
+        <div class="decision-card__head">
+            <div class="registro-question-title">
+                {% if solicitud_mode %}
+                    <span class="registro-question-number" data-question-number></span>
+                {% endif %}
+                <h4>{{ field.pregunta }}{% if field.obligatorio %} <strong>*</strong>{% endif %}</h4>
+            </div>
+            {% if field.ayuda %}
+                <p>{{ field.ayuda }}</p>
+            {% endif %}
+        </div>
+        <div class="radio-pills" role="radiogroup" aria-label="{{ field.pregunta }}">
+            {% for opcion in field.opciones %}
+                <label class="radio-pill">
+                    <input
+                        type="radio"
+                        name="{{ field.codigo }}"
+                        value="{{ opcion }}"
+                        {% if field.valor == opcion %}checked{% endif %}
+                        {% if field.obligatorio %}required{% endif %}
+                    >
+                    <span>{{ opcion }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </article>
+{% else %}
+    <label class="registro-field{% if field.tipo == 'text_long' or field.is_origin_selector %} registro-field--full{% endif %}{% if field.is_external_only %} registro-field--external{% endif %}{% if field.is_iged_only %} registro-field--iged{% endif %}{% if field.is_external_only and not registro_origen_externo %} is-hidden{% endif %}{% if field.is_iged_only and registro_origen_actual != 'IGED' %} is-hidden{% endif %}{% if solicitud_mode %} registro-field--question{% endif %}"{% if field.is_external_only %} data-origin-dependent="external"{% endif %}{% if field.is_iged_only %} data-origin-dependent="iged"{% endif %}{% if solicitud_mode %} data-question-item{% endif %}>
+        <span class="registro-field__head">
+            <span class="registro-question-title">
+                {% if solicitud_mode %}
+                    <span class="registro-question-number" data-question-number></span>
+                {% endif %}
+                <span class="registro-field__label">
+                    {{ field.pregunta }}
+                    {% if field.obligatorio %}
+                        <strong>*</strong>
+                    {% endif %}
+                </span>
+            </span>
+
+            {% if field.ayuda %}
+                <small class="registro-field__help">{{ field.ayuda }}</small>
+            {% endif %}
+        </span>
+
+        {% if field.is_origin_selector %}
+            <div class="choice-grid choice-grid--origin" role="radiogroup" aria-label="{{ field.pregunta }}">
+                {% for opcion in field.opciones %}
+                    <label class="choice-card">
+                        <input
+                            type="radio"
+                            name="{{ field.codigo }}"
+                            value="{{ opcion }}"
+                            {% if field.valor == opcion %}checked{% endif %}
+                            {% if field.obligatorio %}required{% endif %}
+                        >
+                        <span class="choice-card__body">
+                            <strong>{{ opcion }}</strong>
+                            <small>
+                                {% if opcion == "DIFOCA" %}
+                                    Solicitud nacida desde la conducción interna.
+                                {% elif opcion == "IGED" %}
+                                    Pedido que proviene desde DRE, GRE o UGEL.
+                                {% else %}
+                                    Solicitud remitida por otra unidad orgánica.
+                                {% endif %}
+                            </small>
+                        </span>
+                    </label>
+                {% endfor %}
+            </div>
+        {% elif field.tipo == "list" %}
+            <select
+                name="{{ field.codigo }}"
+                {% if field.is_iged_only and field.codigo == 'sol_region_iged' %}data-iged-region-select{% endif %}
+                {% if field.is_iged_only and field.codigo == 'sol_iged_nombre' %}data-iged-name-select{% endif %}
+                {% if field.obligatorio %}required{% endif %}
+                {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %}
+                {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}
+            >
+                <option value="">Selecciona una opción</option>
+                {% for opcion in field.opciones %}
+                    <option value="{{ opcion }}" {% if field.valor == opcion %}selected{% endif %}>{{ opcion }}</option>
+                {% endfor %}
+            </select>
+        {% elif field.tipo == "text_long" %}
+            <textarea name="{{ field.codigo }}" rows="3" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>{{ field.valor }}</textarea>
+        {% elif field.tipo == "integer" %}
+            <input type="number" step="1" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
+        {% elif field.tipo == "decimal" or field.tipo == "currency" %}
+            <input type="number" step="0.01" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
+        {% elif field.tipo == "date" %}
+            <input type="date" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
+        {% else %}
+            <input type="text" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
+        {% endif %}
+    </label>
+{% endif %}

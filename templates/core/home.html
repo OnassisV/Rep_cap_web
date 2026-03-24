@@ -1,0 +1,94 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <!-- Metadatos base para codificacion y comportamiento responsive -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Titulo de la pestana del navegador -->
+    <title>Inicio | CAP DIFOCA</title>
+    <!-- Optimizacion de carga de fuentes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Optimizacion de carga de fuentes para dominio de recursos -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Familias tipograficas del proyecto -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Estilos de la pantalla de inicio protegida -->
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+</head>
+<body>
+    <!-- Fondo decorativo sutil -->
+    <div class="scene-grid"></div>
+
+    <!-- Contenedor principal -->
+    <main class="geo-shell">
+        <!-- Cabecera principal -->
+        <header class="geo-hero">
+            <!-- Bloque de identidad -->
+            <div>
+                <h1>Hola, {{ display_name }}</h1>
+                <p class="subtitle">
+                    Selecciona una macroárea para acceder a tus módulos de trabajo.
+                </p>
+            </div>
+            <!-- Acciones de sesion -->
+            <div class="hero-actions">
+                <!-- Selector de rol para cuentas con doble modo (ej. administrador/especialista). -->
+                {% if can_switch_role %}
+                    <details class="role-switcher">
+                        <summary class="role-pill" aria-label="Cambiar rol de trabajo">
+                            Rol: {{ role_effective }}
+                        </summary>
+                        <div class="role-switcher__menu" role="menu" aria-label="Opciones de rol">
+                            {% for role_option in role_options %}
+                                <form method="post" action="{% url 'core:switch_role' %}" class="role-switcher__form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="role" value="{{ role_option }}">
+                                    <input type="hidden" name="next" value="{{ current_path }}">
+                                    <button
+                                        type="submit"
+                                        class="role-switcher__item{% if role_option == role_effective %} is-active{% endif %}"
+                                        {% if role_option == role_effective %}disabled{% endif %}
+                                    >
+                                        {{ role_option }}
+                                    </button>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% else %}
+                    <!-- Rol fijo para usuarios sin alternancia permitida. -->
+                    <p class="role-pill">Rol: {{ role_effective }}</p>
+                {% endif %}
+                <a href="{% url 'accounts:logout' %}" class="logout-link">Cerrar sesion</a>
+            </div>
+        </header>
+
+        <!-- Grilla geometrica de acceso -->
+        <section class="geo-grid" aria-label="Menu geometrico">
+            {% for section in menu_sections %}
+                <!-- Tarjeta geometrica principal -->
+                <a
+                    class="geo-card"
+                    href="{% url 'core:section_detail' section.slug %}"
+                    style="--delay: {{ forloop.counter0 }};"
+                    aria-label="Abrir {{ section.titulo }}"
+                >
+                    <!-- Imagen alusiva por seccion -->
+                    <img
+                        class="geo-card__image"
+                        src="{% static section.imagen %}?v=20260313a"
+                        alt="Imagen de {{ section.titulo }}"
+                    >
+                    <!-- Contenido textual de la seccion -->
+                    <div class="geo-card__body">
+                        <p class="geo-card__kicker">{{ section.subtitulo }}</p>
+                        <h3>{{ section.titulo }}</h3>
+                        <p>{{ section.descripcion }}</p>
+                    </div>
+                </a>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>

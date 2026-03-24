@@ -1,0 +1,123 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <!-- Metadatos base para codificacion y comportamiento responsive -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Titulo dinamico de la pestana -->
+    <title>{{ section.titulo }} | CAP DIFOCA</title>
+    <!-- Optimizacion de carga de fuentes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Optimizacion de carga de fuentes para dominio de recursos -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Familias tipograficas del proyecto -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Estilos reutilizados de la pantalla inicial -->
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+</head>
+<body>
+    <!-- Fondo decorativo sutil -->
+    <div class="scene-grid"></div>
+
+    <!-- Contenedor principal -->
+    <main class="detail-shell detail-shell--section">
+        <!-- Cabecera de detalle -->
+        <header class="detail-hero">
+            <!-- Flecha de retorno dentro del bloque visual izquierdo (zona naranja). -->
+            <a href="{% url 'core:home' %}" class="detail-back-arrow" aria-label="Volver al GeoMenu">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M10.75 5.75 4.5 12m0 0 6.25 6.25M4.5 12h15"></path>
+                </svg>
+            </a>
+            <img
+                class="detail-hero__image"
+                src="{% static section.imagen %}?v=20260313a"
+                alt="Imagen de {{ section.titulo }}"
+            >
+            <div class="detail-hero__body">
+                <h1>{{ section.titulo }}</h1>
+                <p class="subtitle">{{ section.descripcion }}</p>
+                <div class="detail-hero__actions">
+                    <!-- Selector de rol reutilizable en vista detalle. -->
+                    {% if can_switch_role %}
+                        <details class="role-switcher">
+                            <summary class="role-pill" aria-label="Cambiar rol de trabajo">
+                                Rol: {{ role_effective }}
+                            </summary>
+                            <div class="role-switcher__menu" role="menu" aria-label="Opciones de rol">
+                                {% for role_option in role_options %}
+                                    <form method="post" action="{% url 'core:switch_role' %}" class="role-switcher__form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="role" value="{{ role_option }}">
+                                        <input type="hidden" name="next" value="{{ current_path }}">
+                                        <button
+                                            type="submit"
+                                            class="role-switcher__item{% if role_option == role_effective %} is-active{% endif %}"
+                                            {% if role_option == role_effective %}disabled{% endif %}
+                                        >
+                                            {{ role_option }}
+                                        </button>
+                                    </form>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% else %}
+                        <!-- Rol fijo para usuarios sin alternancia permitida. -->
+                        <p class="role-pill">Rol: {{ role_effective }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <!-- Barra horizontal de pestanas para navegar entre macro-menus. -->
+        <nav class="section-tabs" aria-label="Navegacion entre menus">
+            {% for nav_section in menu_sections %}
+                <!-- Envoltura para habilitar dropdown al pasar el mouse sobre la pestana. -->
+                <div class="section-tab-wrap">
+                    <a
+                        href="{% url 'core:section_detail' nav_section.slug %}"
+                        class="section-tab{% if nav_section.slug == section.slug %} is-active{% endif %}"
+                        {% if nav_section.slug == section.slug %}aria-current="page"{% endif %}
+                    >
+                        {{ nav_section.titulo }}
+                    </a>
+
+                    <!-- Dropdown de submenus visibles al hover (si la seccion tiene submenus). -->
+                    {% if nav_section.submenus %}
+                        <div class="section-tab-dropdown" role="menu" aria-label="Submenu de {{ nav_section.titulo }}">
+                            {% for nav_submenu in nav_section.submenus %}
+                                <a
+                                    class="section-tab-dropdown__item"
+                                    href="{% url 'core:submenu_detail' nav_section.slug nav_submenu.slug %}"
+                                >
+                                    {{ nav_submenu.titulo }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </nav>
+
+        <!-- Tarjetas de submenu para la seccion activa (si aplica). -->
+        {% if section_submenus %}
+            <section class="submenu-panel submenu-panel--actions">
+                <p class="module-panel__copy">
+                    Selecciona un botón para abrir directamente una acción de esta sección.
+                </p>
+                <div class="submenu-grid submenu-grid--section-actions">
+                    {% for submenu in section_submenus %}
+                        <a
+                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}"
+                            class="submenu-card submenu-card--action"
+                        >
+                            <h3>{{ submenu.titulo }}</h3>
+                        </a>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

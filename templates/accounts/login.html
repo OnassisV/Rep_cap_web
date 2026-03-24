@@ -1,0 +1,159 @@
+{% load static %}
+{% now "U" as asset_version %}
+<!doctype html>
+<html lang="es">
+<head>
+    <!-- Metadatos base para codificacion y comportamiento responsive -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Titulo de la pestaña del navegador -->
+    <title>Inicio de sesion | CAP DIFOCA</title>
+    <!-- Optimizacion de carga de fuentes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Optimizacion de carga de fuentes para dominio de recursos -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Familias tipograficas del proyecto -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Estilos globales de la pantalla de login -->
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}?v={{ asset_version }}">
+</head>
+<body>
+    <!-- Cuadricula decorativa de fondo -->
+    <div class="grid-overlay"></div>
+    <!-- Elemento decorativo difuminado A -->
+    <div class="orb orb-a"></div>
+    <!-- Elemento decorativo difuminado B -->
+    <div class="orb orb-b"></div>
+
+    <!-- Layout principal en dos columnas -->
+    <main class="login-layout">
+        <!-- Panel izquierdo: marca y contexto -->
+        <section class="brand-panel">
+            <!-- Imagen institucional del login -->
+            <!--
+                El parametro dinamico de cache (`asset_version`) obliga al navegador
+                a solicitar el logo mas reciente y evita ver imagenes antiguas.
+            -->
+            <img src="{% static 'images/cap_login.png' %}?v={{ asset_version }}" alt="CAP DIFOCA" class="brand-logo">
+            <!-- Texto introductorio -->
+            <p class="lead">
+                Plataforma para gestionar capacitaciones con una experiencia mas clara, rapida y segura.
+            </p>
+            <!-- Insignias de contexto -->
+            <div class="status-strip">
+                <span>Conexion local</span>
+                <span>Sesion protegida</span>
+            </div>
+        </section>
+
+        <!-- Panel derecho: formulario de autenticacion -->
+        <section class="form-panel">
+            <!-- Formulario de login enviado a la misma URL -->
+            <form method="post" class="login-card" novalidate>
+                <!-- Token CSRF requerido por Django -->
+                {% csrf_token %}
+                <!-- Campo oculto para preservar URL segura en `next` -->
+                <input type="hidden" name="next" value="{{ next_url }}">
+                <!-- Titulo del formulario -->
+                <h2>Iniciar sesion</h2>
+
+                <!-- Errores generales de validacion de autenticacion -->
+                {% if form.non_field_errors %}
+                    <div class="alert-box" role="alert">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Etiqueta del campo usuario -->
+                <label for="{{ form.username.id_for_label }}">Usuario</label>
+                <!-- Input de usuario renderizado por el formulario Django -->
+                {{ form.username }}
+                <!-- Errores especificos del campo usuario -->
+                {% if form.username.errors %}
+                    <small class="field-error">{{ form.username.errors|striptags }}</small>
+                {% endif %}
+
+                <!-- Datalist opcional con sugerencias desde BD localhost -->
+                {% if usernames %}
+                    <datalist id="usuarios-list">
+                        {% for username in usernames %}
+                            <option value="{{ username }}"></option>
+                        {% endfor %}
+                    </datalist>
+                {% else %}
+                    <!-- Mensaje de respaldo cuando falla la precarga de usuarios -->
+                    <p class="helper-text">
+                        No se pudo precargar la lista de usuarios desde localhost. Puedes escribir tu usuario manualmente.
+                    </p>
+                {% endif %}
+
+                <!-- Etiqueta del campo contrasena -->
+                <label for="{{ form.password.id_for_label }}">Contrasena</label>
+                <!-- Fila con campo de contrasena y boton de visibilidad -->
+                <div class="password-row">
+                    <!-- Input de contrasena renderizado por el formulario Django -->
+                    {{ form.password }}
+                    <!-- Boton iconico para alternar visibilidad de contrasena -->
+                    <button
+                        type="button"
+                        class="ghost-button ghost-button--icon"
+                        data-toggle-password="{{ form.password.id_for_label }}"
+                        aria-label="Mostrar contrasena"
+                        aria-pressed="false"
+                        title="Mostrar contrasena"
+                    >
+                        <!-- Icono ojo abierto (estado inicial) -->
+                        <svg class="eye-icon eye-icon--open" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M1.5 12s3.5-6 10.5-6 10.5 6 10.5 6-3.5 6-10.5 6-10.5-6-10.5-6z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <!-- Icono ojo tachado (cuando la contrasena esta visible) -->
+                        <svg class="eye-icon eye-icon--closed" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 3l18 18"></path>
+                            <path d="M10.6 6.3A11 11 0 0 1 12 6c7 0 10.5 6 10.5 6a18.8 18.8 0 0 1-4.3 4.8"></path>
+                            <path d="M6.4 7.2A18.6 18.6 0 0 0 1.5 12s3.5 6 10.5 6c1.7 0 3.2-.3 4.5-.9"></path>
+                            <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Errores especificos del campo contrasena -->
+                {% if form.password.errors %}
+                    <small class="field-error">{{ form.password.errors|striptags }}</small>
+                {% endif %}
+
+                <!-- Boton de envio del formulario -->
+                <button type="submit" class="submit-button">Entrar al sistema</button>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        // Busca en el DOM el boton para alternar visibilidad de contrasena.
+        const toggleButton = document.querySelector("[data-toggle-password]");
+        // Continua solo si el boton existe en la pagina actual.
+        if (toggleButton) {
+            // Maneja click para mostrar/ocultar texto de contrasena.
+            toggleButton.addEventListener("click", () => {
+                // Lee id del input objetivo desde data attribute.
+                const targetId = toggleButton.dataset.togglePassword;
+                // Resuelve el input real de contrasena usando el id.
+                const field = document.getElementById(targetId);
+                // Sale sin error si no encuentra el input.
+                if (!field) return;
+                // Verifica tipo actual del campo para alternar estado.
+                const isPassword = field.type === "password";
+                // Cambia tipo del input entre password y text.
+                field.type = isPassword ? "text" : "password";
+                // Alterna clase de estado para mostrar ojo abierto/cerrado.
+                toggleButton.classList.toggle("is-visible", isPassword);
+                // Actualiza atributos de accesibilidad y tooltip.
+                toggleButton.setAttribute("aria-pressed", isPassword ? "true" : "false");
+                toggleButton.setAttribute("aria-label", isPassword ? "Ocultar contrasena" : "Mostrar contrasena");
+                toggleButton.setAttribute("title", isPassword ? "Ocultar contrasena" : "Mostrar contrasena");
+            });
+        }
+    </script>
+</body>
+</html>
