@@ -7,8 +7,6 @@ from urllib.parse import urlencode
 
 # Error HTTP para retornar 404 cuando una seccion no exista.
 from django.http import Http404, HttpResponse
-# Acceso a settings de Django para flags operativos.
-from django.conf import settings
 # Decorador que exige sesion autenticada activa.
 from django.contrib.auth.decorators import login_required
 # Framework de mensajes para feedback de operaciones CRUD.
@@ -74,8 +72,7 @@ from .registro_capacitacion_schema import (
     REGISTRO_CAPACITACION_SECCIONES,
     iterar_campos_registro_capacitacion,
 )
-from .sync_launcher import launch_incremental_sync_from_template
-from .sync_status import get_incremental_sync_status
+from .sync_runtime import build_sync_status_context
 
 
 # Estructura central del GeoMenu.
@@ -694,6 +691,7 @@ def _build_user_context(request) -> dict[str, Any]:
         "role_effective": effective_role,
         "role_options": allowed_roles,
         "can_switch_role": len(allowed_roles) > 1,
+        "sync_status_bar": build_sync_status_context(),
         # Ruta actual para volver a la misma pantalla tras cambiar rol.
         "current_path": request.get_full_path(),
     }
@@ -1035,14 +1033,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 messages.error(request, "No se pudo guardar la configuración nominal.")
 
         elif action == "generate_plantilla":
-            sync_status_post = get_incremental_sync_status()
-            if bool(sync_status_post.get("block_generation")):
-                messages.warning(
-                    request,
-                    "La sincronizacion incremental sigue en curso. Espera a que termine para generar la plantilla.",
-                )
-                return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
-
             # Recalcula checklist antes de permitir generacion.
             estructura_post = obtener_estructura_por_codigo(post_codigo) if post_codigo else []
             postulantes_post = obtener_postulantes_excel_info(post_codigo) if post_codigo else {"exists": False, "size_bytes": 0}
@@ -1090,7 +1080,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                 f"{', '.join(faltantes_archivos)}."
                             ),
                         )
-
                 else:
                     messages.error(
                         request,
@@ -1277,41 +1266,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             tab_param = str(request.GET.get("tab", "alertas")).strip().lower()
             tab_activo = tab_param if tab_param in tabs_validos else "alertas"
 
-            sync_select_flag = str(request.GET.get("sync_select", "")).strip() == "1"
-            sync_on_selection_enabled = bool(
-                getattr(
-                    settings,
-                    "INCREMENTAL_SYNC_ON_CAP_SELECTION",
-                    getattr(settings, "INCREMENTAL_SYNC_ON_TEMPLATE_GENERATION", False),
-                )
-            )
-            if sync_select_flag and codigo_param and codigo_param == codigo_sel and sync_on_selection_enabled:
-                launch_incremental_sync_from_template()
-                clean_params = {
-                    key: value
-                    for key, value in request.GET.items()
-                    if key != "sync_select"
-                }
-                return redirect(_build_submenu_url(section_slug, submenu_slug, clean_params))
-
             # Descargas CSV bajo demanda para seguimiento (confiabilidad/certificados).
             download_kind = str(request.GET.get("download", "")).strip().lower()
             if download_kind and codigo_sel:
-                sync_status_download = get_incremental_sync_status()
-                blocked_downloads = {"plantilla_generada", "plantilla_generada_nominal", "plantilla_generada_iged"}
-                if download_kind in blocked_downloads and bool(sync_status_download.get("block_downloads")):
-                    messages.warning(
-                        request,
-                        "La sincronizacion incremental sigue en curso. Espera a que termine para descargar la plantilla.",
-                    )
-                    return redirect(
-                        _build_submenu_url(
-                            section_slug,
-                            submenu_slug,
-                            {"anio": anio_sel, "codigo": codigo_sel, "tab": "plantilla"},
-                        )
-                    )
-
                 if download_kind == "actividad_fuera_excel":
                     row_id_param = str(request.GET.get("id_estructura", "")).strip()
                     row_id = int(row_id_param) if row_id_param.isdigit() else 0
@@ -1467,7 +1424,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "size_bytes": 0,
                 "generated_at": "",
             }
-            sync_status = get_incremental_sync_status()
             estado_plantilla = _construir_estado_plantilla(
                 postulantes_info,
                 actividades_plantilla,
@@ -1603,7 +1559,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 codigo_card = str(fila.get("codigo", "")).strip()
                 if codigo_card not in actividades_por_codigo:
                     actividades_por_codigo[codigo_card] = len(obtener_estructura_por_codigo(codigo_card))
-                card_params = {"anio": anio_sel, "codigo": codigo_card, "tab": tab_activo, "sync_select": "1"}
+                card_params = {"anio": anio_sel, "codigo": codigo_card, "tab": tab_activo}
                 cards.append(
                     {
                         **fila,
@@ -1643,7 +1599,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "seguimiento_actividades_plantilla_fuera": actividades_plantilla.get("fuera", []),
                     "seguimiento_nominal_config": nominal_config,
                     "seguimiento_plantilla_generada": plantilla_generada,
-                    "seguimiento_sync_status": sync_status,
                     "seguimiento_plantilla_estado": estado_plantilla,
                     "seguimiento_plantilla_ok_map": plantilla_ok_map,
                     "seguimiento_confiabilidad": confiabilidad,

@@ -2310,6 +2310,13 @@ h1 {
     gap: 0.46rem;
 }
 
+.sync-overview-bar {
+    margin-top: 0.92rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.52rem;
+}
+
 .sync-status-chip {
     display: flex;
     align-items: flex-start;
@@ -2491,6 +2498,7 @@ h1 {
 }
 
 @media (max-width: 920px) {
+    .sync-overview-bar,
     .sync-status-strip {
         grid-template-columns: 1fr;
     }

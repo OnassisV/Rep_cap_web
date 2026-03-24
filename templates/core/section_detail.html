@@ -70,6 +70,8 @@
             </div>
         </header>
 
+        {% include "core/_sync_status_bar.html" %}
+
         <!-- Barra horizontal de pestanas para navegar entre macro-menus. -->
         <nav class="section-tabs" aria-label="Navegacion entre menus">
             {% for nav_section in menu_sections %}

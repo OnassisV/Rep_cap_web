@@ -1,0 +1,13 @@
+{% if sync_status_bar.enabled and sync_status_bar.states %}
+    <section class="sync-overview-bar" aria-label="Estado de actualizacion de datos">
+        {% for item in sync_status_bar.states %}
+            <article class="sync-status-chip sync-status-chip--{{ item.tone }}">
+                <span class="sync-status-chip__dot" aria-hidden="true"></span>
+                <div class="sync-status-chip__body">
+                    <strong>{{ item.label }}</strong>
+                    <small>{{ item.detail }}</small>
+                </div>
+            </article>
+        {% endfor %}
+    </section>
+{% endif %}

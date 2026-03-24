@@ -239,24 +239,6 @@ SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", default=False)
 # Tipo de clave primaria por defecto para modelos Django.
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Sincronizacion incremental disparada desde la web.
-INCREMENTAL_SYNC_ON_CAP_SELECTION = env_bool(
-    "INCREMENTAL_SYNC_ON_CAP_SELECTION",
-    default=env_bool("INCREMENTAL_SYNC_ON_TEMPLATE_GENERATION", default=True),
-)
-INCREMENTAL_SYNC_ON_TEMPLATE_GENERATION = env_bool(
-    "INCREMENTAL_SYNC_ON_TEMPLATE_GENERATION",
-    default=True,
-)
-INCREMENTAL_SYNC_UI_REFRESH_SECONDS = env_int(
-    "INCREMENTAL_SYNC_UI_REFRESH_SECONDS",
-    15,
-)
-INCREMENTAL_SYNC_RUNNER = env_str(
-    "INCREMENTAL_SYNC_RUNNER",
-    str((BASE_DIR.parent / "sincronizacion_incremental_railway" / "ejecutar_sincronizacion_incremental.sh").resolve()),
-)
-
 # Cache en memoria para contadores de bloqueo y ventanas de bloqueo de login.
 CACHES = {
     "default": {
@@ -282,6 +264,12 @@ AUTHENTICATION_BACKENDS = [
 MAX_LOGIN_ATTEMPTS = env_int("DIFOCA_MAX_LOGIN_ATTEMPTS", 5)
 LOGIN_LOCKOUT_MINUTES = env_int("DIFOCA_LOGIN_LOCKOUT_MINUTES", 10)
 LOCKOUT_FAILURE_TTL_MINUTES = env_int("DIFOCA_LOCKOUT_FAILURE_TTL_MINUTES", 60)
+
+# Ventana horaria esperada para la sincronizacion automatica de datos.
+SYNC_STATUS_KEY = env_str("DIFOCA_SYNC_STATUS_KEY", "railway_hourly_sync")
+SYNC_STATUS_START_HOUR = env_int("DIFOCA_SYNC_START_HOUR", 7)
+SYNC_STATUS_END_HOUR = env_int("DIFOCA_SYNC_END_HOUR", 19)
+SYNC_STATUS_MINUTE = env_int("DIFOCA_SYNC_MINUTE", 10)
 
 # Mapeo de cargos legacy hacia roles de la aplicacion.
 ROLE_MAPPING = {
