@@ -2184,7 +2184,7 @@ h1 {
 .plantilla-checkpoints {
     margin-top: 0.58rem;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem;
 }
 
@@ -2196,7 +2196,8 @@ h1 {
     background: #fff;
     color: #244963;
     cursor: pointer;
-    padding: 0.52rem 0.58rem;
+    padding: 0.62rem 0.62rem;
+    min-height: 62px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 0.46rem;
