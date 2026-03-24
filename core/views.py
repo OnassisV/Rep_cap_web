@@ -564,20 +564,20 @@ def _construir_estado_plantilla(
 
     checkpoints = [
         {
-            "slug": "postulantes",
-            "titulo": "Carga de Excel de postulantes",
-            "icono": "📄",
-            "resumen": post_resumen,
-            "ok": post_ok,
-            "anchor": "sec-postulantes",
-        },
-        {
             "slug": "plataforma",
             "titulo": "Actividades dentro de plataforma",
             "icono": "🧩",
             "resumen": plataforma_resumen,
             "ok": plataforma_ok,
             "anchor": "sec-plataforma",
+        },
+        {
+            "slug": "fuera",
+            "titulo": "Actividades fuera de plataforma",
+            "icono": "📁",
+            "resumen": fuera_resumen,
+            "ok": fuera_ok,
+            "anchor": "sec-fuera",
         },
         {
             "slug": "nominal",
@@ -590,8 +590,8 @@ def _construir_estado_plantilla(
     ]
 
     # Estado general para habilitar boton de generar plantilla.
-    # Solo se consideran requeridos: plataforma y nominal.
-    slugs_requeridos_generacion = {"plataforma", "nominal"}
+    # Solo se consideran requeridos: plataforma, fuera y nominal.
+    slugs_requeridos_generacion = {"plataforma", "fuera", "nominal"}
     pendientes = [
         item["titulo"]
         for item in checkpoints
