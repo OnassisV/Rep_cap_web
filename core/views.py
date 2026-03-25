@@ -351,6 +351,7 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
     campos_externos = {
         "sol_numero_oficio",
         "sol_fecha_oficio",
+        "sol_archivo_oficio",
     }
 
     # Campos visibles solo para solicitudes IGED.
