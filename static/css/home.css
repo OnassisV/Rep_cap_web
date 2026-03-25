@@ -1818,6 +1818,109 @@ h1 {
     align-items: flex-end;
 }
 
+.registro-diagnostico-shell {
+    display: grid;
+    gap: 0.86rem;
+    margin-top: 0.92rem;
+}
+
+.registro-sections-shell__header--diagnostico {
+    padding: 0 0.1rem;
+}
+
+.registro-diagnostico-roadmap {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.58rem;
+}
+
+.registro-diagnostico-step {
+    display: grid;
+    gap: 0.18rem;
+    padding: 0.72rem 0.78rem;
+    border: 1px solid #ccdff1;
+    border-radius: 0.92rem;
+    background: linear-gradient(165deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.registro-diagnostico-step.is-current {
+    border-color: #f0c39c;
+    background: linear-gradient(165deg, #fffaf4 0%, #fff1e0 100%);
+}
+
+.registro-diagnostico-step.is-started,
+.registro-diagnostico-step.is-complete {
+    border-color: #a9c9ea;
+    background: linear-gradient(165deg, #f4f9ff 0%, #eaf3ff 100%);
+}
+
+.registro-diagnostico-step__tag {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.16rem 0.46rem;
+    border-radius: 999px;
+    background: #6345d0;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.registro-diagnostico-step strong {
+    font-size: 0.86rem;
+    line-height: 1.28;
+    color: #244963;
+}
+
+.registro-diagnostico-step small {
+    color: #60768c;
+    font-size: 0.74rem;
+}
+
+.registro-diagnostico-panels {
+    display: grid;
+    gap: 0.82rem;
+}
+
+.registro-block--diagnostico {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 250, 255, 0.98) 100%),
+        linear-gradient(90deg, rgba(99, 69, 208, 0.08) 0%, rgba(40, 88, 181, 0.05) 100%);
+}
+
+.registro-diagnostico-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.56rem;
+    margin-bottom: 0.68rem;
+}
+
+.registro-diagnostico-meta__card {
+    display: grid;
+    gap: 0.18rem;
+    padding: 0.72rem 0.82rem;
+    border: 1px solid #d7e3f0;
+    border-radius: 0.86rem;
+    background: #fff;
+}
+
+.registro-diagnostico-meta__card span {
+    font-size: 0.72rem;
+    color: #678098;
+}
+
+.registro-diagnostico-meta__card strong {
+    font-size: 0.9rem;
+    color: #264761;
+}
+
+.registro-grid--diagnostico-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.registro-grid--diagnostico-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 /* Metadatos de estado mostrados al costado del titulo de cada bloque. */
 .registro-block__meta {
     display: grid;
@@ -2853,6 +2956,15 @@ h1 {
         grid-template-columns: 1fr;
     }
 
+    .registro-diagnostico-roadmap {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .registro-diagnostico-meta,
+    .registro-grid--diagnostico-compact {
+        grid-template-columns: 1fr;
+    }
+
     .registro-solicitud__decision-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2900,7 +3012,12 @@ h1 {
 }
 
 @media (max-width: 760px) {
+    .registro-diagnostico-roadmap,
     .registro-solicitud__decision-list {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-grid--diagnostico-wide {
         grid-template-columns: 1fr;
     }
 

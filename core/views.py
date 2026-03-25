@@ -383,7 +383,13 @@ def _construir_timeline_registro(secciones_render: list[dict[str, Any]]) -> list
     mapa_etapas = {
         "solicitud": ["solicitud-inicial"],
         "registro-base": ["identificacion-general"],
-        "sustento": ["diagnostico-sustento"],
+        "sustento": [
+            "diagnostico-paso-1",
+            "diagnostico-paso-2",
+            "diagnostico-paso-3",
+            "diagnostico-paso-4",
+            "diagnostico-paso-5",
+        ],
         "diseno": [
             "oferta-formativa",
             "poblacion-objetivo",
@@ -439,6 +445,49 @@ def _construir_timeline_registro(secciones_render: list[dict[str, Any]]) -> list
         etapa["is_current"] = index == current_index
 
     return timeline
+
+
+def _construir_flujo_diagnostico(
+    secciones_render: list[dict[str, Any]],
+    valores_form: dict[str, str],
+) -> dict[str, Any] | None:
+    """Construye la etapa guiada de elaboracion de diagnostico."""
+    pasos_orden = [
+        "diagnostico-paso-1",
+        "diagnostico-paso-2",
+        "diagnostico-paso-3",
+        "diagnostico-paso-4",
+        "diagnostico-paso-5",
+    ]
+    pasos = [
+        item
+        for slug in pasos_orden
+        for item in secciones_render
+        if str(item.get("slug", "")).strip() == slug
+    ]
+    if not pasos:
+        return None
+
+    current_index = 0
+    for index, paso in enumerate(pasos):
+        if not bool(paso.get("is_complete")):
+            current_index = index
+            break
+        current_index = index
+
+    for index, paso in enumerate(pasos):
+        paso["step_index"] = index + 1
+        paso["is_current_step"] = index == current_index
+
+    return {
+        "slug": "elaboracion-diagnostico",
+        "titulo": "Elaboracion de diagnostico",
+        "descripcion": "Etapa posterior a la fase preliminar para construir matriz, instrumentos, resultados e informe del diagnostico.",
+        "steps": pasos,
+        "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
+        "cap_codigo": str(valores_form.get("cap_codigo", "")).strip(),
+        "cap_anio": str(valores_form.get("cap_anio", "")).strip(),
+    }
 
 
 def _validar_registro_capacitacion(
@@ -1199,6 +1248,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     ]
 
             timeline_registro = _construir_timeline_registro(secciones_render)
+            flujo_diagnostico = _construir_flujo_diagnostico(secciones_render, valores_form)
             solicitud_inicial = next(
                 (
                     item
@@ -1207,10 +1257,18 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 ),
                 None,
             )
+            slugs_diagnostico = {
+                "diagnostico-paso-1",
+                "diagnostico-paso-2",
+                "diagnostico-paso-3",
+                "diagnostico-paso-4",
+                "diagnostico-paso-5",
+            }
             secciones_posteriores = [
                 item
                 for item in secciones_render
                 if str(item.get("slug", "")) != "solicitud-inicial"
+                and str(item.get("slug", "")) not in slugs_diagnostico
             ]
             origen_externo = str(valores_form.get("sol_origen_institucional", "")).strip() in {
                 "IGED",
@@ -1225,6 +1283,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_form_sections_restantes": secciones_posteriores,
                     "registro_timeline": timeline_registro,
                     "registro_solicitud": solicitud_inicial,
+                    "registro_diagnostico_flujo": flujo_diagnostico,
                     "registro_iged_catalogo": catalogo_iged,
                     "registro_iged_regiones": regiones_iged,
                     "registro_origen_actual": origen_actual,

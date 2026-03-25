@@ -233,6 +233,77 @@
                         </section>
                     {% endif %}
 
+                    {% if registro_diagnostico_flujo %}
+                        <section class="registro-diagnostico-shell" id="registro-{{ registro_diagnostico_flujo.slug }}">
+                            <header class="registro-sections-shell__header registro-sections-shell__header--diagnostico">
+                                <div>
+                                    <p class="registro-block__eyebrow">Etapa intermedia</p>
+                                    <h3 class="subsection-title">{{ registro_diagnostico_flujo.titulo }}</h3>
+                                </div>
+                                <p class="module-panel__note">
+                                    {{ registro_diagnostico_flujo.descripcion }}
+                                </p>
+                            </header>
+
+                            <div class="registro-diagnostico-roadmap" aria-label="Pasos de elaboracion de diagnostico">
+                                {% for paso in registro_diagnostico_flujo.steps %}
+                                    <article class="registro-diagnostico-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}">
+                                        <span class="registro-diagnostico-step__tag">Paso {{ paso.step_index }}</span>
+                                        <strong>{{ paso.titulo }}</strong>
+                                        <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                    </article>
+                                {% endfor %}
+                            </div>
+
+                            <div class="registro-diagnostico-panels">
+                                {% for paso in registro_diagnostico_flujo.steps %}
+                                    <section class="registro-block registro-block--diagnostico" id="registro-{{ paso.slug }}">
+                                        <header class="registro-block__header registro-block__header--split">
+                                            <div>
+                                                <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                            </div>
+                                            <div class="registro-block__meta">
+                                                {% if paso.is_complete %}
+                                                    <span class="registro-status registro-status--complete">Completo</span>
+                                                {% elif paso.is_started %}
+                                                    <span class="registro-status registro-status--current">En progreso</span>
+                                                {% else %}
+                                                    <span class="registro-status">Pendiente</span>
+                                                {% endif %}
+                                                <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                            </div>
+                                        </header>
+
+                                        {% if paso.slug == 'diagnostico-paso-1' %}
+                                            <div class="registro-diagnostico-meta">
+                                                <article class="registro-diagnostico-meta__card">
+                                                    <span>Nombre de la capacitacion</span>
+                                                    <strong>{{ registro_diagnostico_flujo.cap_nombre|default:'(autogenerado desde fase preliminar)' }}</strong>
+                                                </article>
+                                                <article class="registro-diagnostico-meta__card">
+                                                    <span>Codigo interno</span>
+                                                    <strong>{{ registro_diagnostico_flujo.cap_codigo|default:'(se completara en la ficha tecnica)' }}</strong>
+                                                </article>
+                                                <article class="registro-diagnostico-meta__card">
+                                                    <span>Año de intervencion</span>
+                                                    <strong>{{ registro_diagnostico_flujo.cap_anio|default:'-' }}</strong>
+                                                </article>
+                                            </div>
+                                        {% endif %}
+
+                                        <div class="registro-grid{% if paso.slug == 'diagnostico-paso-3' or paso.slug == 'diagnostico-paso-5' %} registro-grid--diagnostico-wide{% elif paso.slug == 'diagnostico-paso-4' %} registro-grid--diagnostico-compact{% endif %}">
+                                            {% for campo in paso.campos %}
+                                                {% include "core/_registro_field.html" with field=campo %}
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endif %}
+
                     <section class="registro-sections-shell">
                         <header class="registro-sections-shell__header">
                             <div>
