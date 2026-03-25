@@ -19,21 +19,43 @@ class LegacyDatabaseError(Exception):
     """Error personalizado cuando la base legacy no esta disponible."""
 
 
-def get_connection() -> pymysql.connections.Connection:
-    """Crea y retorna una conexion MySQL usando settings.LEGACY_DB."""
-    # Lee host/user/password/database/port desde settings del proyecto.
-    db_config = settings.LEGACY_DB
-    # Abre conexion configurada en UTF-8 y con filas en formato diccionario.
+def has_database_config(db_config: dict[str, Any] | None) -> bool:
+    """Indica si una configuracion MySQL tiene lo minimo para abrir conexion."""
+    db_config = db_config or {}
+    return all(
+        str(db_config.get(key, "") or "").strip()
+        for key in ("host", "user", "database")
+    )
+
+
+def get_connection_from_config(db_config: dict[str, Any]) -> pymysql.connections.Connection:
+    """Crea una conexion MySQL a partir de una configuracion explicita."""
     return pymysql.connect(
         host=db_config["host"],
         user=db_config["user"],
         password=db_config["password"],
         database=db_config["database"],
         port=int(db_config["port"]),
-        autocommit=True,  # No requiere commit explicito para lecturas.
-        charset="utf8mb4",  # Soporta Unicode completo desde MySQL.
-        cursorclass=pymysql.cursors.DictCursor,  # Devuelve filas como diccionarios.
+        autocommit=True,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
     )
+
+
+def get_connection() -> pymysql.connections.Connection:
+    """Crea y retorna una conexion MySQL usando settings.LEGACY_DB."""
+    # Lee host/user/password/database/port desde settings del proyecto.
+    db_config = settings.LEGACY_DB
+    # Abre conexion configurada en UTF-8 y con filas en formato diccionario.
+    return get_connection_from_config(db_config)
+
+
+def get_shared_connection() -> pymysql.connections.Connection:
+    """Abre la conexion MySQL compartida usada por integraciones globales."""
+    shared_config = getattr(settings, "SHARED_MYSQL", None)
+    if not has_database_config(shared_config):
+        raise LegacyDatabaseError("Shared MySQL database unavailable.")
+    return get_connection_from_config(shared_config)
 
 
 def fetch_usernames(limit: int = 500) -> list[str]:

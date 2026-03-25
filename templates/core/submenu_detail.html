@@ -252,7 +252,7 @@
 
                             <div class="registro-sustento-actions">
                                 {% if registro_matriz_flujo %}
-                                    <article class="registro-sustento-card{% if not registro_matriz_flujo.is_enabled %} is-disabled{% endif %}" data-sustento-card="matriz">
+                                    <article class="registro-sustento-card{% if not registro_matriz_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="matriz" aria-hidden="{% if registro_matriz_flujo.is_enabled %}false{% else %}true{% endif %}">
                                         <p class="registro-block__eyebrow">Ruta 1</p>
                                         <h4>Matriz de sustento</h4>
                                         <p>Abre un modal de 3 pasos para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
@@ -263,7 +263,7 @@
                                     </article>
                                 {% endif %}
                                 {% if registro_diagnostico_flujo %}
-                                    <article class="registro-sustento-card{% if not registro_diagnostico_flujo.is_enabled %} is-disabled{% endif %}" data-sustento-card="diagnostico">
+                                    <article class="registro-sustento-card{% if not registro_diagnostico_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="diagnostico" aria-hidden="{% if registro_diagnostico_flujo.is_enabled %}false{% else %}true{% endif %}">
                                         <p class="registro-block__eyebrow">Ruta 2</p>
                                         <h4>Diagnostico</h4>
                                         <p>Abre un modal técnico para configurar instrumentos, salidas operativas y el informe de diagnostico.</p>
@@ -348,7 +348,7 @@
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
                                                                     <h4>Descripcion del(de los) problema(s)</h4>
-                                                                    <p>Cada problema se registra por separado para reutilizarlo en indicadores y proyecciones.</p>
+                                                                    <p>Cada problema se registra por separado con prioridad, desempenos relacionados y su justificacion.</p>
                                                                 </div>
                                                                 <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema</button>
                                                             </div>
@@ -361,8 +361,16 @@
                                                                             <textarea rows="3" data-field="problema" placeholder="Describe el problema de gestion o desempeno"></textarea>
                                                                         </label>
                                                                         <label>
-                                                                            <span>Fuente</span>
-                                                                            <input type="text" data-field="fuente" placeholder="Norma, reporte, monitoreo, supervision...">
+                                                                            <span>Prioridad</span>
+                                                                            <input type="number" min="1" step="1" data-field="prioridad" placeholder="1, 2, 3...">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Desempeños relacionados con el problema</span>
+                                                                            <textarea rows="3" data-field="desempenios_relacionados" placeholder="Desempeños, conductas o capacidades afectadas"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Justificación de la prioridad</span>
+                                                                            <textarea rows="3" data-field="justificacion_prioridad" placeholder="Explica por qué este problema debe atenderse primero"></textarea>
                                                                         </label>
                                                                     </div>
                                                                     <div class="diagnostico-item-card__actions">
@@ -689,10 +697,10 @@
                                         {% endif %}
 
                                         {% if paso.blocks %}
-                                            <div class="registro-expediente-blocks">
+                                            <div class="registro-expediente-modules">
                                                 {% for bloque in paso.blocks %}
-                                                    <section class="registro-expediente-subblock" id="registro-{{ bloque.slug }}">
-                                                        <header class="registro-expediente-subblock__header">
+                                                    <article class="registro-expediente-module-card" id="registro-{{ bloque.slug }}">
+                                                        <div class="registro-expediente-module-card__head">
                                                             <div>
                                                                 <h4>{{ bloque.titulo }}</h4>
                                                                 <p>{{ bloque.descripcion }}</p>
@@ -707,16 +715,77 @@
                                                                 {% endif %}
                                                                 <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
                                                             </div>
+                                                        </div>
+                                                        <button type="button" class="btn-primary-soft" data-open-expediente-modal="{{ bloque.modal_id }}">Abrir módulo</button>
+                                                    </article>
+                                                {% endfor %}
+                                            </div>
+
+                                            {% for bloque in paso.blocks %}
+                                                <dialog id="{{ bloque.modal_id }}" class="actividad-modal expediente-modal" data-expediente-modal="{{ bloque.modal_id }}">
+                                                    <div class="actividad-modal__panel expediente-modal__panel">
+                                                        <header class="actividad-modal__header expediente-modal__header">
+                                                            <div>
+                                                                <p class="registro-block__eyebrow">{{ paso.titulo }}</p>
+                                                                <h3>{{ bloque.titulo }}</h3>
+                                                                <p class="module-panel__note">{{ bloque.descripcion }}</p>
+                                                            </div>
+                                                            <button type="button" class="actividad-modal__close" data-close-expediente-modal="{{ bloque.modal_id }}" aria-label="Cerrar">x</button>
                                                         </header>
 
-                                                        <div class="registro-grid">
+                                                        {% if bloque.special_layout == 'problem_prioritization' %}
                                                             {% for campo in bloque.campos %}
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endfor %}
-                                                        </div>
-                                                    </section>
-                                                {% endfor %}
-                                            </div>
+                                                            <div class="registro-problema-priorizado-note">
+                                                                <strong>Ordena primero el problema principal.</strong>
+                                                                <p>La prioridad 1 será la referencia para la matriz instruccional y los módulos posteriores.</p>
+                                                            </div>
+                                                            <div class="diagnostico-builder" data-diagnostico-builder="prioritized-problems" data-target-field="diag_problemas_json">
+                                                                <div class="diagnostico-builder__head">
+                                                                    <div>
+                                                                        <h4>Problemas priorizados</h4>
+                                                                        <p>Registra cada problema con su prioridad, los desempeños vinculados y la justificación técnica.</p>
+                                                                    </div>
+                                                                    <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema</button>
+                                                                </div>
+                                                                <div class="diagnostico-builder__list" data-builder-list></div>
+                                                                <template data-builder-template>
+                                                                    <article class="diagnostico-item-card">
+                                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--problems-priority">
+                                                                            <label>
+                                                                                <span>Problema identificado</span>
+                                                                                <textarea rows="3" data-field="problema" placeholder="Describe el problema priorizado"></textarea>
+                                                                            </label>
+                                                                            <label>
+                                                                                <span>Prioridad</span>
+                                                                                <input type="number" min="1" step="1" data-field="prioridad" placeholder="1, 2, 3...">
+                                                                            </label>
+                                                                            <label>
+                                                                                <span>Desempeños relacionados con el problema</span>
+                                                                                <textarea rows="3" data-field="desempenios_relacionados" placeholder="Capacidades o desempeños afectados"></textarea>
+                                                                            </label>
+                                                                            <label>
+                                                                                <span>Justificación de la prioridad</span>
+                                                                                <textarea rows="3" data-field="justificacion_prioridad" placeholder="Fundamenta la prioridad asignada"></textarea>
+                                                                            </label>
+                                                                        </div>
+                                                                        <div class="diagnostico-item-card__actions">
+                                                                            <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                        </div>
+                                                                    </article>
+                                                                </template>
+                                                            </div>
+                                                        {% else %}
+                                                            <div class="registro-grid">
+                                                                {% for campo in bloque.campos %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </dialog>
+                                            {% endfor %}
                                         {% endif %}
 
                                         {% if paso.checks %}
@@ -2072,6 +2141,52 @@
                 });
             };
 
+            var closeDialogModal = function (modal) {
+                if (!modal) {
+                    return;
+                }
+                modal.classList.remove("is-fallback-open");
+                if (typeof modal.close === "function" && modal.open) {
+                    modal.close();
+                    return;
+                }
+                modal.removeAttribute("open");
+            };
+
+            var openDialogModal = function (modal) {
+                if (!modal) {
+                    return;
+                }
+
+                try {
+                    if (typeof modal.showModal === "function") {
+                        if (!modal.open) {
+                            modal.showModal();
+                        }
+                        return;
+                    }
+                } catch (error) {
+                }
+
+                modal.setAttribute("open", "open");
+                modal.classList.add("is-fallback-open");
+            };
+
+            var closeSustentoModal = function (modal) {
+                closeDialogModal(modal);
+            };
+
+            var openSustentoModal = function (flowName) {
+                var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                if (!modal) {
+                    return;
+                }
+
+                setFlowStep(flowName, flowState[flowName] || 1);
+
+                openDialogModal(modal);
+            };
+
             var setExpedienteStep = function (stepIndex) {
                 if (!expedienteFlow) {
                     return;
@@ -2111,7 +2226,9 @@
                     var card = sustentoHub.querySelector("[data-sustento-card='" + flowName + "']");
                     var openButton = sustentoHub.querySelector("[data-open-sustento-modal='" + flowName + "']");
                     if (card) {
+                        card.classList.toggle("is-hidden", !enabled);
                         card.classList.toggle("is-disabled", !enabled);
+                        card.setAttribute("aria-hidden", enabled ? "false" : "true");
                     }
                     if (openButton) {
                         openButton.disabled = !enabled;
@@ -2119,7 +2236,7 @@
                     if (!enabled) {
                         var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
                         if (modal && modal.open) {
-                            modal.close();
+                            closeSustentoModal(modal);
                         }
                     }
                 });
@@ -2208,16 +2325,10 @@
             form.querySelectorAll("[data-open-sustento-modal]").forEach(function (button) {
                 button.addEventListener("click", function () {
                     var flowName = String(button.getAttribute("data-open-sustento-modal") || "");
-                    var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
-                    if (!modal || button.disabled) {
+                    if (button.disabled) {
                         return;
                     }
-                    if (typeof modal.showModal === "function") {
-                        modal.showModal();
-                    } else {
-                        modal.setAttribute("open", "open");
-                    }
-                    setFlowStep(flowName, flowState[flowName] || 1);
+                    openSustentoModal(flowName);
                 });
             });
 
@@ -2225,25 +2336,18 @@
                 button.addEventListener("click", function () {
                     var flowName = String(button.getAttribute("data-close-sustento-modal") || "");
                     var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
-                    if (!modal) {
-                        return;
-                    }
-                    if (typeof modal.close === "function") {
-                        modal.close();
-                    } else {
-                        modal.removeAttribute("open");
-                    }
+                    closeSustentoModal(modal);
                 });
             });
 
             form.querySelectorAll("[data-sustento-modal]").forEach(function (modal) {
                 modal.addEventListener("cancel", function (event) {
                     event.preventDefault();
-                    modal.close();
+                    closeSustentoModal(modal);
                 });
                 modal.addEventListener("click", function (event) {
                     if (event.target === modal) {
-                        modal.close();
+                        closeSustentoModal(modal);
                     }
                 });
             });
@@ -2261,8 +2365,8 @@
                     var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
                     var panels = modal ? modal.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']") : [];
                     if ((flowState[flowName] || 1) >= panels.length) {
-                        if (modal && typeof modal.close === "function") {
-                            modal.close();
+                        if (modal) {
+                            closeSustentoModal(modal);
                         }
                         if (expedienteFlow) {
                             setExpedienteStep(1);
@@ -2282,6 +2386,34 @@
             });
 
             if (expedienteFlow) {
+                expedienteFlow.querySelectorAll("[data-open-expediente-modal]").forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        var modalId = String(button.getAttribute("data-open-expediente-modal") || "");
+                        var modal = expedienteFlow.querySelector("[data-expediente-modal='" + modalId + "']");
+                        openDialogModal(modal);
+                    });
+                });
+
+                expedienteFlow.querySelectorAll("[data-close-expediente-modal]").forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        var modalId = String(button.getAttribute("data-close-expediente-modal") || "");
+                        var modal = expedienteFlow.querySelector("[data-expediente-modal='" + modalId + "']");
+                        closeDialogModal(modal);
+                    });
+                });
+
+                expedienteFlow.querySelectorAll("[data-expediente-modal]").forEach(function (modal) {
+                    modal.addEventListener("cancel", function (event) {
+                        event.preventDefault();
+                        closeDialogModal(modal);
+                    });
+                    modal.addEventListener("click", function (event) {
+                        if (event.target === modal) {
+                            closeDialogModal(modal);
+                        }
+                    });
+                });
+
                 expedienteFlow.querySelectorAll("[data-expediente-prev]").forEach(function (button) {
                     button.addEventListener("click", function () {
                         setExpedienteStep(expedienteStep - 1);

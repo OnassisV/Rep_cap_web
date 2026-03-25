@@ -1704,6 +1704,10 @@ h1 {
     display: none;
 }
 
+.is-hidden {
+    display: none !important;
+}
+
 /* Tarjeta para decisiones Si/No en la columna lateral. */
 .decision-card {
     border: 1px solid #d8ddf1;
@@ -1834,7 +1838,7 @@ h1 {
 
 .registro-expediente-roadmap {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.58rem;
 }
 
@@ -1914,6 +1918,72 @@ h1 {
 .registro-expediente-blocks {
     display: grid;
     gap: 0.74rem;
+}
+
+.registro-expediente-modules {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.74rem;
+}
+
+.registro-expediente-module-card {
+    display: grid;
+    gap: 0.72rem;
+    padding: 0.92rem;
+    border: 1px solid #d7e3f0;
+    border-radius: 0.96rem;
+    background: linear-gradient(155deg, #ffffff 0%, #f5faff 100%);
+    box-shadow: 0 18px 30px -24px rgba(12, 52, 95, 0.22);
+}
+
+.registro-expediente-module-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.82rem;
+    align-items: flex-start;
+}
+
+.registro-expediente-module-card__head h4,
+.registro-problema-priorizado-note p,
+.registro-problema-priorizado-note strong {
+    margin: 0;
+}
+
+.registro-expediente-module-card__head h4 {
+    color: #1f4665;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+.registro-expediente-module-card__head p {
+    margin: 0.18rem 0 0;
+    color: #60798f;
+}
+
+.expediente-modal {
+    width: min(1080px, calc(100vw - 2rem));
+}
+
+.expediente-modal__panel {
+    padding: 1rem;
+}
+
+.expediente-modal__header {
+    align-items: flex-start;
+}
+
+.registro-problema-priorizado-note {
+    display: grid;
+    gap: 0.24rem;
+    margin-bottom: 0.82rem;
+    padding: 0.9rem 1rem;
+    border: 1px dashed #cfe0f0;
+    border-radius: 0.92rem;
+    background: linear-gradient(135deg, #fbfdfc 0%, #eef7f3 100%);
+    color: #3f5b57;
+}
+
+.diagnostico-item-card__grid--problems-priority {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .registro-expediente-subblock__header {
@@ -2227,6 +2297,10 @@ h1 {
     width: min(1240px, calc(100vw - 2rem));
 }
 
+.sustento-modal.is-fallback-open .sustento-modal__panel {
+    width: min(1240px, calc(100vw - 2rem));
+}
+
 .sustento-modal__panel {
     padding: 1rem;
 }
@@ -2362,6 +2436,24 @@ h1 {
     border: none;
     padding: 0;
     background: transparent;
+    width: min(880px, calc(100vw - 2rem));
+}
+
+.actividad-modal.is-fallback-open {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    padding: 1rem;
+    background: rgba(7, 28, 51, 0.45);
+    z-index: 1200;
+}
+
+.actividad-modal.is-fallback-open .actividad-modal__panel {
     width: min(880px, calc(100vw - 2rem));
 }
 
@@ -3289,7 +3381,8 @@ h1 {
 
     .registro-expediente-roadmap,
     .registro-expediente-summary,
-    .registro-implementacion-checks {
+    .registro-implementacion-checks,
+    .registro-expediente-modules {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -3305,7 +3398,8 @@ h1 {
 
     .registro-diagnostico-nav,
     .registro-expediente-nav,
-    .diagnostico-builder__head {
+    .diagnostico-builder__head,
+    .registro-expediente-module-card__head {
         flex-direction: column;
         align-items: stretch;
     }
@@ -3361,11 +3455,16 @@ h1 {
     .registro-solicitud__decision-list,
     .registro-expediente-roadmap,
     .registro-expediente-summary,
-    .registro-implementacion-checks {
+    .registro-implementacion-checks,
+    .registro-expediente-modules {
         grid-template-columns: 1fr;
     }
 
     .registro-grid--diagnostico-wide {
+        grid-template-columns: 1fr;
+    }
+
+    .diagnostico-item-card__grid--problems-priority {
         grid-template-columns: 1fr;
     }
 

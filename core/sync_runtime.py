@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 
-from accounts.db import get_connection
+from accounts.db import LegacyDatabaseError, get_shared_connection, has_database_config
 
 
 logger = logging.getLogger(__name__)
@@ -114,13 +114,18 @@ def _read_sync_runtime_row() -> dict[str, Any] | None:
         WHERE sync_key = %s
         LIMIT 1
     """
+    if not has_database_config(getattr(settings, "SHARED_MYSQL", None)):
+        return None
+
     try:
-        with get_connection() as connection:
+        with get_shared_connection() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(query, (settings.SYNC_STATUS_KEY,))
                 return cursor.fetchone()
-    except Exception:
-        logger.exception("Could not read sync runtime status from shared database.")
+    except LegacyDatabaseError:
+        return None
+    except Exception as error:
+        logger.warning("Sync runtime status unavailable from shared database: %s", error)
         return None
 
 
