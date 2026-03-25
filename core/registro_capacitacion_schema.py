@@ -141,10 +141,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "titulo": "Paso 2. Generar matriz de evaluacion",
         "descripcion": "Define la dimension, subdimension e indicadores base de la matriz de evaluacion.",
         "campos": [
-            _campo("diag_dimension_1", "Descripcion de la dimension 1", "text_short"),
-            _campo("diag_dimension_1_desc", "Detalle de la dimension 1", "text_long"),
-            _campo("diag_subdimension_1", "Descripcion de la subdimension 1", "text_short"),
-            _campo("diag_subdimension_1_desc", "Detalle de la subdimension 1", "text_long"),
+            _campo("diag_matriz_json", "Matriz de evaluacion", "hidden_json"),
         ],
     },
     {
@@ -152,11 +149,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "titulo": "Paso 3. Elaborar instrumento(s) de evaluacion",
         "descripcion": "Configura perfil, indicador, items e instrucciones del instrumento de diagnostico.",
         "campos": [
-            _campo("diag_perfil_encuesta", "Perfil al que se aplicara la encuesta", "text_short"),
-            _campo("diag_dimension_instr", "Dimension asociada al instrumento", "text_short"),
-            _campo("diag_subdimension_instr", "Subdimension asociada al instrumento", "text_short"),
-            _campo("diag_indicador_1", "Descripcion del indicador de desempeno 1", "text_long"),
-            _campo("diag_item_1", "Descripcion del item 1", "text_long"),
+            _campo("diag_instrumento_json", "Configuracion estructural del instrumento", "hidden_json"),
             _campo("diag_instr_instrucciones", "Detalle de instrucciones para el instrumento", "text_long"),
             _campo("diag_instr_presentacion", "Presentacion", "text_short"),
             _campo("diag_instr_periodo", "Periodo de aplicacion", "text_short"),
@@ -175,6 +168,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "titulo": "Paso 4. Generar instrumento(s) de evaluacion",
         "descripcion": "Deja preparado el perfil final y la salida operativa para generar el instrumento.",
         "campos": [
+            _campo("diag_generacion_json", "Configuracion de generacion del instrumento", "hidden_json"),
             _campo("diag_instr_perfil_final", "Perfil final para generar instrumento", "text_short"),
             _campo("diag_instr_previsualizacion", "Resumen o previsualizacion del instrumento", "text_long"),
             _campo("diag_instr_link_kr20", "Observacion sobre KR-20 o validacion tecnica", "text_long"),
@@ -185,6 +179,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "titulo": "Paso 5. Resultados e informe",
         "descripcion": "Procesa resultados por dimension/subdimension y deja listo el informe del diagnostico.",
         "campos": [
+            _campo("diag_resultados_json", "Procesamiento consolidado de resultados", "hidden_json"),
             _campo("diag_result_proc_dimension", "Procesamiento de datos por dimension", "text_long"),
             _campo("diag_result_proc_subdimension", "Procesamiento de datos por subdimension", "text_long"),
             _campo("diag_result_analisis", "Analisis e interpretacion de resultados", "text_long"),

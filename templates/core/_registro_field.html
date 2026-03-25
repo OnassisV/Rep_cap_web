@@ -2,7 +2,9 @@
 Parcial reutilizable para renderizar campos del registro de capacitaciones.
 Admite variantes especiales para origen institucional y decisiones binarias.
 {% endcomment %}
-{% if field.is_decision %}
+{% if field.tipo == "hidden_json" %}
+    <input type="hidden" name="{{ field.codigo }}" value="{{ field.valor|default:'' }}" data-json-field="{{ field.codigo }}">
+{% elif field.is_decision %}
     <article class="decision-card{% if field.valor %} is-answered{% endif %}{% if solicitud_mode %} decision-card--question{% endif %}"{% if solicitud_mode %} data-question-item{% endif %}>
         <div class="decision-card__head">
             <div class="registro-question-title">

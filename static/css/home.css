@@ -1876,6 +1876,30 @@ h1 {
     font-size: 0.74rem;
 }
 
+.registro-diagnostico-shell.is-disabled {
+    opacity: 1;
+}
+
+.registro-diagnostico-banner {
+    display: grid;
+    gap: 0.28rem;
+    margin-bottom: 0.82rem;
+    padding: 0.9rem 1rem;
+    border: 1px dashed #c9d9eb;
+    border-radius: 0.92rem;
+    background: linear-gradient(135deg, #f7fbff 0%, #eef5fb 100%);
+    color: #36536c;
+}
+
+.registro-diagnostico-banner strong,
+.diagnostico-builder__head h4 {
+    font-family: "Space Grotesk", sans-serif;
+}
+
+.registro-diagnostico-step {
+    cursor: pointer;
+}
+
 .registro-diagnostico-panels {
     display: grid;
     gap: 0.82rem;
@@ -1919,6 +1943,92 @@ h1 {
 
 .registro-grid--diagnostico-compact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.diagnostico-builder {
+    display: grid;
+    gap: 0.72rem;
+    margin-bottom: 0.78rem;
+    padding: 0.9rem;
+    border: 1px solid #d7e3f0;
+    border-radius: 0.96rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.diagnostico-builder__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.diagnostico-builder__head h4,
+.diagnostico-builder__head p {
+    margin: 0;
+}
+
+.diagnostico-builder__head p {
+    color: #617a90;
+    font-size: 0.82rem;
+}
+
+.diagnostico-builder__list {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.diagnostico-item-card {
+    display: grid;
+    gap: 0.7rem;
+    padding: 0.84rem;
+    border: 1px solid #d8e4f1;
+    border-radius: 0.86rem;
+    background: #fff;
+}
+
+.diagnostico-item-card__grid {
+    display: grid;
+    gap: 0.62rem;
+}
+
+.diagnostico-item-card__grid label {
+    display: grid;
+    gap: 0.28rem;
+}
+
+.diagnostico-item-card__grid label span {
+    color: #45627b;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.diagnostico-item-card__grid--matrix,
+.diagnostico-item-card__grid--instrument,
+.diagnostico-item-card__grid--results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.diagnostico-item-card__grid--generation {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.diagnostico-item-card__grid textarea,
+.diagnostico-item-card__grid input {
+    width: 100%;
+}
+
+.diagnostico-item-card__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.registro-diagnostico-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.72rem;
+    margin-top: 0.82rem;
+    flex-wrap: wrap;
 }
 
 /* Metadatos de estado mostrados al costado del titulo de cada bloque. */
@@ -2963,6 +3073,19 @@ h1 {
     .registro-diagnostico-meta,
     .registro-grid--diagnostico-compact {
         grid-template-columns: 1fr;
+    }
+
+    .diagnostico-item-card__grid--matrix,
+    .diagnostico-item-card__grid--instrument,
+    .diagnostico-item-card__grid--results,
+    .diagnostico-item-card__grid--generation {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-diagnostico-nav,
+    .diagnostico-builder__head {
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .registro-solicitud__decision-list {

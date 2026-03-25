@@ -377,19 +377,34 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
     }
 
 
-def _construir_timeline_registro(secciones_render: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _diagnostico_habilitado(valores_form: dict[str, str]) -> bool:
+    """Determina si el flujo de diagnostico debe activarse desde la fase preliminar."""
+    decision_diagnostico = str(valores_form.get("sol_tiene_diagnostico", "")).strip().lower()
+    decision_matriz = str(valores_form.get("sol_tiene_matriz", "")).strip().lower()
+    return decision_diagnostico in {"si", "sí"} or decision_matriz in {"si", "sí"}
+
+
+def _construir_timeline_registro(
+    secciones_render: list[dict[str, Any]],
+    valores_form: dict[str, str],
+) -> list[dict[str, Any]]:
     """Construye una linea de tiempo moderna a partir del avance de las secciones."""
     estado_por_slug = {str(item.get("slug", "")): item for item in secciones_render}
+    diagnostico_activo = _diagnostico_habilitado(valores_form)
     mapa_etapas = {
         "solicitud": ["solicitud-inicial"],
         "registro-base": ["identificacion-general"],
-        "sustento": [
-            "diagnostico-paso-1",
-            "diagnostico-paso-2",
-            "diagnostico-paso-3",
-            "diagnostico-paso-4",
-            "diagnostico-paso-5",
-        ],
+        "sustento": (
+            [
+                "diagnostico-paso-1",
+                "diagnostico-paso-2",
+                "diagnostico-paso-3",
+                "diagnostico-paso-4",
+                "diagnostico-paso-5",
+            ]
+            if diagnostico_activo
+            else []
+        ),
         "diseno": [
             "oferta-formativa",
             "poblacion-objetivo",
@@ -420,6 +435,7 @@ def _construir_timeline_registro(secciones_render: list[dict[str, Any]]) -> list
         total_required = sum(int(item.get("required_count", 0) or 0) for item in secciones_etapa)
         total_required_done = sum(int(item.get("required_done", 0) or 0) for item in secciones_etapa)
 
+        is_skipped = not bool(secciones_etapa)
         is_complete = bool(secciones_etapa) and all(bool(item.get("is_complete")) for item in secciones_etapa)
         is_started = total_filled > 0
 
@@ -432,10 +448,13 @@ def _construir_timeline_registro(secciones_render: list[dict[str, Any]]) -> list
                 "required_done": total_required_done,
                 "is_complete": is_complete,
                 "is_started": is_started,
+                "is_skipped": is_skipped,
             }
         )
 
     for index, etapa in enumerate(timeline):
+        if bool(etapa.get("is_skipped")):
+            continue
         if not bool(etapa.get("is_complete")):
             current_index = index
             break
@@ -452,6 +471,8 @@ def _construir_flujo_diagnostico(
     valores_form: dict[str, str],
 ) -> dict[str, Any] | None:
     """Construye la etapa guiada de elaboracion de diagnostico."""
+    diagnostico_activo = _diagnostico_habilitado(valores_form)
+
     pasos_orden = [
         "diagnostico-paso-1",
         "diagnostico-paso-2",
@@ -483,6 +504,7 @@ def _construir_flujo_diagnostico(
         "slug": "elaboracion-diagnostico",
         "titulo": "Elaboracion de diagnostico",
         "descripcion": "Etapa posterior a la fase preliminar para construir matriz, instrumentos, resultados e informe del diagnostico.",
+        "is_enabled": diagnostico_activo,
         "steps": pasos,
         "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
         "cap_codigo": str(valores_form.get("cap_codigo", "")).strip(),
@@ -1247,7 +1269,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         if str(campo.get("ui_zone", "main")) == "right"
                     ]
 
-            timeline_registro = _construir_timeline_registro(secciones_render)
+            timeline_registro = _construir_timeline_registro(secciones_render, valores_form)
             flujo_diagnostico = _construir_flujo_diagnostico(secciones_render, valores_form)
             solicitud_inicial = next(
                 (
