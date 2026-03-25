@@ -384,6 +384,54 @@ def _diagnostico_habilitado(valores_form: dict[str, str]) -> bool:
     return decision_diagnostico in {"si", "sí"} or decision_matriz in {"si", "sí"}
 
 
+def _matriz_habilitada(valores_form: dict[str, str]) -> bool:
+    """Indica si la matriz de sustento debe mostrarse como flujo disponible."""
+    return str(valores_form.get("sol_tiene_matriz", "")).strip().lower() in {"si", "sí"}
+
+
+def _detalle_diagnostico_habilitado(valores_form: dict[str, str]) -> bool:
+    """Indica si el modal específico de diagnostico debe habilitarse."""
+    return str(valores_form.get("sol_tiene_diagnostico", "")).strip().lower() in {"si", "sí"}
+
+
+def _filtrar_campos_registro(
+    campos: list[dict[str, Any]],
+    *,
+    include: set[str] | None = None,
+    exclude: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Devuelve una copia filtrada de campos del bloque de registro."""
+    include = include or set()
+    exclude = exclude or set()
+    campos_filtrados: list[dict[str, Any]] = []
+    for campo in campos:
+        codigo = str(campo.get("codigo", "")).strip()
+        if include and codigo not in include:
+            continue
+        if codigo in exclude:
+            continue
+        campos_filtrados.append({**campo})
+    return campos_filtrados
+
+
+def _construir_pasarela_sustento(
+    matriz_flujo: dict[str, Any] | None,
+    diagnostico_flujo: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Construye la etapa intermedia con dos accesos paralelos via modales."""
+    if not matriz_flujo and not diagnostico_flujo:
+        return None
+
+    return {
+        "slug": "etapa-sustento",
+        "titulo": "Sustento técnico previo",
+        "descripcion": "Despues de la fase preliminar puedes desarrollar la matriz de sustento y el diagnostico en paralelo, cada uno desde su propio modal guiado.",
+        "is_enabled": bool((matriz_flujo and matriz_flujo.get("is_enabled")) or (diagnostico_flujo and diagnostico_flujo.get("is_enabled"))),
+        "matriz": matriz_flujo,
+        "diagnostico": diagnostico_flujo,
+    }
+
+
 def _construir_timeline_registro(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
@@ -470,22 +518,56 @@ def _construir_flujo_diagnostico(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
 ) -> dict[str, Any] | None:
-    """Construye la etapa guiada de elaboracion de diagnostico."""
-    diagnostico_activo = _diagnostico_habilitado(valores_form)
+    """Construye el modal guiado especifico de diagnostico."""
+    diagnostico_activo = _detalle_diagnostico_habilitado(valores_form)
 
-    pasos_orden = [
-        "diagnostico-paso-1",
-        "diagnostico-paso-2",
-        "diagnostico-paso-3",
-        "diagnostico-paso-4",
-        "diagnostico-paso-5",
-    ]
-    pasos = [
-        item
-        for slug in pasos_orden
+    pasos_base = {
+        str(item.get("slug", "")).strip(): item
         for item in secciones_render
-        if str(item.get("slug", "")).strip() == slug
+    }
+    definiciones = [
+        {
+            "slug": "diagnostico-modal-paso-1",
+            "source_slug": "diagnostico-paso-3",
+            "titulo": "Paso 1. Elaborar instrumento(s) de evaluacion",
+            "descripcion": "Configura perfiles, indicadores, items e instrucciones del instrumento diagnostico.",
+        },
+        {
+            "slug": "diagnostico-modal-paso-2",
+            "source_slug": "diagnostico-paso-4",
+            "titulo": "Paso 2. Generar instrumento(s) de evaluacion",
+            "descripcion": "Deja preparada la salida operativa del instrumento para su uso.",
+        },
+        {
+            "slug": "diagnostico-modal-paso-3",
+            "source_slug": "diagnostico-paso-5",
+            "titulo": "Paso 3. Analisis e informe del diagnostico",
+            "descripcion": "Consolida analisis, evidencias, linea base y justificaciones finales.",
+            "exclude_fields": {"diag_resultados_json"},
+        },
     ]
+
+    pasos: list[dict[str, Any]] = []
+    for definicion in definiciones:
+        bloque_base = pasos_base.get(str(definicion.get("source_slug", "")))
+        if bloque_base is None:
+            continue
+        campos = _filtrar_campos_registro(
+            list(bloque_base.get("campos", [])),
+            exclude=set(definicion.get("exclude_fields", set())),
+        )
+        estado = _contar_estado_bloque_registro(campos)
+        pasos.append(
+            {
+                **bloque_base,
+                **estado,
+                "slug": definicion["slug"],
+                "titulo": definicion["titulo"],
+                "descripcion": definicion["descripcion"],
+                "campos": campos,
+            }
+        )
+
     if not pasos:
         return None
 
@@ -501,10 +583,89 @@ def _construir_flujo_diagnostico(
         paso["is_current_step"] = index == current_index
 
     return {
-        "slug": "elaboracion-diagnostico",
-        "titulo": "Elaboracion de diagnostico",
-        "descripcion": "Etapa posterior a la fase preliminar para construir matriz, instrumentos, resultados e informe del diagnostico.",
+        "slug": "diagnostico-modal",
+        "titulo": "Diagnostico",
+        "descripcion": "Modal guiado para desarrollar el diagnostico, sus instrumentos y el informe final.",
         "is_enabled": diagnostico_activo,
+        "steps": pasos,
+    }
+
+
+def _construir_flujo_matriz_sustento(
+    secciones_render: list[dict[str, Any]],
+    valores_form: dict[str, str],
+) -> dict[str, Any] | None:
+    """Construye el modal de matriz de sustento inspirado en el flujo de tres pasos."""
+    matriz_activa = _matriz_habilitada(valores_form)
+
+    pasos_base = {
+        str(item.get("slug", "")).strip(): item
+        for item in secciones_render
+    }
+    definiciones = [
+        {
+            "slug": "matriz-modal-paso-1",
+            "source_slug": "diagnostico-paso-1",
+            "titulo": "Paso 1. Registrar datos del proceso",
+            "descripcion": "Completa la base normativa, el contexto y el listado de problemas que alimentaran la matriz.",
+        },
+        {
+            "slug": "matriz-modal-paso-2",
+            "source_slug": "diagnostico-paso-2",
+            "titulo": "Paso 2. Registrar indicadores de gestion",
+            "descripcion": "Para cada problema registra indicadores y competencias vinculadas, siguiendo la secuencia de la matriz de sustento.",
+        },
+        {
+            "slug": "matriz-modal-paso-3",
+            "source_slug": "diagnostico-paso-5",
+            "titulo": "Paso 3. Registrar proyeccion de resultados",
+            "descripcion": "Formula expectativas de cambio y resultados esperados por cada problema priorizado.",
+            "include_fields": {"diag_resultados_json"},
+        },
+    ]
+
+    pasos: list[dict[str, Any]] = []
+    for definicion in definiciones:
+        bloque_base = pasos_base.get(str(definicion.get("source_slug", "")))
+        if bloque_base is None:
+            continue
+        campos = _filtrar_campos_registro(
+            list(bloque_base.get("campos", [])),
+            include=set(definicion.get("include_fields", set())),
+        )
+        if not definicion.get("include_fields"):
+            campos = _filtrar_campos_registro(list(bloque_base.get("campos", [])))
+        estado = _contar_estado_bloque_registro(campos)
+        pasos.append(
+            {
+                **bloque_base,
+                **estado,
+                "slug": definicion["slug"],
+                "titulo": definicion["titulo"],
+                "descripcion": definicion["descripcion"],
+                "campos": campos,
+            }
+        )
+
+    if not pasos:
+        return None
+
+    current_index = 0
+    for index, paso in enumerate(pasos):
+        if not bool(paso.get("is_complete")):
+            current_index = index
+            break
+        current_index = index
+
+    for index, paso in enumerate(pasos):
+        paso["step_index"] = index + 1
+        paso["is_current_step"] = index == current_index
+
+    return {
+        "slug": "matriz-sustento-modal",
+        "titulo": "Matriz de sustento",
+        "descripcion": "Modal guiado para documentar problemas, indicadores y proyeccion de resultados antes del diseno formativo.",
+        "is_enabled": matriz_activa,
         "steps": pasos,
         "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
         "cap_codigo": str(valores_form.get("cap_codigo", "")).strip(),
@@ -1270,7 +1431,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     ]
 
             timeline_registro = _construir_timeline_registro(secciones_render, valores_form)
+            flujo_matriz = _construir_flujo_matriz_sustento(secciones_render, valores_form)
             flujo_diagnostico = _construir_flujo_diagnostico(secciones_render, valores_form)
+            etapa_sustento = _construir_pasarela_sustento(flujo_matriz, flujo_diagnostico)
             solicitud_inicial = next(
                 (
                     item
@@ -1305,7 +1468,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_form_sections_restantes": secciones_posteriores,
                     "registro_timeline": timeline_registro,
                     "registro_solicitud": solicitud_inicial,
+                    "registro_matriz_flujo": flujo_matriz,
                     "registro_diagnostico_flujo": flujo_diagnostico,
+                    "registro_sustento_etapa": etapa_sustento,
                     "registro_iged_catalogo": catalogo_iged,
                     "registro_iged_regiones": regiones_iged,
                     "registro_origen_actual": origen_actual,

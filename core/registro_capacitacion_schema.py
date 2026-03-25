@@ -115,7 +115,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("diag_servicio_territorial", "Servicio o producto que contribuye con la gestion del servicio educativo en territorio", "text_long"),
             _campo("diag_dos_fuentes", "El diagnostico cuenta con 2 o mas fuentes de informacion", "list", False, ["Si", "No"]),
             _campo("diag_dre_modelo", "La DRE/UGEL esta de acuerdo con el modelo de capacitacion", "list", False, ["Si", "No"]),
-            _campo("diag_problema", "Problema o necesidad que atiende", "text_long"),
+            _campo("diag_problemas_json", "Problemas priorizados del proceso", "hidden_json"),
             _campo("diag_brecha", "Brecha de capacidades identificada", "text_long"),
             _campo(
                 "diag_fuente",

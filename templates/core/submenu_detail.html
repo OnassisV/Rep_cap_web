@@ -235,269 +235,402 @@
                         </section>
                     {% endif %}
 
-                    {% if registro_diagnostico_flujo %}
-                        <section class="registro-diagnostico-shell{% if not registro_diagnostico_flujo.is_enabled %} is-disabled{% endif %}" id="registro-{{ registro_diagnostico_flujo.slug }}" data-diagnostico-shell aria-hidden="false">
+                    {% if registro_sustento_etapa %}
+                        <section class="registro-sustento-hub" id="registro-{{ registro_sustento_etapa.slug }}" data-sustento-hub>
                             <header class="registro-sections-shell__header registro-sections-shell__header--diagnostico">
                                 <div>
                                     <p class="registro-block__eyebrow">Etapa intermedia</p>
-                                    <h3 class="subsection-title">{{ registro_diagnostico_flujo.titulo }}</h3>
+                                    <h3 class="subsection-title">{{ registro_sustento_etapa.titulo }}</h3>
                                 </div>
-                                <p class="module-panel__note">
-                                    {{ registro_diagnostico_flujo.descripcion }}
-                                </p>
+                                <p class="module-panel__note">{{ registro_sustento_etapa.descripcion }}</p>
                             </header>
 
-                            <div class="registro-diagnostico-banner{% if registro_diagnostico_flujo.is_enabled %} is-hidden{% endif %}" data-diagnostico-banner>
-                                <strong>Esta etapa se activa cuando indicas que la solicitud requiere matriz o diagnostico previo.</strong>
-                                <p>Marca "Si" en una de esas decisiones de la fase preliminar para habilitar el flujo guiado.</p>
+                            <div class="registro-diagnostico-banner{% if registro_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>
+                                <strong>Activa al menos una decision de sustento en la fase preliminar.</strong>
+                                <p>Cuando marques matriz de sustento o diagnostico, se habilitara el acceso directo a su modal correspondiente.</p>
                             </div>
 
-                            <div class="registro-diagnostico-roadmap" aria-label="Pasos de elaboracion de diagnostico">
-                                {% for paso in registro_diagnostico_flujo.steps %}
-                                    <article class="registro-diagnostico-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-diagnostico-step-tag data-step-index="{{ paso.step_index }}">
-                                        <span class="registro-diagnostico-step__tag">Paso {{ paso.step_index }}</span>
-                                        <strong>{{ paso.titulo }}</strong>
-                                        <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                            <div class="registro-sustento-actions">
+                                {% if registro_matriz_flujo %}
+                                    <article class="registro-sustento-card{% if not registro_matriz_flujo.is_enabled %} is-disabled{% endif %}" data-sustento-card="matriz">
+                                        <p class="registro-block__eyebrow">Ruta 1</p>
+                                        <h4>Matriz de sustento</h4>
+                                        <p>Abre un modal de 3 pasos para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
+                                        <div class="registro-sustento-card__meta">
+                                            <small>{{ registro_matriz_flujo.steps|length }} pasos guiados</small>
+                                            <button type="button" class="btn-primary-soft" data-open-sustento-modal="matriz" {% if not registro_matriz_flujo.is_enabled %}disabled{% endif %}>Abrir matriz</button>
+                                        </div>
                                     </article>
-                                {% endfor %}
+                                {% endif %}
+                                {% if registro_diagnostico_flujo %}
+                                    <article class="registro-sustento-card{% if not registro_diagnostico_flujo.is_enabled %} is-disabled{% endif %}" data-sustento-card="diagnostico">
+                                        <p class="registro-block__eyebrow">Ruta 2</p>
+                                        <h4>Diagnostico</h4>
+                                        <p>Abre un modal técnico para configurar instrumentos, salidas operativas y el informe de diagnostico.</p>
+                                        <div class="registro-sustento-card__meta">
+                                            <small>{{ registro_diagnostico_flujo.steps|length }} pasos guiados</small>
+                                            <button type="button" class="btn-primary-soft" data-open-sustento-modal="diagnostico" {% if not registro_diagnostico_flujo.is_enabled %}disabled{% endif %}>Abrir diagnostico</button>
+                                        </div>
+                                    </article>
+                                {% endif %}
                             </div>
 
-                            <div class="registro-diagnostico-panels">
-                                {% for paso in registro_diagnostico_flujo.steps %}
-                                    <section class="registro-block registro-block--diagnostico{% if not paso.is_current_step %} is-hidden{% endif %}" id="registro-{{ paso.slug }}" data-diagnostico-panel data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
-                                        <header class="registro-block__header registro-block__header--split">
+                            {% if registro_matriz_flujo %}
+                                <dialog id="sustento-matriz-modal" class="actividad-modal sustento-modal" data-sustento-modal="matriz">
+                                    <div class="actividad-modal__panel sustento-modal__panel">
+                                        <header class="actividad-modal__header sustento-modal__header">
                                             <div>
-                                                <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
-                                                <h3 class="subsection-title">{{ paso.titulo }}</h3>
-                                                <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                                <p class="registro-block__eyebrow">Matriz de sustento</p>
+                                                <h3>{{ registro_matriz_flujo.titulo }}</h3>
+                                                <p class="module-panel__note">{{ registro_matriz_flujo.descripcion }}</p>
                                             </div>
-                                            <div class="registro-block__meta">
-                                                {% if paso.is_complete %}
-                                                    <span class="registro-status registro-status--complete">Completo</span>
-                                                {% elif paso.is_started %}
-                                                    <span class="registro-status registro-status--current">En progreso</span>
-                                                {% else %}
-                                                    <span class="registro-status">Pendiente</span>
-                                                {% endif %}
-                                                <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
-                                            </div>
+                                            <button type="button" class="actividad-modal__close" data-close-sustento-modal="matriz" aria-label="Cerrar">x</button>
                                         </header>
 
-                                        {% if paso.slug == 'diagnostico-paso-1' %}
-                                            <div class="registro-diagnostico-meta">
-                                                <article class="registro-diagnostico-meta__card">
-                                                    <span>Nombre de la capacitacion</span>
-                                                    <strong>{{ registro_diagnostico_flujo.cap_nombre|default:'(autogenerado desde fase preliminar)' }}</strong>
+                                        <div class="registro-diagnostico-roadmap" aria-label="Pasos de matriz de sustento" data-sustento-flow="matriz">
+                                            {% for paso in registro_matriz_flujo.steps %}
+                                                <article class="registro-diagnostico-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-sustento-step-tag data-flow="matriz" data-step-index="{{ paso.step_index }}">
+                                                    <span class="registro-diagnostico-step__tag">Paso {{ paso.step_index }}</span>
+                                                    <strong>{{ paso.titulo }}</strong>
+                                                    <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
                                                 </article>
-                                                <article class="registro-diagnostico-meta__card">
-                                                    <span>Codigo interno</span>
-                                                    <strong>{{ registro_diagnostico_flujo.cap_codigo|default:'(se completara en la ficha tecnica)' }}</strong>
-                                                </article>
-                                                <article class="registro-diagnostico-meta__card">
-                                                    <span>Año de intervencion</span>
-                                                    <strong>{{ registro_diagnostico_flujo.cap_anio|default:'-' }}</strong>
-                                                </article>
-                                            </div>
-                                        {% endif %}
-
-                                        {% if paso.slug == 'diagnostico-paso-2' %}
-                                            {% for campo in paso.campos %}
-                                                {% include "core/_registro_field.html" with field=campo %}
                                             {% endfor %}
-                                            <div class="diagnostico-builder" data-diagnostico-builder="matrix" data-target-field="diag_matriz_json">
-                                                <div class="diagnostico-builder__head">
-                                                    <div>
-                                                        <h4>Matriz de evaluacion</h4>
-                                                        <p>Registra dimensiones con sus subdimensiones para construir la matriz base.</p>
-                                                    </div>
-                                                    <button type="button" class="btn-secondary-soft" data-builder-add>Agregar dimension</button>
-                                                </div>
-                                                <div class="diagnostico-builder__list" data-builder-list></div>
-                                                <template data-builder-template>
-                                                    <article class="diagnostico-item-card">
-                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix">
-                                                            <label>
-                                                                <span>Dimension</span>
-                                                                <input type="text" data-field="dimension" placeholder="Ej.: Gestion pedagogica">
-                                                            </label>
-                                                            <label>
-                                                                <span>Detalle</span>
-                                                                <textarea rows="2" data-field="dimension_detalle" placeholder="Describe el alcance de la dimension"></textarea>
-                                                            </label>
-                                                            <label>
-                                                                <span>Subdimensiones</span>
-                                                                <textarea rows="3" data-field="subdimensiones" placeholder="Una por linea"></textarea>
-                                                            </label>
-                                                        </div>
-                                                        <div class="diagnostico-item-card__actions">
-                                                            <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
-                                                        </div>
-                                                    </article>
-                                                </template>
-                                            </div>
-                                        {% elif paso.slug == 'diagnostico-paso-3' %}
-                                            {% for campo in paso.campos %}
-                                                {% if campo.tipo == 'hidden_json' %}
-                                                    {% include "core/_registro_field.html" with field=campo %}
-                                                {% endif %}
-                                            {% endfor %}
-                                            <div class="diagnostico-builder" data-diagnostico-builder="instrument" data-target-field="diag_instrumento_json">
-                                                <div class="diagnostico-builder__head">
-                                                    <div>
-                                                        <h4>Instrumentos por perfil</h4>
-                                                        <p>Relaciona perfil, indicador y banco de items para cada instrumento.</p>
-                                                    </div>
-                                                    <button type="button" class="btn-secondary-soft" data-builder-add>Agregar instrumento</button>
-                                                </div>
-                                                <div class="diagnostico-builder__list" data-builder-list></div>
-                                                <template data-builder-template>
-                                                    <article class="diagnostico-item-card">
-                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--instrument">
-                                                            <label>
-                                                                <span>Perfil</span>
-                                                                <input type="text" data-field="perfil" placeholder="Ej.: Director(a)">
-                                                            </label>
-                                                            <label>
-                                                                <span>Dimension</span>
-                                                                <input type="text" data-field="dimension" placeholder="Dimension asociada">
-                                                            </label>
-                                                            <label>
-                                                                <span>Subdimension</span>
-                                                                <input type="text" data-field="subdimension" placeholder="Subdimension asociada">
-                                                            </label>
-                                                            <label>
-                                                                <span>Indicadores</span>
-                                                                <textarea rows="3" data-field="indicadores" placeholder="Uno por linea"></textarea>
-                                                            </label>
-                                                            <label>
-                                                                <span>Items</span>
-                                                                <textarea rows="4" data-field="items" placeholder="Uno por linea"></textarea>
-                                                            </label>
-                                                        </div>
-                                                        <div class="diagnostico-item-card__actions">
-                                                            <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
-                                                        </div>
-                                                    </article>
-                                                </template>
-                                            </div>
-                                            <div class="registro-grid registro-grid--diagnostico-wide">
-                                                {% for campo in paso.campos %}
-                                                    {% if campo.tipo != 'hidden_json' %}
-                                                        {% include "core/_registro_field.html" with field=campo %}
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-                                        {% elif paso.slug == 'diagnostico-paso-4' %}
-                                            {% for campo in paso.campos %}
-                                                {% if campo.tipo == 'hidden_json' %}
-                                                    {% include "core/_registro_field.html" with field=campo %}
-                                                {% endif %}
-                                            {% endfor %}
-                                            <div class="diagnostico-builder" data-diagnostico-builder="generation" data-target-field="diag_generacion_json">
-                                                <div class="diagnostico-builder__head">
-                                                    <div>
-                                                        <h4>Salidas de generacion</h4>
-                                                        <p>Define las versiones operativas del instrumento antes de su aplicacion.</p>
-                                                    </div>
-                                                    <button type="button" class="btn-secondary-soft" data-builder-add>Agregar salida</button>
-                                                </div>
-                                                <div class="diagnostico-builder__list" data-builder-list></div>
-                                                <template data-builder-template>
-                                                    <article class="diagnostico-item-card">
-                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--generation">
-                                                            <label>
-                                                                <span>Perfil objetivo</span>
-                                                                <input type="text" data-field="perfil" placeholder="Perfil final">
-                                                            </label>
-                                                            <label>
-                                                                <span>Canal</span>
-                                                                <input type="text" data-field="canal" placeholder="Aula virtual, formulario, presencial">
-                                                            </label>
-                                                            <label>
-                                                                <span>Fecha referencial</span>
-                                                                <input type="text" data-field="fecha" placeholder="Ej.: Abril 2026">
-                                                            </label>
-                                                            <label>
-                                                                <span>Observaciones</span>
-                                                                <textarea rows="3" data-field="observaciones" placeholder="Notas operativas o tecnicas"></textarea>
-                                                            </label>
-                                                        </div>
-                                                        <div class="diagnostico-item-card__actions">
-                                                            <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
-                                                        </div>
-                                                    </article>
-                                                </template>
-                                            </div>
-                                            <div class="registro-grid registro-grid--diagnostico-compact">
-                                                {% for campo in paso.campos %}
-                                                    {% if campo.tipo != 'hidden_json' %}
-                                                        {% include "core/_registro_field.html" with field=campo %}
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-                                        {% elif paso.slug == 'diagnostico-paso-5' %}
-                                            {% for campo in paso.campos %}
-                                                {% if campo.tipo == 'hidden_json' %}
-                                                    {% include "core/_registro_field.html" with field=campo %}
-                                                {% endif %}
-                                            {% endfor %}
-                                            <div class="diagnostico-builder" data-diagnostico-builder="results" data-target-field="diag_resultados_json">
-                                                <div class="diagnostico-builder__head">
-                                                    <div>
-                                                        <h4>Resultados consolidados</h4>
-                                                        <p>Resume hallazgos por dimension o subdimension para alimentar el informe.</p>
-                                                    </div>
-                                                    <button type="button" class="btn-secondary-soft" data-builder-add>Agregar resultado</button>
-                                                </div>
-                                                <div class="diagnostico-builder__list" data-builder-list></div>
-                                                <template data-builder-template>
-                                                    <article class="diagnostico-item-card">
-                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--results">
-                                                            <label>
-                                                                <span>Dimension</span>
-                                                                <input type="text" data-field="dimension" placeholder="Dimension analizada">
-                                                            </label>
-                                                            <label>
-                                                                <span>Subdimension</span>
-                                                                <input type="text" data-field="subdimension" placeholder="Subdimension analizada">
-                                                            </label>
-                                                            <label>
-                                                                <span>Hallazgo</span>
-                                                                <textarea rows="3" data-field="hallazgo" placeholder="Resultado principal"></textarea>
-                                                            </label>
-                                                            <label>
-                                                                <span>Decision sugerida</span>
-                                                                <textarea rows="2" data-field="decision" placeholder="Accion sugerida"></textarea>
-                                                            </label>
-                                                        </div>
-                                                        <div class="diagnostico-item-card__actions">
-                                                            <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
-                                                        </div>
-                                                    </article>
-                                                </template>
-                                            </div>
-                                            <div class="registro-grid registro-grid--diagnostico-wide">
-                                                {% for campo in paso.campos %}
-                                                    {% if campo.tipo != 'hidden_json' %}
-                                                        {% include "core/_registro_field.html" with field=campo %}
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-                                        {% else %}
-                                            <div class="registro-grid">
-                                                {% for campo in paso.campos %}
-                                                    {% include "core/_registro_field.html" with field=campo %}
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-
-                                        <div class="registro-diagnostico-nav">
-                                            <button type="button" class="btn-secondary-soft" data-diagnostico-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
-                                            <button type="button" class="btn-primary-soft" data-diagnostico-next>{% if forloop.last %}Volver al resumen{% else %}Siguiente paso{% endif %}</button>
                                         </div>
-                                    </section>
-                                {% endfor %}
-                            </div>
+
+                                        <div class="registro-diagnostico-panels">
+                                            {% for paso in registro_matriz_flujo.steps %}
+                                                <section class="registro-block registro-block--diagnostico{% if not paso.is_current_step %} is-hidden{% endif %}" data-sustento-panel data-flow="matriz" data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
+                                                    <header class="registro-block__header registro-block__header--split">
+                                                        <div>
+                                                            <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                            <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                            <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                                        </div>
+                                                        <div class="registro-block__meta">
+                                                            {% if paso.is_complete %}
+                                                                <span class="registro-status registro-status--complete">Completo</span>
+                                                            {% elif paso.is_started %}
+                                                                <span class="registro-status registro-status--current">En progreso</span>
+                                                            {% else %}
+                                                                <span class="registro-status">Pendiente</span>
+                                                            {% endif %}
+                                                            <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                                        </div>
+                                                    </header>
+
+                                                    {% if paso.slug == 'matriz-modal-paso-1' %}
+                                                        <div class="registro-diagnostico-meta">
+                                                            <article class="registro-diagnostico-meta__card">
+                                                                <span>Nombre de la capacitacion</span>
+                                                                <strong>{{ registro_matriz_flujo.cap_nombre|default:'(autogenerado desde fase preliminar)' }}</strong>
+                                                            </article>
+                                                            <article class="registro-diagnostico-meta__card">
+                                                                <span>Codigo interno</span>
+                                                                <strong>{{ registro_matriz_flujo.cap_codigo|default:'(se completara en la ficha tecnica)' }}</strong>
+                                                            </article>
+                                                            <article class="registro-diagnostico-meta__card">
+                                                                <span>Año de intervencion</span>
+                                                                <strong>{{ registro_matriz_flujo.cap_anio|default:'-' }}</strong>
+                                                            </article>
+                                                        </div>
+
+                                                        <div class="registro-grid registro-grid--diagnostico-wide">
+                                                            {% for campo in paso.campos %}
+                                                                {% if campo.tipo == 'hidden_json' %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% else %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="problems" data-target-field="diag_problemas_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Descripcion del(de los) problema(s)</h4>
+                                                                    <p>Cada problema se registra por separado para reutilizarlo en indicadores y proyecciones.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema</button>
+                                                            </div>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--problems">
+                                                                        <label>
+                                                                            <span>Problema</span>
+                                                                            <textarea rows="3" data-field="problema" placeholder="Describe el problema de gestion o desempeno"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Fuente</span>
+                                                                            <input type="text" data-field="fuente" placeholder="Norma, reporte, monitoreo, supervision...">
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                    {% elif paso.slug == 'matriz-modal-paso-2' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% include "core/_registro_field.html" with field=campo %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="matrix" data-target-field="diag_matriz_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Indicadores de gestion y competencias vinculadas</h4>
+                                                                    <p>Relaciona cada problema con un indicador de proceso y sus competencias asociadas.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar indicador</button>
+                                                            </div>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-flow">
+                                                                        <label>
+                                                                            <span>Problema vinculado</span>
+                                                                            <select data-field="problema" data-problem-select>
+                                                                                <option value="">Selecciona un problema</option>
+                                                                            </select>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Indicador de proceso</span>
+                                                                            <textarea rows="3" data-field="indicador" placeholder="Indicadores de hitos o actividades principales del proceso"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Competencia cognitiva</span>
+                                                                            <textarea rows="3" data-field="competencia_cognitiva" placeholder="Capacidades respecto a conocimientos y criterios"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Competencia actitudinal</span>
+                                                                            <textarea rows="3" data-field="competencia_actitudinal" placeholder="Compromisos, valoracion y pareceres"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Desempeño que evidencia la integridad</span>
+                                                                            <textarea rows="3" data-field="desempenio" placeholder="Conductas asociadas necesarias para el cumplimiento"></textarea>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                    {% elif paso.slug == 'matriz-modal-paso-3' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% include "core/_registro_field.html" with field=campo %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="results" data-target-field="diag_resultados_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Proyeccion de resultados</h4>
+                                                                    <p>Formula expectativas de cambio en desempeño, en proceso y otros cambios colaterales.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar expectativa</button>
+                                                            </div>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--results-flow">
+                                                                        <label>
+                                                                            <span>Problema vinculado</span>
+                                                                            <select data-field="problema" data-problem-select>
+                                                                                <option value="">Selecciona un problema</option>
+                                                                            </select>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Cambio en desempeño</span>
+                                                                            <textarea rows="3" data-field="cambio_desempenio" placeholder="Cambio en el desempeño o capacidad vinculada al proceso"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Cambio en el proceso</span>
+                                                                            <textarea rows="3" data-field="cambio_proceso" placeholder="Cambio o mejora intencionada en el proceso"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Otros cambios colaterales</span>
+                                                                            <textarea rows="3" data-field="cambios_colaterales" placeholder="Otros cambios y contribuciones colaterales"></textarea>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                    {% endif %}
+
+                                                    <div class="registro-diagnostico-nav">
+                                                        <button type="button" class="btn-secondary-soft" data-sustento-prev data-flow="matriz" {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
+                                                        <button type="button" class="btn-primary-soft" data-sustento-next data-flow="matriz">{% if forloop.last %}Cerrar recorrido{% else %}Siguiente paso{% endif %}</button>
+                                                    </div>
+                                                </section>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </dialog>
+                            {% endif %}
+
+                            {% if registro_diagnostico_flujo %}
+                                <dialog id="sustento-diagnostico-modal" class="actividad-modal sustento-modal" data-sustento-modal="diagnostico">
+                                    <div class="actividad-modal__panel sustento-modal__panel">
+                                        <header class="actividad-modal__header sustento-modal__header">
+                                            <div>
+                                                <p class="registro-block__eyebrow">Diagnostico</p>
+                                                <h3>{{ registro_diagnostico_flujo.titulo }}</h3>
+                                                <p class="module-panel__note">{{ registro_diagnostico_flujo.descripcion }}</p>
+                                            </div>
+                                            <button type="button" class="actividad-modal__close" data-close-sustento-modal="diagnostico" aria-label="Cerrar">x</button>
+                                        </header>
+
+                                        <div class="registro-diagnostico-roadmap" aria-label="Pasos del diagnostico" data-sustento-flow="diagnostico">
+                                            {% for paso in registro_diagnostico_flujo.steps %}
+                                                <article class="registro-diagnostico-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-sustento-step-tag data-flow="diagnostico" data-step-index="{{ paso.step_index }}">
+                                                    <span class="registro-diagnostico-step__tag">Paso {{ paso.step_index }}</span>
+                                                    <strong>{{ paso.titulo }}</strong>
+                                                    <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                                </article>
+                                            {% endfor %}
+                                        </div>
+
+                                        <div class="registro-diagnostico-panels">
+                                            {% for paso in registro_diagnostico_flujo.steps %}
+                                                <section class="registro-block registro-block--diagnostico{% if not paso.is_current_step %} is-hidden{% endif %}" data-sustento-panel data-flow="diagnostico" data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
+                                                    <header class="registro-block__header registro-block__header--split">
+                                                        <div>
+                                                            <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                            <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                            <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                                        </div>
+                                                        <div class="registro-block__meta">
+                                                            {% if paso.is_complete %}
+                                                                <span class="registro-status registro-status--complete">Completo</span>
+                                                            {% elif paso.is_started %}
+                                                                <span class="registro-status registro-status--current">En progreso</span>
+                                                            {% else %}
+                                                                <span class="registro-status">Pendiente</span>
+                                                            {% endif %}
+                                                            <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                                        </div>
+                                                    </header>
+
+                                                    {% if paso.slug == 'diagnostico-modal-paso-1' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="instrument" data-target-field="diag_instrumento_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Instrumentos por perfil</h4>
+                                                                    <p>Relaciona perfil, indicador y banco de items para cada instrumento.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar instrumento</button>
+                                                            </div>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--instrument">
+                                                                        <label>
+                                                                            <span>Perfil</span>
+                                                                            <input type="text" data-field="perfil" placeholder="Ej.: Director(a)">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Dimension</span>
+                                                                            <input type="text" data-field="dimension" placeholder="Dimension asociada">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Subdimension</span>
+                                                                            <input type="text" data-field="subdimension" placeholder="Subdimension asociada">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Indicadores</span>
+                                                                            <textarea rows="3" data-field="indicadores" placeholder="Uno por linea"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Items</span>
+                                                                            <textarea rows="4" data-field="items" placeholder="Uno por linea"></textarea>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                        <div class="registro-grid registro-grid--diagnostico-wide">
+                                                            {% for campo in paso.campos %}
+                                                                {% if campo.tipo != 'hidden_json' %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-2' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="generation" data-target-field="diag_generacion_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Salidas de generacion</h4>
+                                                                    <p>Define versiones operativas del instrumento antes de su aplicacion.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar salida</button>
+                                                            </div>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--generation">
+                                                                        <label>
+                                                                            <span>Perfil objetivo</span>
+                                                                            <input type="text" data-field="perfil" placeholder="Perfil final">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Canal</span>
+                                                                            <input type="text" data-field="canal" placeholder="Aula virtual, formulario, presencial">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Fecha referencial</span>
+                                                                            <input type="text" data-field="fecha" placeholder="Ej.: Abril 2026">
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Observaciones</span>
+                                                                            <textarea rows="3" data-field="observaciones" placeholder="Notas operativas o tecnicas"></textarea>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                        <div class="registro-grid registro-grid--diagnostico-compact">
+                                                            {% for campo in paso.campos %}
+                                                                {% if campo.tipo != 'hidden_json' %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% else %}
+                                                        <div class="registro-grid registro-grid--diagnostico-wide">
+                                                            {% for campo in paso.campos %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+
+                                                    <div class="registro-diagnostico-nav">
+                                                        <button type="button" class="btn-secondary-soft" data-sustento-prev data-flow="diagnostico" {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
+                                                        <button type="button" class="btn-primary-soft" data-sustento-next data-flow="diagnostico">{% if forloop.last %}Cerrar recorrido{% else %}Siguiente paso{% endif %}</button>
+                                                    </div>
+                                                </section>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </dialog>
+                            {% endif %}
                         </section>
                     {% endif %}
 
@@ -1702,19 +1835,16 @@
                 regionSelect.addEventListener("change", fillIgedOptions);
             }
 
-            var diagnosticoShell = form.querySelector("[data-diagnostico-shell]");
-            var diagnosticoBanner = form.querySelector("[data-diagnostico-banner]");
-            var diagnosticoStepTags = diagnosticoShell ? diagnosticoShell.querySelectorAll("[data-diagnostico-step-tag]") : [];
-            var diagnosticoPanels = diagnosticoShell ? diagnosticoShell.querySelectorAll("[data-diagnostico-panel]") : [];
-            var diagnosticoDecisionInputs = form.querySelectorAll("input[name='sol_tiene_diagnostico'], input[name='sol_tiene_matriz']");
-            var diagnosticoCurrentStep = 1;
-            if (diagnosticoPanels.length) {
-                diagnosticoPanels.forEach(function (panel) {
-                    if (!panel.classList.contains("is-hidden")) {
-                        diagnosticoCurrentStep = Number(panel.getAttribute("data-step-index") || "1");
-                    }
-                });
-            }
+            var sustentoHub = form.querySelector("[data-sustento-hub]");
+            var sustentoBanner = form.querySelector("[data-sustento-banner]");
+            var decisionInputs = {
+                matriz: form.querySelectorAll("input[name='sol_tiene_matriz']"),
+                diagnostico: form.querySelectorAll("input[name='sol_tiene_diagnostico']"),
+            };
+            var flowState = {
+                matriz: 1,
+                diagnostico: 1,
+            };
 
             var parseJsonField = function (input) {
                 if (!input || !String(input.value || "").trim()) {
@@ -1753,30 +1883,16 @@
                     });
             };
 
-            var setDiagnosticoStep = function (stepIndex) {
-                if (!diagnosticoPanels.length) {
-                    return;
+            var normalizeProblemLabel = function (value) {
+                if (Array.isArray(value)) {
+                    return String(value.join(" ") || "").trim();
                 }
-
-                var maxStep = diagnosticoPanels.length;
-                diagnosticoCurrentStep = Math.min(Math.max(stepIndex, 1), maxStep);
-
-                diagnosticoPanels.forEach(function (panel) {
-                    var panelStep = Number(panel.getAttribute("data-step-index") || "0");
-                    var active = panelStep === diagnosticoCurrentStep;
-                    panel.classList.toggle("is-hidden", !active);
-                    panel.setAttribute("aria-hidden", active ? "false" : "true");
-                });
-
-                diagnosticoStepTags.forEach(function (tag) {
-                    var tagStep = Number(tag.getAttribute("data-step-index") || "0");
-                    tag.classList.toggle("is-current", tagStep === diagnosticoCurrentStep);
-                });
+                return String(value || "").trim();
             };
 
-            var isDiagnosticoEnabled = function () {
+            var getDecisionEnabled = function (inputs) {
                 var enabled = false;
-                diagnosticoDecisionInputs.forEach(function (input) {
+                inputs.forEach(function (input) {
                     if (input.checked) {
                         var value = String(input.value || "").toLowerCase();
                         if (value === "si" || value === "sí") {
@@ -1787,26 +1903,99 @@
                 return enabled;
             };
 
-            var syncDiagnosticoVisibility = function () {
-                if (!diagnosticoShell) {
-                    return;
-                }
-                var enabled = isDiagnosticoEnabled();
-                diagnosticoShell.classList.toggle("is-disabled", !enabled);
-                if (diagnosticoBanner) {
-                    diagnosticoBanner.classList.toggle("is-hidden", enabled);
-                }
-                diagnosticoShell.querySelectorAll(".registro-diagnostico-roadmap, .registro-diagnostico-panels").forEach(function (node) {
-                    node.classList.toggle("is-hidden", !enabled);
+            var syncProblemSelects = function () {
+                var problemsField = form.querySelector("input[name='diag_problemas_json']");
+                var options = parseJsonField(problemsField)
+                    .map(function (row) {
+                        return normalizeProblemLabel(row.problema);
+                    })
+                    .filter(function (label) {
+                        return label.length > 0;
+                    });
+
+                form.querySelectorAll("[data-problem-select]").forEach(function (select) {
+                    var currentValue = String(select.value || "");
+                    select.innerHTML = "";
+
+                    var placeholder = document.createElement("option");
+                    placeholder.value = "";
+                    placeholder.textContent = options.length ? "Selecciona un problema" : "Primero registra un problema";
+                    select.appendChild(placeholder);
+
+                    options.forEach(function (label) {
+                        var option = document.createElement("option");
+                        option.value = label;
+                        option.textContent = label;
+                        select.appendChild(option);
+                    });
+
+                    select.value = options.indexOf(currentValue) >= 0 ? currentValue : "";
                 });
             };
 
-            var initDiagnosticoBuilders = function () {
-                if (!diagnosticoShell) {
+            var setFlowStep = function (flowName, stepIndex) {
+                var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                if (!modal) {
+                    return;
+                }
+                var panels = modal.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']");
+                var tags = modal.querySelectorAll("[data-sustento-step-tag][data-flow='" + flowName + "']");
+                if (!panels.length) {
                     return;
                 }
 
-                diagnosticoShell.querySelectorAll("[data-diagnostico-builder]").forEach(function (builder) {
+                var maxStep = panels.length;
+                flowState[flowName] = Math.min(Math.max(stepIndex, 1), maxStep);
+
+                panels.forEach(function (panel) {
+                    var panelStep = Number(panel.getAttribute("data-step-index") || "0");
+                    var active = panelStep === flowState[flowName];
+                    panel.classList.toggle("is-hidden", !active);
+                    panel.setAttribute("aria-hidden", active ? "false" : "true");
+                });
+
+                tags.forEach(function (tag) {
+                    var tagStep = Number(tag.getAttribute("data-step-index") || "0");
+                    tag.classList.toggle("is-current", tagStep === flowState[flowName]);
+                });
+            };
+
+            var syncSustentoAccess = function () {
+                if (!sustentoHub) {
+                    return;
+                }
+
+                var anyEnabled = false;
+                ["matriz", "diagnostico"].forEach(function (flowName) {
+                    var enabled = getDecisionEnabled(decisionInputs[flowName]);
+                    anyEnabled = anyEnabled || enabled;
+                    var card = sustentoHub.querySelector("[data-sustento-card='" + flowName + "']");
+                    var openButton = sustentoHub.querySelector("[data-open-sustento-modal='" + flowName + "']");
+                    if (card) {
+                        card.classList.toggle("is-disabled", !enabled);
+                    }
+                    if (openButton) {
+                        openButton.disabled = !enabled;
+                    }
+                    if (!enabled) {
+                        var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                        if (modal && modal.open) {
+                            modal.close();
+                        }
+                    }
+                });
+
+                if (sustentoBanner) {
+                    sustentoBanner.classList.toggle("is-hidden", anyEnabled);
+                }
+            };
+
+            var initDiagnosticoBuilders = function () {
+                if (!sustentoHub) {
+                    return;
+                }
+
+                form.querySelectorAll("[data-diagnostico-builder]").forEach(function (builder) {
                     var listNode = builder.querySelector("[data-builder-list]");
                     var templateNode = builder.querySelector("[data-builder-template]");
                     var addBtn = builder.querySelector("[data-builder-add]");
@@ -1822,7 +2011,7 @@
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
                             var rawValue = String(field.value || "").trim();
-                            row[key] = field.tagName === "TEXTAREA" ? fromLines(rawValue) : rawValue;
+                            row[key] = field.hasAttribute("data-multiline-list") ? fromLines(rawValue) : rawValue;
                         });
                         return row;
                     };
@@ -1833,14 +2022,18 @@
                             rows.push(buildRowData(card));
                         });
                         serializeJsonField(input, rows);
+                        if (targetFieldName === "diag_problemas_json") {
+                            syncProblemSelects();
+                        }
                     };
 
                     var bindCard = function (card, data) {
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
                             var value = data && Object.prototype.hasOwnProperty.call(data, key) ? data[key] : "";
-                            field.value = field.tagName === "TEXTAREA" ? toLines(value) : String(value || "");
+                            field.value = field.hasAttribute("data-multiline-list") ? toLines(value) : String(value || "");
                             field.addEventListener("input", syncField);
+                            field.addEventListener("change", syncField);
                         });
 
                         var removeBtn = card.querySelector("[data-builder-remove]");
@@ -1873,42 +2066,93 @@
                 });
             };
 
-            if (diagnosticoShell) {
-                diagnosticoShell.querySelectorAll("[data-diagnostico-prev]").forEach(function (button) {
-                    button.addEventListener("click", function () {
-                        setDiagnosticoStep(diagnosticoCurrentStep - 1);
-                    });
+            form.querySelectorAll("[data-open-sustento-modal]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var flowName = String(button.getAttribute("data-open-sustento-modal") || "");
+                    var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                    if (!modal || button.disabled) {
+                        return;
+                    }
+                    if (typeof modal.showModal === "function") {
+                        modal.showModal();
+                    } else {
+                        modal.setAttribute("open", "open");
+                    }
+                    setFlowStep(flowName, flowState[flowName] || 1);
                 });
-
-                diagnosticoShell.querySelectorAll("[data-diagnostico-next]").forEach(function (button) {
-                    button.addEventListener("click", function () {
-                        if (diagnosticoCurrentStep >= diagnosticoPanels.length) {
-                            var firstFicha = form.querySelector(".registro-sections-shell");
-                            if (firstFicha && typeof firstFicha.scrollIntoView === "function") {
-                                firstFicha.scrollIntoView({ behavior: "smooth", block: "start" });
-                            }
-                            return;
-                        }
-                        setDiagnosticoStep(diagnosticoCurrentStep + 1);
-                    });
-                });
-
-                diagnosticoStepTags.forEach(function (tag) {
-                    tag.addEventListener("click", function () {
-                        setDiagnosticoStep(Number(tag.getAttribute("data-step-index") || "1"));
-                    });
-                });
-
-                initDiagnosticoBuilders();
-                setDiagnosticoStep(diagnosticoCurrentStep);
-            }
-
-            diagnosticoDecisionInputs.forEach(function (input) {
-                input.addEventListener("change", syncDiagnosticoVisibility);
             });
 
+            form.querySelectorAll("[data-close-sustento-modal]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var flowName = String(button.getAttribute("data-close-sustento-modal") || "");
+                    var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                    if (!modal) {
+                        return;
+                    }
+                    if (typeof modal.close === "function") {
+                        modal.close();
+                    } else {
+                        modal.removeAttribute("open");
+                    }
+                });
+            });
+
+            form.querySelectorAll("[data-sustento-modal]").forEach(function (modal) {
+                modal.addEventListener("cancel", function (event) {
+                    event.preventDefault();
+                    modal.close();
+                });
+                modal.addEventListener("click", function (event) {
+                    if (event.target === modal) {
+                        modal.close();
+                    }
+                });
+            });
+
+            form.querySelectorAll("[data-sustento-prev]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var flowName = String(button.getAttribute("data-flow") || "");
+                    setFlowStep(flowName, (flowState[flowName] || 1) - 1);
+                });
+            });
+
+            form.querySelectorAll("[data-sustento-next]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var flowName = String(button.getAttribute("data-flow") || "");
+                    var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                    var panels = modal ? modal.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']") : [];
+                    if ((flowState[flowName] || 1) >= panels.length) {
+                        if (modal && typeof modal.close === "function") {
+                            modal.close();
+                        }
+                        return;
+                    }
+                    setFlowStep(flowName, (flowState[flowName] || 1) + 1);
+                });
+            });
+
+            form.querySelectorAll("[data-sustento-step-tag]").forEach(function (tag) {
+                tag.addEventListener("click", function () {
+                    var flowName = String(tag.getAttribute("data-flow") || "");
+                    setFlowStep(flowName, Number(tag.getAttribute("data-step-index") || "1"));
+                });
+            });
+
+            Object.keys(decisionInputs).forEach(function (flowName) {
+                decisionInputs[flowName].forEach(function (input) {
+                    input.addEventListener("change", function () {
+                        syncSustentoAccess();
+                    });
+                });
+            });
+
+            initDiagnosticoBuilders();
+            syncProblemSelects();
+            setFlowStep("matriz", flowState.matriz || 1);
+            setFlowStep("diagnostico", flowState.diagnostico || 1);
+
             syncExternalFields();
-            syncDiagnosticoVisibility();
+            syncSustentoAccess();
         })();
 
         (function () {
