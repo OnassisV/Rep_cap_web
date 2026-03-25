@@ -634,44 +634,154 @@
                         </section>
                     {% endif %}
 
-                    <section class="registro-sections-shell">
-                        <header class="registro-sections-shell__header">
-                            <div>
-                                <p class="registro-block__eyebrow">Ficha técnica</p>
-                                <h3 class="subsection-title">Desarrollo del expediente</h3>
-                            </div>
-                            <p class="module-panel__note">
-                                Una vez abierta la solicitud, completa los bloques técnicos que darán forma a la capacitación dentro de Gestión de la Capacitación.
-                            </p>
-                        </header>
-
-                        {% for bloque in registro_form_sections_restantes %}
-                            <section class="registro-block" id="registro-{{ bloque.slug }}">
-                                <header class="registro-block__header registro-block__header--split">
-                                    <div>
-                                        <h3 class="subsection-title">{{ bloque.titulo }}</h3>
-                                        <p class="module-panel__note">{{ bloque.descripcion }}</p>
-                                    </div>
-                                    <div class="registro-block__meta">
-                                        {% if bloque.is_complete %}
-                                            <span class="registro-status registro-status--complete">Completo</span>
-                                        {% elif bloque.is_started %}
-                                            <span class="registro-status registro-status--current">En progreso</span>
-                                        {% else %}
-                                            <span class="registro-status">Pendiente</span>
-                                        {% endif %}
-                                        <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
-                                    </div>
-                                </header>
-
-                                <div class="registro-grid">
-                                    {% for campo in bloque.campos %}
-                                        {% include "core/_registro_field.html" with field=campo %}
-                                    {% endfor %}
+                    {% if registro_expediente_flujo %}
+                        <section class="registro-sections-shell registro-sections-shell--expediente" id="registro-expediente-flujo" data-expediente-flow>
+                            <header class="registro-sections-shell__header">
+                                <div>
+                                    <p class="registro-block__eyebrow">Ruta común posterior</p>
+                                    <h3 class="subsection-title">Secuencia del expediente técnico</h3>
                                 </div>
-                            </section>
-                        {% endfor %}
-                    </section>
+                                <p class="module-panel__note">
+                                    Luego de abrir cualquiera de las dos rutas previas, la capacitación continúa con esta misma secuencia: diseño, plan, generación de recursos e implementación.
+                                </p>
+                            </header>
+
+                            <div class="registro-expediente-roadmap" aria-label="Pasos del expediente común">
+                                {% for paso in registro_expediente_flujo.steps %}
+                                    <article class="registro-expediente-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-expediente-step-tag data-step-index="{{ paso.step_index }}">
+                                        <span class="registro-expediente-step__tag">Paso {{ paso.step_index }}</span>
+                                        <strong>{{ paso.titulo }}</strong>
+                                        <small>{{ paso.required_done }}/{{ paso.required_count }} hitos</small>
+                                    </article>
+                                {% endfor %}
+                            </div>
+
+                            <div class="registro-expediente-panels">
+                                {% for paso in registro_expediente_flujo.steps %}
+                                    <section class="registro-block registro-block--expediente{% if not paso.is_current_step %} is-hidden{% endif %}" data-expediente-panel data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
+                                        <header class="registro-block__header registro-block__header--split">
+                                            <div>
+                                                <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                            </div>
+                                            <div class="registro-block__meta">
+                                                {% if paso.is_complete %}
+                                                    <span class="registro-status registro-status--complete">Completo</span>
+                                                {% elif paso.is_started %}
+                                                    <span class="registro-status registro-status--current">En progreso</span>
+                                                {% else %}
+                                                    <span class="registro-status">Pendiente</span>
+                                                {% endif %}
+                                                <small>{{ paso.required_done }}/{{ paso.required_count }} hitos</small>
+                                            </div>
+                                        </header>
+
+                                        {% if paso.summary_cards %}
+                                            <div class="registro-expediente-summary">
+                                                {% for item in paso.summary_cards %}
+                                                    <article class="registro-expediente-summary__card">
+                                                        <span>{{ item.label }}</span>
+                                                        <strong>{{ item.value }}</strong>
+                                                    </article>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        {% if paso.blocks %}
+                                            <div class="registro-expediente-blocks">
+                                                {% for bloque in paso.blocks %}
+                                                    <section class="registro-expediente-subblock" id="registro-{{ bloque.slug }}">
+                                                        <header class="registro-expediente-subblock__header">
+                                                            <div>
+                                                                <h4>{{ bloque.titulo }}</h4>
+                                                                <p>{{ bloque.descripcion }}</p>
+                                                            </div>
+                                                            <div class="registro-block__meta">
+                                                                {% if bloque.is_complete %}
+                                                                    <span class="registro-status registro-status--complete">Completo</span>
+                                                                {% elif bloque.is_started %}
+                                                                    <span class="registro-status registro-status--current">En progreso</span>
+                                                                {% else %}
+                                                                    <span class="registro-status">Pendiente</span>
+                                                                {% endif %}
+                                                                <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
+                                                            </div>
+                                                        </header>
+
+                                                        <div class="registro-grid">
+                                                            {% for campo in bloque.campos %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    </section>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        {% if paso.checks %}
+                                            <div class="registro-implementacion-checks">
+                                                {% for item in paso.checks %}
+                                                    <article class="registro-implementacion-check{% if item.ok %} is-ok{% endif %}">
+                                                        <div class="registro-implementacion-check__top">
+                                                            <strong>{{ item.titulo }}</strong>
+                                                            <span class="registro-status{% if item.ok %} registro-status--complete{% endif %}">{% if item.ok %}Sí{% else %}No{% endif %}</span>
+                                                        </div>
+                                                        <p>{{ item.detalle }}</p>
+                                                        <small>{{ item.meta }}</small>
+                                                    </article>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        <div class="registro-expediente-nav">
+                                            <button type="button" class="btn-secondary-soft" data-expediente-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
+                                            <button type="button" class="btn-primary-soft" data-expediente-next>{% if forloop.last %}Ir al guardado{% else %}Siguiente etapa{% endif %}</button>
+                                        </div>
+                                    </section>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% else %}
+                        <section class="registro-sections-shell">
+                            <header class="registro-sections-shell__header">
+                                <div>
+                                    <p class="registro-block__eyebrow">Ficha técnica</p>
+                                    <h3 class="subsection-title">Desarrollo del expediente</h3>
+                                </div>
+                                <p class="module-panel__note">
+                                    Una vez abierta la solicitud, completa los bloques técnicos que darán forma a la capacitación dentro de Gestión de la Capacitación.
+                                </p>
+                            </header>
+
+                            {% for bloque in registro_form_sections_restantes %}
+                                <section class="registro-block" id="registro-{{ bloque.slug }}">
+                                    <header class="registro-block__header registro-block__header--split">
+                                        <div>
+                                            <h3 class="subsection-title">{{ bloque.titulo }}</h3>
+                                            <p class="module-panel__note">{{ bloque.descripcion }}</p>
+                                        </div>
+                                        <div class="registro-block__meta">
+                                            {% if bloque.is_complete %}
+                                                <span class="registro-status registro-status--complete">Completo</span>
+                                            {% elif bloque.is_started %}
+                                                <span class="registro-status registro-status--current">En progreso</span>
+                                            {% else %}
+                                                <span class="registro-status">Pendiente</span>
+                                            {% endif %}
+                                            <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
+                                        </div>
+                                    </header>
+
+                                    <div class="registro-grid">
+                                        {% for campo in bloque.campos %}
+                                            {% include "core/_registro_field.html" with field=campo %}
+                                        {% endfor %}
+                                    </div>
+                                </section>
+                            {% endfor %}
+                        </section>
+                    {% endif %}
 
                     <div class="registro-form__actions">
                         <p class="registro-form__hint">La capacitación se guardará como borrador inicial dentro del flujo de Gestión de la Capacitación.</p>
@@ -1837,6 +1947,7 @@
 
             var sustentoHub = form.querySelector("[data-sustento-hub]");
             var sustentoBanner = form.querySelector("[data-sustento-banner]");
+            var expedienteFlow = form.querySelector("[data-expediente-flow]");
             var decisionInputs = {
                 matriz: form.querySelectorAll("input[name='sol_tiene_matriz']"),
                 diagnostico: form.querySelectorAll("input[name='sol_tiene_diagnostico']"),
@@ -1845,6 +1956,7 @@
                 matriz: 1,
                 diagnostico: 1,
             };
+            var expedienteStep = 1;
 
             var parseJsonField = function (input) {
                 if (!input || !String(input.value || "").trim()) {
@@ -1957,6 +2069,33 @@
                 tags.forEach(function (tag) {
                     var tagStep = Number(tag.getAttribute("data-step-index") || "0");
                     tag.classList.toggle("is-current", tagStep === flowState[flowName]);
+                });
+            };
+
+            var setExpedienteStep = function (stepIndex) {
+                if (!expedienteFlow) {
+                    return;
+                }
+
+                var panels = expedienteFlow.querySelectorAll("[data-expediente-panel]");
+                var tags = expedienteFlow.querySelectorAll("[data-expediente-step-tag]");
+                if (!panels.length) {
+                    return;
+                }
+
+                var maxStep = panels.length;
+                expedienteStep = Math.min(Math.max(stepIndex, 1), maxStep);
+
+                panels.forEach(function (panel) {
+                    var panelStep = Number(panel.getAttribute("data-step-index") || "0");
+                    var active = panelStep === expedienteStep;
+                    panel.classList.toggle("is-hidden", !active);
+                    panel.setAttribute("aria-hidden", active ? "false" : "true");
+                });
+
+                tags.forEach(function (tag) {
+                    var tagStep = Number(tag.getAttribute("data-step-index") || "0");
+                    tag.classList.toggle("is-current", tagStep === expedienteStep);
                 });
             };
 
@@ -2125,6 +2264,10 @@
                         if (modal && typeof modal.close === "function") {
                             modal.close();
                         }
+                        if (expedienteFlow) {
+                            setExpedienteStep(1);
+                            expedienteFlow.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
                         return;
                     }
                     setFlowStep(flowName, (flowState[flowName] || 1) + 1);
@@ -2138,6 +2281,35 @@
                 });
             });
 
+            if (expedienteFlow) {
+                expedienteFlow.querySelectorAll("[data-expediente-prev]").forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        setExpedienteStep(expedienteStep - 1);
+                    });
+                });
+
+                expedienteFlow.querySelectorAll("[data-expediente-next]").forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        var panels = expedienteFlow.querySelectorAll("[data-expediente-panel]");
+                        if (expedienteStep >= panels.length) {
+                            var submitButton = form.querySelector(".registro-form__actions button[type='submit']");
+                            if (submitButton) {
+                                submitButton.scrollIntoView({ behavior: "smooth", block: "center" });
+                                submitButton.focus();
+                            }
+                            return;
+                        }
+                        setExpedienteStep(expedienteStep + 1);
+                    });
+                });
+
+                expedienteFlow.querySelectorAll("[data-expediente-step-tag]").forEach(function (tag) {
+                    tag.addEventListener("click", function () {
+                        setExpedienteStep(Number(tag.getAttribute("data-step-index") || "1"));
+                    });
+                });
+            }
+
             Object.keys(decisionInputs).forEach(function (flowName) {
                 decisionInputs[flowName].forEach(function (input) {
                     input.addEventListener("change", function () {
@@ -2150,6 +2322,7 @@
             syncProblemSelects();
             setFlowStep("matriz", flowState.matriz || 1);
             setFlowStep("diagnostico", flowState.diagnostico || 1);
+            setExpedienteStep(expedienteStep || 1);
 
             syncExternalFields();
             syncSustentoAccess();

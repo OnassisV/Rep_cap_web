@@ -673,6 +673,192 @@ def _construir_flujo_matriz_sustento(
     }
 
 
+def _construir_resumen_implementacion(
+    secciones_render: list[dict[str, Any]],
+    valores_form: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Genera un checklist de preparacion para la etapa final de implementacion."""
+    estado_por_slug = {
+        str(item.get("slug", "")).strip(): item
+        for item in secciones_render
+    }
+    seguimiento = estado_por_slug.get("seguimiento-inicial") or {}
+    implementacion = estado_por_slug.get("implementacion-base") or {}
+    responsables = estado_por_slug.get("responsables") or {}
+    logistica = estado_por_slug.get("logistica-recursos") or {}
+
+    return [
+        {
+            "titulo": "Convocatoria y puesta en marcha",
+            "detalle": "Se activa cuando ya existe un mecanismo de convocatoria, inscripcion y una fecha tentativa.",
+            "ok": bool(
+                str(valores_form.get("imp_convocatoria", "")).strip()
+                and str(valores_form.get("imp_inscripcion", "")).strip()
+                and str(valores_form.get("imp_fecha_ini", "")).strip()
+            ),
+            "meta": f"{implementacion.get('filled_count', 0)}/{implementacion.get('required_count', 0)} obligatorios",
+        },
+        {
+            "titulo": "Responsables definidos",
+            "detalle": "Consolidar unidad responsable, coordinacion y contacto operativo antes del seguimiento.",
+            "ok": bool(
+                str(valores_form.get("resp_unidad", "")).strip()
+                and (
+                    str(valores_form.get("resp_coord", "")).strip()
+                    or str(valores_form.get("imp_resp_impl", "")).strip()
+                )
+            ),
+            "meta": f"{responsables.get('filled_count', 0)} campo(s) completados",
+        },
+        {
+            "titulo": "Condiciones y recursos listos",
+            "detalle": "Resume si ya fueron consignados presupuesto, requerimientos tecnicos y componentes logisticos.",
+            "ok": bool(
+                str(valores_form.get("log_componentes", "")).strip()
+                or str(valores_form.get("log_req_tec", "")).strip()
+                or str(valores_form.get("log_req_op", "")).strip()
+            ),
+            "meta": f"{logistica.get('filled_count', 0)} insumo(s) registrados",
+        },
+        {
+            "titulo": "Seguimiento inicial configurado",
+            "detalle": "Esta base luego alimenta la implementacion y el monitoreo posterior de la capacitacion.",
+            "ok": bool(
+                str(valores_form.get("seg_tablero", "")).strip()
+                or str(valores_form.get("seg_ind_sec", "")).strip()
+                or str(valores_form.get("seg_riesgos", "")).strip()
+            ),
+            "meta": f"{seguimiento.get('filled_count', 0)} insumo(s) de seguimiento",
+        },
+    ]
+
+
+def _construir_flujo_expediente(
+    secciones_render: list[dict[str, Any]],
+    valores_form: dict[str, str],
+) -> dict[str, Any] | None:
+    """Agrupa el expediente en una secuencia comun posterior al sustento inicial."""
+    bloques_por_slug = {
+        str(item.get("slug", "")).strip(): item
+        for item in secciones_render
+    }
+
+    definiciones = [
+        {
+            "slug": "expediente-diseno-matriz",
+            "titulo": "Diseno de la Matriz Instruccional (+ alcance)",
+            "descripcion": "Continua despues del sustento tecnico y organiza objetivos, desempenos, contenidos y criterios del diseno formativo.",
+            "block_slugs": [
+                "objetivos-resultados",
+                "estandares-alcance",
+                "contenido-preliminar",
+                "evaluacion-preliminar",
+            ],
+        },
+        {
+            "slug": "expediente-plan-trabajo",
+            "titulo": "Plan de Trabajo",
+            "descripcion": "Consolida la ficha operativa, alcance, modalidad, responsables y programacion para la ejecucion.",
+            "block_slugs": [
+                "identificacion-general",
+                "oferta-formativa",
+                "poblacion-objetivo",
+                "diseno-formativo-base",
+                "implementacion-base",
+                "responsables",
+            ],
+        },
+        {
+            "slug": "expediente-generacion-recursos",
+            "titulo": "Generacion de recursos",
+            "descripcion": "Deja registradas las condiciones logisticas y el monitoreo inicial que habilitan la produccion y despliegue.",
+            "block_slugs": [
+                "logistica-recursos",
+                "seguimiento-inicial",
+            ],
+        },
+        {
+            "slug": "expediente-implementacion",
+            "titulo": "Implementacion y seguimiento",
+            "descripcion": "Ultimo chequeo previo al guardado. Esta etapa resume si la capacitacion ya tiene base suficiente para entrar al flujo de implementacion.",
+            "block_slugs": [],
+        },
+    ]
+
+    pasos: list[dict[str, Any]] = []
+    for definicion in definiciones:
+        bloques = [
+            {**bloques_por_slug[slug]}
+            for slug in definicion.get("block_slugs", [])
+            if slug in bloques_por_slug
+        ]
+        required_count = sum(int(item.get("required_count", 0) or 0) for item in bloques)
+        required_done = sum(int(item.get("required_done", 0) or 0) for item in bloques)
+        filled_count = sum(int(item.get("filled_count", 0) or 0) for item in bloques)
+        is_complete = bool(bloques) and all(bool(item.get("is_complete")) for item in bloques)
+        is_started = filled_count > 0
+
+        paso = {
+            **definicion,
+            "blocks": bloques,
+            "required_count": required_count,
+            "required_done": required_done,
+            "filled_count": filled_count,
+            "is_complete": is_complete,
+            "is_started": is_started,
+        }
+
+        if definicion["slug"] == "expediente-plan-trabajo":
+            paso["summary_cards"] = [
+                {
+                    "label": "Capacitacion",
+                    "value": str(valores_form.get("cap_nombre", "")).strip() or "Pendiente",
+                },
+                {
+                    "label": "Origen",
+                    "value": str(valores_form.get("sol_origen_institucional", "")).strip() or "Pendiente",
+                },
+                {
+                    "label": "Publico",
+                    "value": str(valores_form.get("pob_tipo", "")).strip() or "Pendiente",
+                },
+                {
+                    "label": "Modalidad",
+                    "value": str(valores_form.get("dis_modalidad", "")).strip() or "Pendiente",
+                },
+            ]
+
+        if definicion["slug"] == "expediente-implementacion":
+            paso["checks"] = _construir_resumen_implementacion(secciones_render, valores_form)
+            paso["is_started"] = any(bool(item.get("ok")) for item in paso["checks"])
+            paso["is_complete"] = all(bool(item.get("ok")) for item in paso["checks"])
+            paso["required_count"] = len(paso["checks"])
+            paso["required_done"] = sum(1 for item in paso["checks"] if bool(item.get("ok")))
+
+        pasos.append(paso)
+
+    if not pasos:
+        return None
+
+    current_index = 0
+    for index, paso in enumerate(pasos):
+        if not bool(paso.get("is_complete")):
+            current_index = index
+            break
+        current_index = index
+
+    for index, paso in enumerate(pasos):
+        paso["step_index"] = index + 1
+        paso["is_current_step"] = index == current_index
+
+    return {
+        "slug": "expediente-comun",
+        "titulo": "Ruta comun posterior",
+        "descripcion": "Luego de la matriz de sustento o del diagnostico, ambas rutas desembocan en esta secuencia comun del expediente.",
+        "steps": pasos,
+    }
+
+
 def _validar_registro_capacitacion(
     payload_raw: dict[str, str],
  ) -> tuple[list[str], dict[str, Any]]:
@@ -1434,6 +1620,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             flujo_matriz = _construir_flujo_matriz_sustento(secciones_render, valores_form)
             flujo_diagnostico = _construir_flujo_diagnostico(secciones_render, valores_form)
             etapa_sustento = _construir_pasarela_sustento(flujo_matriz, flujo_diagnostico)
+            flujo_expediente = _construir_flujo_expediente(secciones_render, valores_form)
             solicitud_inicial = next(
                 (
                     item
@@ -1471,6 +1658,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_matriz_flujo": flujo_matriz,
                     "registro_diagnostico_flujo": flujo_diagnostico,
                     "registro_sustento_etapa": etapa_sustento,
+                    "registro_expediente_flujo": flujo_expediente,
                     "registro_iged_catalogo": catalogo_iged,
                     "registro_iged_regiones": regiones_iged,
                     "registro_origen_actual": origen_actual,

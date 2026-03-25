@@ -1828,6 +1828,140 @@ h1 {
     padding: 0 0.1rem;
 }
 
+.registro-sections-shell--expediente {
+    gap: 0.86rem;
+}
+
+.registro-expediente-roadmap {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.58rem;
+}
+
+.registro-expediente-step {
+    display: grid;
+    gap: 0.18rem;
+    padding: 0.78rem 0.82rem;
+    border: 1px solid #ccdff1;
+    border-radius: 0.92rem;
+    background: linear-gradient(160deg, #ffffff 0%, #f7fbff 100%);
+    cursor: pointer;
+}
+
+.registro-expediente-step.is-current {
+    border-color: #f0c39c;
+    background: linear-gradient(165deg, #fffaf4 0%, #fff1e0 100%);
+}
+
+.registro-expediente-step.is-started,
+.registro-expediente-step.is-complete {
+    border-color: #a9c9ea;
+    background: linear-gradient(165deg, #f4f9ff 0%, #eaf3ff 100%);
+}
+
+.registro-expediente-step__tag {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.16rem 0.46rem;
+    border-radius: 999px;
+    background: #0e7a6d;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.registro-expediente-panels {
+    display: grid;
+    gap: 0.82rem;
+}
+
+.registro-block--expediente {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 251, 255, 0.98) 100%),
+        linear-gradient(90deg, rgba(14, 122, 109, 0.08) 0%, rgba(40, 88, 181, 0.05) 100%);
+}
+
+.registro-expediente-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.62rem;
+    margin-bottom: 0.86rem;
+}
+
+.registro-expediente-summary__card,
+.registro-implementacion-check,
+.registro-expediente-subblock {
+    display: grid;
+    gap: 0.24rem;
+    padding: 0.86rem;
+    border: 1px solid #d7e3f0;
+    border-radius: 0.92rem;
+    background: #fff;
+}
+
+.registro-expediente-summary__card span {
+    color: #678098;
+    font-size: 0.72rem;
+}
+
+.registro-expediente-summary__card strong,
+.registro-expediente-subblock__header h4,
+.registro-implementacion-check__top strong {
+    color: #1f4665;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+.registro-expediente-blocks {
+    display: grid;
+    gap: 0.74rem;
+}
+
+.registro-expediente-subblock__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.82rem;
+    align-items: flex-start;
+    margin-bottom: 0.72rem;
+}
+
+.registro-expediente-subblock__header h4,
+.registro-expediente-subblock__header p,
+.registro-implementacion-check p,
+.registro-implementacion-check small {
+    margin: 0;
+}
+
+.registro-expediente-subblock__header p,
+.registro-implementacion-check p {
+    color: #60798f;
+}
+
+.registro-implementacion-checks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.72rem;
+}
+
+.registro-implementacion-check.is-ok {
+    border-color: #b6dccb;
+    background: linear-gradient(180deg, #ffffff 0%, #f2fbf7 100%);
+}
+
+.registro-implementacion-check__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.72rem;
+    align-items: center;
+}
+
+.registro-expediente-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.72rem;
+    margin-top: 0.82rem;
+    flex-wrap: wrap;
+}
+
 .registro-diagnostico-roadmap {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3153,6 +3287,12 @@ h1 {
         grid-template-columns: 1fr;
     }
 
+    .registro-expediente-roadmap,
+    .registro-expediente-summary,
+    .registro-implementacion-checks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .diagnostico-item-card__grid--matrix,
     .diagnostico-item-card__grid--instrument,
     .diagnostico-item-card__grid--results,
@@ -3164,6 +3304,7 @@ h1 {
     }
 
     .registro-diagnostico-nav,
+    .registro-expediente-nav,
     .diagnostico-builder__head {
         flex-direction: column;
         align-items: stretch;
@@ -3217,12 +3358,19 @@ h1 {
 
 @media (max-width: 760px) {
     .registro-diagnostico-roadmap,
-    .registro-solicitud__decision-list {
+    .registro-solicitud__decision-list,
+    .registro-expediente-roadmap,
+    .registro-expediente-summary,
+    .registro-implementacion-checks {
         grid-template-columns: 1fr;
     }
 
     .registro-grid--diagnostico-wide {
         grid-template-columns: 1fr;
+    }
+
+    .registro-expediente-subblock__header {
+        flex-direction: column;
     }
 
     .section-tab-dropdown {
