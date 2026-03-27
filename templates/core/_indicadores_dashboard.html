@@ -1,33 +1,63 @@
 <p class="module-panel__copy">
-    Migracion inicial del dashboard legacy de KPIs. Esta vista concentra filtros globales y consultas por capacitacion, region, IGED y participante.
+    Dashboard ejecutivo de KPIs con filtros consolidados por capacitacion, region e IGED.
 </p>
 
 <form method="get" class="indicadores-filters">
     <input type="hidden" name="vista" value="{{ indicadores_active_tab }}">
 
-    <label class="indicadores-filters__group indicadores-filters__group--multi">
+    <div class="indicadores-filters__header">
+        <div>
+            <h3>Filtros del dashboard</h3>
+            <p>Refina la tabla activa por tiempo, estado, proceso y ambito territorial.</p>
+        </div>
+    </div>
+
+    <label class="indicadores-filters__group">
         <span>Años</span>
-        <select name="anios" multiple size="4">
+        <select name="anio">
+            <option value="">Todos</option>
             {% for option in indicadores_filters.year_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_years %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option == indicadores_filters.selected_year %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
 
-    <label class="indicadores-filters__group indicadores-filters__group--multi">
+    <label class="indicadores-filters__group">
         <span>Condiciones</span>
-        <select name="condiciones" multiple size="4">
+        <select name="condicion">
+            <option value="">Todas</option>
             {% for option in indicadores_filters.condition_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_conditions %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option == indicadores_filters.selected_condition %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
 
     <label class="indicadores-filters__group indicadores-filters__group--wide">
         <span>Procesos formativos</span>
-        <select name="procesos" multiple size="6">
+        <select name="proceso">
+            <option value="">Todos</option>
             {% for option in indicadores_filters.process_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_processes %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option == indicadores_filters.selected_process %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <label class="indicadores-filters__group">
+        <span>Region</span>
+        <select name="region">
+            <option value="">Todas</option>
+            {% for option in indicadores_filters.region_options %}
+                <option value="{{ option }}" {% if option == indicadores_filters.selected_region %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <label class="indicadores-filters__group indicadores-filters__group--wide">
+        <span>IGED</span>
+        <select name="iged">
+            <option value="">Todas</option>
+            {% for option in indicadores_filters.iged_options %}
+                <option value="{{ option }}" {% if option == indicadores_filters.selected_iged %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
@@ -42,16 +72,35 @@
         <input type="date" name="fecha_fin" value="{{ indicadores_filters.fecha_fin }}">
     </label>
 
-    <label class="indicadores-filters__group indicadores-filters__group--search">
-        <span>Buscar DNI</span>
-        <input type="text" name="dni" value="{{ indicadores_filters.dni_query }}" placeholder="DNI parcial o completo">
-    </label>
-
     <div class="indicadores-filters__actions">
         <button type="submit" class="btn-primary-soft">Aplicar filtros</button>
         <a href="{% url 'core:submenu_detail' section.slug submenu.slug %}" class="btn-secondary-soft">Limpiar</a>
     </div>
 </form>
+
+<section class="indicadores-filter-pills" aria-label="Filtros activos">
+    {% if indicadores_filters.selected_year %}
+        <span class="indicadores-filter-pill">Año: {{ indicadores_filters.selected_year }}</span>
+    {% endif %}
+    {% if indicadores_filters.selected_condition %}
+        <span class="indicadores-filter-pill">Condición: {{ indicadores_filters.selected_condition }}</span>
+    {% endif %}
+    {% if indicadores_filters.selected_process %}
+        <span class="indicadores-filter-pill">Proceso: {{ indicadores_filters.selected_process }}</span>
+    {% endif %}
+    {% if indicadores_filters.selected_region %}
+        <span class="indicadores-filter-pill">Región: {{ indicadores_filters.selected_region }}</span>
+    {% endif %}
+    {% if indicadores_filters.selected_iged %}
+        <span class="indicadores-filter-pill">IGED: {{ indicadores_filters.selected_iged }}</span>
+    {% endif %}
+    {% if indicadores_filters.fecha_inicio %}
+        <span class="indicadores-filter-pill">Desde: {{ indicadores_filters.fecha_inicio }}</span>
+    {% endif %}
+    {% if indicadores_filters.fecha_fin %}
+        <span class="indicadores-filter-pill">Hasta: {{ indicadores_filters.fecha_fin }}</span>
+    {% endif %}
+</section>
 
 {% if indicadores_summary_cards %}
     <section class="indicadores-summary" aria-label="Resumen ejecutivo de indicadores">
@@ -70,11 +119,6 @@
         <a href="{{ tab.url }}" class="indicadores-tabs__item{% if tab.slug == indicadores_active_tab %} is-active{% endif %}" {% if tab.slug == indicadores_active_tab %}aria-current="page"{% endif %}>{{ tab.title }}</a>
     {% endfor %}
 </nav>
-
-<div class="indicadores-export-actions">
-    <a href="{{ indicadores_download_excel_url }}" class="btn-primary-soft">Descargar Excel</a>
-    <a href="{{ indicadores_download_csv_url }}" class="btn-secondary-soft">Descargar CSV</a>
-</div>
 
 {% if indicadores_active_tab == "capacitacion" %}
     <section class="indicadores-block">
@@ -115,20 +159,9 @@
     </section>
 {% endif %}
 
-{% if indicadores_active_tab == "dni" %}
-    <section class="indicadores-block indicadores-block--stacked">
-        <header class="indicadores-block__head">
-            <div>
-                <h3>Consulta por DNI</h3>
-                <p>Resume participantes y detalla las capacitaciones visibles bajo los filtros globales.</p>
-            </div>
-            <small>{{ indicadores_table_dni.total_rows }} participante(s)</small>
-        </header>
-        {% include "core/_indicadores_table.html" with table=indicadores_table_dni empty_message="No se encontraron participantes con los filtros y criterio de DNI indicados." %}
-
-        <div class="indicadores-subsection">
-            <h4>Detalle de capacitaciones por participante</h4>
-            {% include "core/_indicadores_table.html" with table=indicadores_table_dni_detalle empty_message="No hay detalle de capacitaciones para la consulta actual." %}
-        </div>
-    </section>
+{% if indicadores_download_excel_url or indicadores_download_csv_url %}
+    <div class="indicadores-export-actions indicadores-export-actions--footer">
+        <a href="{{ indicadores_download_excel_url }}" class="btn-primary-soft">Descargar Excel</a>
+        <a href="{{ indicadores_download_csv_url }}" class="btn-secondary-soft">Descargar CSV</a>
+    </div>
 {% endif %}

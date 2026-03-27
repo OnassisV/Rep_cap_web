@@ -131,11 +131,23 @@ def _selected_values(values: list[str], options: list[str], default: list[str]) 
     return filtered or default
 
 
+def _selected_value(value: Any, options: list[str], default: str = "") -> str:
+    selected = str(value or "").strip()
+    if selected in options:
+        return selected
+    return default if default in options or default == "" else ""
+
+
+def _series_options(series: pd.Series, *, reverse: bool = False) -> list[str]:
+    values = [str(value).strip() for value in series.dropna().tolist() if str(value).strip()]
+    return sorted(pd.Index(values).unique().tolist(), reverse=reverse)
+
+
 def _filter_offer(
     oferta: pd.DataFrame,
-    selected_years: list[str],
-    selected_conditions: list[str],
-    selected_processes: list[str],
+    selected_year: str,
+    selected_condition: str,
+    selected_process: str,
     fecha_inicio: str,
     fecha_fin: str,
 ) -> pd.DataFrame:
@@ -143,12 +155,12 @@ def _filter_offer(
     filtered.loc[:, "anio_text"] = filtered.get("anio", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
     filtered.loc[:, "Proceso Formativo"] = _build_process_label(filtered)
 
-    if selected_years:
-        filtered = filtered[filtered["anio_text"].isin(selected_years)]
-    if selected_conditions:
-        filtered = filtered[filtered.get("condicion", "").fillna("").astype(str).isin(selected_conditions)]
-    if selected_processes:
-        filtered = filtered[filtered["Proceso Formativo"].isin(selected_processes)]
+    if selected_year:
+        filtered = filtered[filtered["anio_text"] == selected_year]
+    if selected_condition:
+        filtered = filtered[filtered.get("condicion", "").fillna("").astype(str).str.strip() == selected_condition]
+    if selected_process:
+        filtered = filtered[filtered["Proceso Formativo"] == selected_process]
 
     if fecha_inicio or fecha_fin:
         fechas = pd.to_datetime(filtered.get("implementacion_final"), errors="coerce")
@@ -158,6 +170,18 @@ def _filter_offer(
         if fecha_fin:
             filtered = filtered[fechas <= pd.to_datetime(fecha_fin)]
 
+    return filtered
+
+
+def _filter_participants(bbdd: pd.DataFrame, selected_region: str, selected_iged: str) -> pd.DataFrame:
+    filtered = bbdd.copy()
+    filtered.loc[:, "region_text"] = filtered.get("region", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
+    filtered.loc[:, "iged_text"] = filtered.get("nombre_iged", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
+
+    if selected_region:
+        filtered = filtered[filtered["region_text"] == selected_region]
+    if selected_iged:
+        filtered = filtered[filtered["iged_text"] == selected_iged]
     return filtered
 
 
@@ -474,21 +498,60 @@ def _table_payload(df: pd.DataFrame, *, limit: int = 200) -> dict[str, Any]:
     return {"columns": list(df.columns), "rows": rows, "total_rows": int(len(df.index)), "truncated": len(df.index) > limit}
 
 
-def _summary_cards(df_capacitacion: pd.DataFrame, sat_global: float | None) -> list[dict[str, str]]:
-    if df_capacitacion.empty:
+def _summary_cards(active_tab: str, dataframes: dict[str, pd.DataFrame]) -> list[dict[str, str]]:
+    dataframe = dataframes.get(active_tab, pd.DataFrame())
+    if dataframe.empty:
         return []
 
-    matriculaciones = df_capacitacion.get("Matriculaciones", pd.Series(dtype=float)).sum()
-    participaciones = df_capacitacion.get("Participaciones", pd.Series(dtype=float)).sum()
-    retencion = participaciones / matriculaciones if matriculaciones else pd.NA
-    return [
-        {"label": "Capacitaciones", "value": _format_cell("Capacitacion", len(df_capacitacion.index)), "meta": "Procesos visibles con los filtros aplicados"},
-        {"label": "Postulaciones", "value": _format_cell("Postulaciones", df_capacitacion.get("Postulaciones", pd.Series(dtype=float)).sum()), "meta": "Registros totales en la base filtrada"},
-        {"label": "Participaciones", "value": _format_cell("Participaciones", participaciones), "meta": "Participantes activos con compromiso valido"},
-        {"label": "Certificaciones", "value": _format_cell("Certificaciones", df_capacitacion.get("Certificaciones", pd.Series(dtype=float)).sum()), "meta": "Participantes certificados en el conjunto filtrado"},
-        {"label": "Retencion global", "value": _format_cell("Tasa Retencion", retencion), "meta": "Relacion entre matriculaciones y participaciones"},
-        {"label": "Satisfaccion global", "value": _format_cell("Tasa Satisfaccion", sat_global if sat_global is not None else pd.NA), "meta": "Respuesta satisfecha sobre encuestas visibles"},
-    ]
+    identity_columns = {
+        "capacitacion": {"Año", "Codigo", "Proceso Formativo", "Especialista", "Condicion", "Objetivo"},
+        "region": {"Region"},
+        "iged": {"Region", "IGED", "Tipo IGED"},
+    }.get(active_tab, set())
+    scope_card = {
+        "capacitacion": {"label": "Capacitaciones visibles", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Procesos formativos en la tabla activa"},
+        "region": {"label": "Regiones visibles", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Ambitos territoriales con datos en la tabla activa"},
+        "iged": {"label": "IGED visibles", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Instancias de gestion visibles en la tabla activa"},
+    }.get(active_tab)
+
+    cards: list[dict[str, str]] = [scope_card] if scope_card else []
+    for column in dataframe.columns:
+        if column in identity_columns:
+            continue
+        series = dataframe[column]
+        if column == "Efectividad":
+            values = pd.to_numeric(series, errors="coerce")
+            effective_count = int((values.fillna(0) == 1).sum())
+            effective_rate = effective_count / len(dataframe.index) if len(dataframe.index) else pd.NA
+            cards.append(
+                {
+                    "label": "Efectividad",
+                    "value": _format_cell("Tasa Finalizacion", effective_rate),
+                    "meta": f"{_format_cell('Capacitacion', effective_count)} fila(s) efectivas de la tabla visible",
+                }
+            )
+            continue
+        if column in COUNT_COLUMNS:
+            total = pd.to_numeric(series, errors="coerce").fillna(0).sum()
+            cards.append(
+                {
+                    "label": column,
+                    "value": _format_cell(column, total),
+                    "meta": "Suma consolidada de la tabla activa",
+                }
+            )
+            continue
+        if column in RATE_COLUMNS:
+            values = pd.to_numeric(series, errors="coerce").dropna()
+            average = values.mean() if not values.empty else pd.NA
+            cards.append(
+                {
+                    "label": column,
+                    "value": _format_cell(column, average),
+                    "meta": "Promedio del KPI en la tabla activa",
+                }
+            )
+    return cards
 
 
 def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
@@ -498,66 +561,81 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     oferta.loc[:, "anio_text"] = oferta.get("anio", pd.Series(index=oferta.index, dtype=object)).fillna("").astype(str).str.strip()
     oferta.loc[:, "Proceso Formativo"] = _build_process_label(oferta)
 
-    year_options = sorted([value for value in oferta.get("anio_text", pd.Series(dtype=str)).dropna().unique().tolist() if str(value).strip()], reverse=True)
-    condition_options = sorted([str(value).strip() for value in oferta.get("condicion", pd.Series(dtype=str)).dropna().unique().tolist() if str(value).strip()])
+    year_options = _series_options(oferta.get("anio_text", pd.Series(dtype=str)), reverse=True)
+    condition_options = _series_options(oferta.get("condicion", pd.Series(dtype=str)))
 
-    selected_years_raw = [str(value).strip() for value in query_data.getlist("anios") if str(value).strip()]
     current_year = str(datetime.now().year)
-    default_years = [current_year] if current_year in year_options else year_options[:]
-    selected_years = _selected_values(selected_years_raw, year_options, default_years)
+    selected_year = _selected_value(query_data.get("anio"), year_options, current_year if current_year in year_options else "")
 
-    selected_conditions_raw = [str(value).strip() for value in query_data.getlist("condiciones") if str(value).strip()]
-    default_conditions = ["Cerrado"] if "Cerrado" in condition_options else condition_options[:]
-    selected_conditions = _selected_values(selected_conditions_raw, condition_options, default_conditions)
-
-    oferta_for_processes = _filter_offer(oferta, selected_years, selected_conditions, [], "", "")
-    process_options = sorted([value for value in oferta_for_processes.get("Proceso Formativo", pd.Series(dtype=str)).dropna().unique().tolist() if str(value).strip()])
-    selected_processes_raw = [str(value).strip() for value in query_data.getlist("procesos") if str(value).strip()]
-    selected_processes = _selected_values(selected_processes_raw, process_options, process_options[:])
+    default_condition = "Cerrado" if "Cerrado" in condition_options else ""
+    selected_condition = _selected_value(query_data.get("condicion"), condition_options, default_condition)
 
     fecha_inicio = str(query_data.get("fecha_inicio", "")).strip()
     fecha_fin = str(query_data.get("fecha_fin", "")).strip()
-    dni_query = str(query_data.get("dni", "")).strip()
+
+    oferta_for_processes = _filter_offer(oferta, selected_year, selected_condition, "", fecha_inicio, fecha_fin)
+    process_options = _series_options(oferta_for_processes.get("Proceso Formativo", pd.Series(dtype=str)))
+    selected_process = _selected_value(query_data.get("proceso"), process_options, "")
+
+    oferta_filtrada_base = _filter_offer(oferta, selected_year, selected_condition, selected_process, fecha_inicio, fecha_fin)
+    codigos_filtrados = oferta_filtrada_base[["codigo"]].copy() if "codigo" in oferta_filtrada_base.columns else pd.DataFrame(columns=["codigo"])
+    participantes_base = pd.merge(bbdd, codigos_filtrados.drop_duplicates(), on="codigo", how="inner") if not codigos_filtrados.empty else pd.DataFrame(columns=bbdd.columns)
+    region_options = _series_options(participantes_base.get("region", pd.Series(dtype=str)))
+    selected_region = _selected_value(query_data.get("region"), region_options, "")
+
+    participantes_iged = participantes_base.copy()
+    if selected_region and not participantes_iged.empty:
+        participantes_iged = participantes_iged[participantes_iged.get("region", "").fillna("").astype(str).str.strip() == selected_region]
+    iged_options = _series_options(participantes_iged.get("nombre_iged", pd.Series(dtype=str)))
+    selected_iged = _selected_value(query_data.get("iged"), iged_options, "")
+
     active_tab = str(query_data.get("vista", "capacitacion")).strip().lower() or "capacitacion"
-    if active_tab not in {"capacitacion", "region", "iged", "dni"}:
+    if active_tab not in {"capacitacion", "region", "iged"}:
         active_tab = "capacitacion"
 
-    oferta_filtrada = _filter_offer(oferta, selected_years, selected_conditions, selected_processes, fecha_inicio, fecha_fin)
-    df_cap, _merged_cap, sat_global = _calculate_capacitacion_kpis(oferta_filtrada, bbdd, satisfaccion, iged)
-    df_region = _calculate_region_kpis(oferta_filtrada, bbdd, iged)
-    df_iged = _calculate_iged_kpis(oferta_filtrada, bbdd, iged)
-    df_participantes, df_detalle = _calculate_dni_tables(oferta_filtrada, bbdd, dni_query)
+    bbdd_filtrada = _filter_participants(participantes_base, selected_region, selected_iged)
+    oferta_filtrada = oferta_filtrada_base
+    if not bbdd_filtrada.empty and (selected_region or selected_iged):
+        codigos_visibles = bbdd_filtrada.get("codigo", pd.Series(dtype=object)).fillna("").astype(str).str.strip().unique().tolist()
+        oferta_filtrada = oferta_filtrada_base[oferta_filtrada_base.get("codigo", pd.Series(dtype=object)).fillna("").astype(str).str.strip().isin(codigos_visibles)]
+    elif selected_region or selected_iged:
+        oferta_filtrada = oferta_filtrada_base.iloc[0:0].copy()
+
+    df_cap, _merged_cap, _sat_global = _calculate_capacitacion_kpis(oferta_filtrada, bbdd_filtrada, satisfaccion, iged)
+    df_region = _calculate_region_kpis(oferta_filtrada, bbdd_filtrada, iged)
+    df_iged = _calculate_iged_kpis(oferta_filtrada, bbdd_filtrada, iged)
 
     tabs = [
         {"slug": "capacitacion", "title": "Por Capacitacion"},
         {"slug": "region", "title": "Por Region"},
         {"slug": "iged", "title": "Por IGED"},
-        {"slug": "dni", "title": "Por DNI"},
     ]
+
+    dataframes = {
+        "capacitacion": df_cap,
+        "region": df_region,
+        "iged": df_iged,
+    }
 
     return {
         "filters": {
             "year_options": year_options,
             "condition_options": condition_options,
             "process_options": process_options,
-            "selected_years": selected_years,
-            "selected_conditions": selected_conditions,
-            "selected_processes": selected_processes,
+            "region_options": region_options,
+            "iged_options": iged_options,
+            "selected_year": selected_year,
+            "selected_condition": selected_condition,
+            "selected_process": selected_process,
+            "selected_region": selected_region,
+            "selected_iged": selected_iged,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
-            "dni_query": dni_query,
         },
         "tabs": tabs,
         "active_tab": active_tab,
-        "summary_cards": _summary_cards(df_cap, sat_global),
-        "dataframes": {
-            "capacitacion": df_cap,
-            "region": df_region,
-            "iged": df_iged,
-            "dni": df_participantes,
-            "dni_detalle": df_detalle,
-        },
-        "sat_global": sat_global,
+        "summary_cards": _summary_cards(active_tab, dataframes),
+        "dataframes": dataframes,
     }
 
 
@@ -578,30 +656,10 @@ def build_indicadores_download(query_data: Any, download_kind: str, download_for
     dashboard = _build_dashboard_data(query_data)
     dataframes = dashboard.get("dataframes", {})
 
-    if kind not in {"capacitacion", "region", "iged", "dni", "dni_detalle"}:
+    if kind not in {"capacitacion", "region", "iged"}:
         return None
     if export_format not in {"xlsx", "csv"}:
         return None
-
-    if kind == "dni":
-        main_df = dataframes.get("dni", pd.DataFrame())
-        detail_df = dataframes.get("dni_detalle", pd.DataFrame())
-        if export_format == "xlsx":
-            payload = _excel_bytes([
-                ("Participantes", main_df),
-                ("Detalle", detail_df),
-            ])
-            return {
-                "content": payload,
-                "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "filename": "indicadores_dni.xlsx",
-            }
-        csv_df = detail_df if not detail_df.empty else main_df
-        return {
-            "content": csv_df.to_csv(index=False).encode("utf-8-sig"),
-            "content_type": "text/csv; charset=utf-8",
-            "filename": "indicadores_dni.csv",
-        }
 
     dataframe = dataframes.get(kind, pd.DataFrame())
     if export_format == "xlsx":
@@ -632,8 +690,6 @@ def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
         "indicadores_table_capacitacion": _table_payload(dataframes.get("capacitacion", pd.DataFrame())),
         "indicadores_table_region": _table_payload(dataframes.get("region", pd.DataFrame())),
         "indicadores_table_iged": _table_payload(dataframes.get("iged", pd.DataFrame())),
-        "indicadores_table_dni": _table_payload(dataframes.get("dni", pd.DataFrame()), limit=120),
-        "indicadores_table_dni_detalle": _table_payload(dataframes.get("dni_detalle", pd.DataFrame()), limit=180),
         "indicadores_data_state": {
             "total_capacitaciones": int(len(dataframes.get("capacitacion", pd.DataFrame()).index)),
             "total_regiones": int(len(dataframes.get("region", pd.DataFrame()).index)),

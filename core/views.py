@@ -1154,6 +1154,10 @@ def section_detail_view(request, section_slug: str):
     if section is None:
         raise Http404("Seccion no encontrada.")
 
+    section_submenus = section.get("submenus", [])
+    if section_slug == "reporte-indicadores" and len(section_submenus) == 1:
+        return redirect("core:submenu_detail", section_slug, str(section_submenus[0].get("slug", "dashboard-kpi")))
+
     # Construye contexto de identidad.
     user_context = _build_user_context(request)
 
@@ -1167,7 +1171,7 @@ def section_detail_view(request, section_slug: str):
             # Secciones completas para renderizar barra de pestanas de navegacion.
             "menu_sections": MENU_GEOMETRICO,
             # Submenus de la seccion activa (si aplica).
-            "section_submenus": section.get("submenus", []),
+            "section_submenus": section_submenus if len(section_submenus) > 1 else [],
         },
     )
 
@@ -1190,7 +1194,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         "section": section,
         "submenu": submenu,
         "menu_sections": MENU_GEOMETRICO,
-        "section_submenus": section.get("submenus", []),
+        "section_submenus": section.get("submenus", []) if len(section.get("submenus", [])) > 1 else [],
         "adapter_kind": submenu.get("adapter", "placeholder"),
         # Permite ocultar filtro de año en submenus donde no aporta al flujo.
         "mostrar_filtro_anio": submenu_slug != "registrar-nueva-capacitacion",
