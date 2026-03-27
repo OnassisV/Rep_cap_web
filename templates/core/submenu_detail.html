@@ -733,56 +733,11 @@
                                                             <button type="button" class="actividad-modal__close" data-close-expediente-modal="{{ bloque.modal_id }}" aria-label="Cerrar">x</button>
                                                         </header>
 
-                                                        {% if bloque.special_layout == 'problem_prioritization' %}
+                                                        <div class="registro-grid">
                                                             {% for campo in bloque.campos %}
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endfor %}
-                                                            <div class="registro-problema-priorizado-note">
-                                                                <strong>Ordena primero el problema principal.</strong>
-                                                                <p>La prioridad 1 será la referencia para la matriz instruccional y los módulos posteriores.</p>
-                                                            </div>
-                                                            <div class="diagnostico-builder" data-diagnostico-builder="prioritized-problems" data-target-field="diag_problemas_json">
-                                                                <div class="diagnostico-builder__head">
-                                                                    <div>
-                                                                        <h4>Problemas priorizados</h4>
-                                                                        <p>Registra cada problema con su prioridad, los desempeños vinculados y la justificación técnica.</p>
-                                                                    </div>
-                                                                    <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema</button>
-                                                                </div>
-                                                                <div class="diagnostico-builder__list" data-builder-list></div>
-                                                                <template data-builder-template>
-                                                                    <article class="diagnostico-item-card">
-                                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--problems-priority">
-                                                                            <label>
-                                                                                <span>Problema identificado</span>
-                                                                                <textarea rows="3" data-field="problema" placeholder="Describe el problema priorizado"></textarea>
-                                                                            </label>
-                                                                            <label>
-                                                                                <span>Prioridad</span>
-                                                                                <input type="number" min="1" step="1" data-field="prioridad" placeholder="1, 2, 3...">
-                                                                            </label>
-                                                                            <label>
-                                                                                <span>Desempeños relacionados con el problema</span>
-                                                                                <textarea rows="3" data-field="desempenios_relacionados" placeholder="Capacidades o desempeños afectados"></textarea>
-                                                                            </label>
-                                                                            <label>
-                                                                                <span>Justificación de la prioridad</span>
-                                                                                <textarea rows="3" data-field="justificacion_prioridad" placeholder="Fundamenta la prioridad asignada"></textarea>
-                                                                            </label>
-                                                                        </div>
-                                                                        <div class="diagnostico-item-card__actions">
-                                                                            <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
-                                                                        </div>
-                                                                    </article>
-                                                                </template>
-                                                            </div>
-                                                        {% else %}
-                                                            <div class="registro-grid">
-                                                                {% for campo in bloque.campos %}
-                                                                    {% include "core/_registro_field.html" with field=campo %}
-                                                                {% endfor %}
-                                                            </div>
-                                                        {% endif %}
+                                                        </div>
                                                     </div>
                                                 </dialog>
                                             {% endfor %}
@@ -1836,6 +1791,10 @@
                 {% else %}
                     <p class="module-panel__note">No se encontraron procesos en la oferta para este filtro.</p>
                 {% endif %}
+            {% endif %}
+
+            {% if adapter_kind == "indicadores" %}
+                {% include "core/_indicadores_dashboard.html" %}
             {% endif %}
 
             <!-- Vista de placeholder para submenus aun no implementados en detalle. -->

@@ -1,4 +1,5 @@
 django==6.0.3
+pandas==2.3.2
 pymysql==1.1.2
 bcrypt==5.0.0
 python-dotenv==1.2.2

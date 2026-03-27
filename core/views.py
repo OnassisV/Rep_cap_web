@@ -72,6 +72,7 @@ from .registro_capacitacion_schema import (
     REGISTRO_CAPACITACION_SECCIONES,
     iterar_campos_registro_capacitacion,
 )
+from .indicadores_adapters import build_indicadores_dashboard_context
 from .sync_runtime import build_sync_status_context
 
 
@@ -155,6 +156,15 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
             "dashboard_kpi.py",
             "reporte_ambitos.py",
             "satisfaccion/procesamiento_satisfaccion.py",
+        ],
+        "submenus": [
+            {
+                "slug": "dashboard-kpi",
+                "titulo": "Dashboard KPI",
+                "descripcion": "Resumen ejecutivo de KPIs por capacitacion, region, IGED y participante.",
+                "adapter": "indicadores",
+                "legacy_module": "app_difoca/modules/dashboard_kpi.py",
+            },
         ],
     },
     {
@@ -734,44 +744,6 @@ def _construir_resumen_implementacion(
     ]
 
 
-def _construir_bloque_problema_priorizado(
-    secciones_render: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    """Prepara un bloque especial para priorizar problemas antes del diseno instruccional."""
-    origen = next(
-        (
-            item
-            for item in secciones_render
-            if str(item.get("slug", "")).strip() == "diagnostico-paso-1"
-        ),
-        None,
-    )
-    if origen is None:
-        return None
-
-    campos = _filtrar_campos_registro(
-        list(origen.get("campos", [])),
-        include={"diag_problemas_json"},
-    )
-    valor_json = ""
-    if campos:
-        valor_json = str(campos[0].get("valor", "") or "").strip()
-    tiene_contenido = bool(valor_json)
-
-    return {
-        "slug": "problema-priorizado",
-        "titulo": "Establecimiento del problema priorizado",
-        "descripcion": "Identifica, prioriza y justifica los problemas que sostendran el diseno posterior de la capacitacion.",
-        "campos": campos,
-        "special_layout": "problem_prioritization",
-        "required_count": 1,
-        "required_done": 1 if tiene_contenido else 0,
-        "filled_count": 1 if tiene_contenido else 0,
-        "is_complete": tiene_contenido,
-        "is_started": tiene_contenido,
-    }
-
-
 def _construir_flujo_expediente(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
@@ -783,12 +755,6 @@ def _construir_flujo_expediente(
     }
 
     definiciones = [
-        {
-            "slug": "expediente-problema-priorizado",
-            "titulo": "Establecimiento del problema priorizado",
-            "descripcion": "Antes del diseno instruccional, ordena y justifica el problema principal que trabajara la capacitacion.",
-            "block_slugs": [],
-        },
         {
             "slug": "expediente-diseno-matriz",
             "titulo": "Diseno de la Matriz Instruccional (+ alcance)",
@@ -832,15 +798,11 @@ def _construir_flujo_expediente(
 
     pasos: list[dict[str, Any]] = []
     for definicion in definiciones:
-        if definicion["slug"] == "expediente-problema-priorizado":
-            bloque_especial = _construir_bloque_problema_priorizado(secciones_render)
-            bloques = [bloque_especial] if bloque_especial else []
-        else:
-            bloques = [
-                {**bloques_por_slug[slug]}
-                for slug in definicion.get("block_slugs", [])
-                if slug in bloques_por_slug
-            ]
+        bloques = [
+            {**bloques_por_slug[slug]}
+            for slug in definicion.get("block_slugs", [])
+            if slug in bloques_por_slug
+        ]
 
         for bloque in bloques:
             if bloque is None:
@@ -2116,6 +2078,20 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             context["total_sin_estandares"] = sum(
                 1 for fila in filas_estandares if int(fila.get("respuestas_totales", 0)) == 0
             )
+
+    if section_slug == "reporte-indicadores" and submenu_slug == "dashboard-kpi":
+        indicadores_context = build_indicadores_dashboard_context(request.GET)
+        base_url = f"/app/seccion/{section_slug}/submenu/{submenu_slug}/"
+        tabs_with_urls: list[dict[str, Any]] = []
+        for tab in indicadores_context.get("indicadores_tabs", []):
+            params = request.GET.copy()
+            params["vista"] = str(tab.get("slug", ""))
+            url = f"{base_url}?{params.urlencode()}" if params else base_url
+            tabs_with_urls.append({**tab, "url": url})
+
+        indicadores_context["indicadores_tabs"] = tabs_with_urls
+        context["mostrar_filtro_anio"] = False
+        context.update(indicadores_context)
 
     # Renderiza vista de submenu con adaptacion correspondiente.
     return render(request, "core/submenu_detail.html", context)

@@ -1,0 +1,27 @@
+{% if table.rows %}
+    <div class="indicadores-table-wrap">
+        <table class="indicadores-table">
+            <thead>
+                <tr>
+                    {% for column in table.columns %}
+                        <th scope="col">{{ column }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table.rows %}
+                    <tr>
+                        {% for cell in row %}
+                            <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if table.truncated %}
+        <p class="indicadores-table__hint">Se muestran las primeras filas para mantener la vista operativa. Total disponible: {{ table.total_rows }}.</p>
+    {% endif %}
+{% else %}
+    <p class="module-panel__copy">{{ empty_message }}</p>
+{% endif %}

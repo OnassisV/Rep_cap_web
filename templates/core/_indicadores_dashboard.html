@@ -1,0 +1,129 @@
+<p class="module-panel__copy">
+    Migracion inicial del dashboard legacy de KPIs. Esta vista concentra filtros globales y consultas por capacitacion, region, IGED y participante.
+</p>
+
+<form method="get" class="indicadores-filters">
+    <input type="hidden" name="vista" value="{{ indicadores_active_tab }}">
+
+    <label class="indicadores-filters__group indicadores-filters__group--multi">
+        <span>Años</span>
+        <select name="anios" multiple size="4">
+            {% for option in indicadores_filters.year_options %}
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_years %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <label class="indicadores-filters__group indicadores-filters__group--multi">
+        <span>Condiciones</span>
+        <select name="condiciones" multiple size="4">
+            {% for option in indicadores_filters.condition_options %}
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_conditions %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <label class="indicadores-filters__group indicadores-filters__group--wide">
+        <span>Procesos formativos</span>
+        <select name="procesos" multiple size="6">
+            {% for option in indicadores_filters.process_options %}
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_processes %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <label class="indicadores-filters__group">
+        <span>Desde</span>
+        <input type="date" name="fecha_inicio" value="{{ indicadores_filters.fecha_inicio }}">
+    </label>
+
+    <label class="indicadores-filters__group">
+        <span>Hasta</span>
+        <input type="date" name="fecha_fin" value="{{ indicadores_filters.fecha_fin }}">
+    </label>
+
+    <label class="indicadores-filters__group indicadores-filters__group--search">
+        <span>Buscar DNI</span>
+        <input type="text" name="dni" value="{{ indicadores_filters.dni_query }}" placeholder="DNI parcial o completo">
+    </label>
+
+    <div class="indicadores-filters__actions">
+        <button type="submit" class="btn-primary-soft">Aplicar filtros</button>
+        <a href="{% url 'core:submenu_detail' section.slug submenu.slug %}" class="btn-secondary-soft">Limpiar</a>
+    </div>
+</form>
+
+{% if indicadores_summary_cards %}
+    <section class="indicadores-summary" aria-label="Resumen ejecutivo de indicadores">
+        {% for card in indicadores_summary_cards %}
+            <article class="indicadores-summary__card">
+                <span>{{ card.label }}</span>
+                <strong>{{ card.value }}</strong>
+                <small>{{ card.meta }}</small>
+            </article>
+        {% endfor %}
+    </section>
+{% endif %}
+
+<nav class="indicadores-tabs" aria-label="Vistas del dashboard de indicadores">
+    {% for tab in indicadores_tabs %}
+        <a href="{{ tab.url }}" class="indicadores-tabs__item{% if tab.slug == indicadores_active_tab %} is-active{% endif %}" {% if tab.slug == indicadores_active_tab %}aria-current="page"{% endif %}>{{ tab.title }}</a>
+    {% endfor %}
+</nav>
+
+{% if indicadores_active_tab == "capacitacion" %}
+    <section class="indicadores-block">
+        <header class="indicadores-block__head">
+            <div>
+                <h3>KPIs por capacitacion</h3>
+                <p>Replica el consolidado principal del dashboard antiguo con foco en desempeño, retencion y certificacion.</p>
+            </div>
+            <small>{{ indicadores_table_capacitacion.total_rows }} fila(s)</small>
+        </header>
+        {% include "core/_indicadores_table.html" with table=indicadores_table_capacitacion empty_message="No hay capacitaciones que coincidan con los filtros actuales." %}
+    </section>
+{% endif %}
+
+{% if indicadores_active_tab == "region" %}
+    <section class="indicadores-block">
+        <header class="indicadores-block__head">
+            <div>
+                <h3>KPIs por region</h3>
+                <p>Consolida cobertura territorial, volumen de participantes y resultados por region.</p>
+            </div>
+            <small>{{ indicadores_table_region.total_rows }} fila(s)</small>
+        </header>
+        {% include "core/_indicadores_table.html" with table=indicadores_table_region empty_message="No hay regiones con datos para los filtros seleccionados." %}
+    </section>
+{% endif %}
+
+{% if indicadores_active_tab == "iged" %}
+    <section class="indicadores-block">
+        <header class="indicadores-block__head">
+            <div>
+                <h3>KPIs por IGED</h3>
+                <p>Muestra cobertura y fortalecimiento por cada DRE/GRE o UGEL visible en el filtro vigente.</p>
+            </div>
+            <small>{{ indicadores_table_iged.total_rows }} fila(s)</small>
+        </header>
+        {% include "core/_indicadores_table.html" with table=indicadores_table_iged empty_message="No hay IGED con datos para los filtros seleccionados." %}
+    </section>
+{% endif %}
+
+{% if indicadores_active_tab == "dni" %}
+    <section class="indicadores-block indicadores-block--stacked">
+        <header class="indicadores-block__head">
+            <div>
+                <h3>Consulta por DNI</h3>
+                <p>Resume participantes y detalla las capacitaciones visibles bajo los filtros globales.</p>
+            </div>
+            <small>{{ indicadores_table_dni.total_rows }} participante(s)</small>
+        </header>
+        {% include "core/_indicadores_table.html" with table=indicadores_table_dni empty_message="No se encontraron participantes con los filtros y criterio de DNI indicados." %}
+
+        <div class="indicadores-subsection">
+            <h4>Detalle de capacitaciones por participante</h4>
+            {% include "core/_indicadores_table.html" with table=indicadores_table_dni_detalle empty_message="No hay detalle de capacitaciones para la consulta actual." %}
+        </div>
+    </section>
+{% endif %}
