@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from io import BytesIO
 from typing import Any
 
 import pandas as pd
@@ -490,8 +491,8 @@ def _summary_cards(df_capacitacion: pd.DataFrame, sat_global: float | None) -> l
     ]
 
 
-def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
-    """Construye el contexto Django para el dashboard de indicadores."""
+def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
+    """Calcula una sola vez los datasets base del dashboard y sus filtros activos."""
     oferta, bbdd, satisfaccion, iged = _load_base_tables()
     oferta = oferta.copy()
     oferta.loc[:, "anio_text"] = oferta.get("anio", pd.Series(index=oferta.index, dtype=object)).fillna("").astype(str).str.strip()
@@ -535,7 +536,7 @@ def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
     ]
 
     return {
-        "indicadores_filters": {
+        "filters": {
             "year_options": year_options,
             "condition_options": condition_options,
             "process_options": process_options,
@@ -546,18 +547,97 @@ def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
             "fecha_fin": fecha_fin,
             "dni_query": dni_query,
         },
-        "indicadores_tabs": tabs,
-        "indicadores_active_tab": active_tab,
-        "indicadores_summary_cards": _summary_cards(df_cap, sat_global),
-        "indicadores_table_capacitacion": _table_payload(df_cap),
-        "indicadores_table_region": _table_payload(df_region),
-        "indicadores_table_iged": _table_payload(df_iged),
-        "indicadores_table_dni": _table_payload(df_participantes, limit=120),
-        "indicadores_table_dni_detalle": _table_payload(df_detalle, limit=180),
+        "tabs": tabs,
+        "active_tab": active_tab,
+        "summary_cards": _summary_cards(df_cap, sat_global),
+        "dataframes": {
+            "capacitacion": df_cap,
+            "region": df_region,
+            "iged": df_iged,
+            "dni": df_participantes,
+            "dni_detalle": df_detalle,
+        },
+        "sat_global": sat_global,
+    }
+
+
+def _excel_bytes(sheets: list[tuple[str, pd.DataFrame]]) -> bytes:
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        for sheet_name, dataframe in sheets:
+            export_df = dataframe.copy()
+            export_df.to_excel(writer, index=False, sheet_name=sheet_name[:31] or "Datos")
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def build_indicadores_download(query_data: Any, download_kind: str, download_format: str) -> dict[str, Any] | None:
+    """Construye un archivo descargable para el dashboard de indicadores."""
+    kind = str(download_kind or "").strip().lower()
+    export_format = str(download_format or "xlsx").strip().lower()
+    dashboard = _build_dashboard_data(query_data)
+    dataframes = dashboard.get("dataframes", {})
+
+    if kind not in {"capacitacion", "region", "iged", "dni", "dni_detalle"}:
+        return None
+    if export_format not in {"xlsx", "csv"}:
+        return None
+
+    if kind == "dni":
+        main_df = dataframes.get("dni", pd.DataFrame())
+        detail_df = dataframes.get("dni_detalle", pd.DataFrame())
+        if export_format == "xlsx":
+            payload = _excel_bytes([
+                ("Participantes", main_df),
+                ("Detalle", detail_df),
+            ])
+            return {
+                "content": payload,
+                "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "filename": "indicadores_dni.xlsx",
+            }
+        csv_df = detail_df if not detail_df.empty else main_df
+        return {
+            "content": csv_df.to_csv(index=False).encode("utf-8-sig"),
+            "content_type": "text/csv; charset=utf-8",
+            "filename": "indicadores_dni.csv",
+        }
+
+    dataframe = dataframes.get(kind, pd.DataFrame())
+    if export_format == "xlsx":
+        payload = _excel_bytes([(kind.title(), dataframe)])
+        return {
+            "content": payload,
+            "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "filename": f"indicadores_{kind}.xlsx",
+        }
+
+    return {
+        "content": dataframe.to_csv(index=False).encode("utf-8-sig"),
+        "content_type": "text/csv; charset=utf-8",
+        "filename": f"indicadores_{kind}.csv",
+    }
+
+
+def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
+    """Construye el contexto Django para el dashboard de indicadores."""
+    dashboard = _build_dashboard_data(query_data)
+    dataframes = dashboard.get("dataframes", {})
+
+    return {
+        "indicadores_filters": dashboard.get("filters", {}),
+        "indicadores_tabs": dashboard.get("tabs", []),
+        "indicadores_active_tab": dashboard.get("active_tab", "capacitacion"),
+        "indicadores_summary_cards": dashboard.get("summary_cards", []),
+        "indicadores_table_capacitacion": _table_payload(dataframes.get("capacitacion", pd.DataFrame())),
+        "indicadores_table_region": _table_payload(dataframes.get("region", pd.DataFrame())),
+        "indicadores_table_iged": _table_payload(dataframes.get("iged", pd.DataFrame())),
+        "indicadores_table_dni": _table_payload(dataframes.get("dni", pd.DataFrame()), limit=120),
+        "indicadores_table_dni_detalle": _table_payload(dataframes.get("dni_detalle", pd.DataFrame()), limit=180),
         "indicadores_data_state": {
-            "total_capacitaciones": int(len(df_cap.index)),
-            "total_regiones": int(len(df_region.index)),
-            "total_iged": int(len(df_iged.index)),
-            "total_participantes": int(len(df_participantes.index)),
+            "total_capacitaciones": int(len(dataframes.get("capacitacion", pd.DataFrame()).index)),
+            "total_regiones": int(len(dataframes.get("region", pd.DataFrame()).index)),
+            "total_iged": int(len(dataframes.get("iged", pd.DataFrame()).index)),
+            "total_participantes": int(len(dataframes.get("dni", pd.DataFrame()).index)),
         },
     }

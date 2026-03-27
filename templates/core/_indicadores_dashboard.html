@@ -71,6 +71,11 @@
     {% endfor %}
 </nav>
 
+<div class="indicadores-export-actions">
+    <a href="{{ indicadores_download_excel_url }}" class="btn-primary-soft">Descargar Excel</a>
+    <a href="{{ indicadores_download_csv_url }}" class="btn-secondary-soft">Descargar CSV</a>
+</div>
+
 {% if indicadores_active_tab == "capacitacion" %}
     <section class="indicadores-block">
         <header class="indicadores-block__head">

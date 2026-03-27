@@ -72,7 +72,7 @@ from .registro_capacitacion_schema import (
     REGISTRO_CAPACITACION_SECCIONES,
     iterar_campos_registro_capacitacion,
 )
-from .indicadores_adapters import build_indicadores_dashboard_context
+from .indicadores_adapters import build_indicadores_dashboard_context, build_indicadores_download
 from .sync_runtime import build_sync_status_context
 
 
@@ -2080,6 +2080,18 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             )
 
     if section_slug == "reporte-indicadores" and submenu_slug == "dashboard-kpi":
+        download_kind = str(request.GET.get("download", "")).strip().lower()
+        download_format = str(request.GET.get("format", "xlsx")).strip().lower()
+        if download_kind:
+            download_payload = build_indicadores_download(request.GET, download_kind, download_format)
+            if download_payload is not None:
+                response = HttpResponse(
+                    download_payload.get("content", b""),
+                    content_type=str(download_payload.get("content_type", "application/octet-stream")),
+                )
+                response["Content-Disposition"] = f'attachment; filename="{download_payload.get("filename", "indicadores_export")}"'
+                return response
+
         indicadores_context = build_indicadores_dashboard_context(request.GET)
         base_url = f"/app/seccion/{section_slug}/submenu/{submenu_slug}/"
         tabs_with_urls: list[dict[str, Any]] = []
@@ -2090,6 +2102,14 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             tabs_with_urls.append({**tab, "url": url})
 
         indicadores_context["indicadores_tabs"] = tabs_with_urls
+        params_excel = request.GET.copy()
+        params_excel["download"] = indicadores_context.get("indicadores_active_tab", "capacitacion")
+        params_excel["format"] = "xlsx"
+        params_csv = request.GET.copy()
+        params_csv["download"] = indicadores_context.get("indicadores_active_tab", "capacitacion")
+        params_csv["format"] = "csv"
+        indicadores_context["indicadores_download_excel_url"] = f"{base_url}?{params_excel.urlencode()}"
+        indicadores_context["indicadores_download_csv_url"] = f"{base_url}?{params_csv.urlencode()}"
         context["mostrar_filtro_anio"] = False
         context.update(indicadores_context)
 

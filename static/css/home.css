@@ -2740,6 +2740,13 @@ h1 {
     margin-bottom: 0.9rem;
 }
 
+.indicadores-export-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: -0.2rem 0 0.9rem;
+}
+
 .indicadores-tabs__item {
     display: inline-flex;
     align-items: center;
