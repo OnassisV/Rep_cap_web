@@ -509,9 +509,9 @@ def _summary_cards(active_tab: str, dataframes: dict[str, pd.DataFrame]) -> list
         "iged": {"Region", "IGED", "Tipo IGED"},
     }.get(active_tab, set())
     scope_card = {
-        "capacitacion": {"label": "Capacitaciones visibles", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Procesos formativos en la tabla activa"},
-        "region": {"label": "Regiones visibles", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Ambitos territoriales con datos en la tabla activa"},
-        "iged": {"label": "IGED visibles", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Instancias de gestion visibles en la tabla activa"},
+        "capacitacion": {"label": "Capacitaciones", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Procesos formativos en la tabla activa"},
+        "region": {"label": "Regiones", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Ambitos territoriales con datos en la tabla activa"},
+        "iged": {"label": "IGED", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Instancias de gestion en la tabla activa"},
     }.get(active_tab)
 
     cards: list[dict[str, str]] = [scope_card] if scope_card else []
@@ -604,6 +604,7 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     df_cap, _merged_cap, _sat_global = _calculate_capacitacion_kpis(oferta_filtrada, bbdd_filtrada, satisfaccion, iged)
     df_region = _calculate_region_kpis(oferta_filtrada, bbdd_filtrada, iged)
     df_iged = _calculate_iged_kpis(oferta_filtrada, bbdd_filtrada, iged)
+    _df_participantes, df_difoca_detalle = _calculate_dni_tables(oferta_filtrada, bbdd_filtrada, "")
 
     tabs = [
         {"slug": "capacitacion", "title": "Por Capacitacion"},
@@ -615,6 +616,7 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
         "capacitacion": df_cap,
         "region": df_region,
         "iged": df_iged,
+        "difoca": df_difoca_detalle,
     }
 
     return {
@@ -651,29 +653,47 @@ def _excel_bytes(sheets: list[tuple[str, pd.DataFrame]]) -> bytes:
 
 def build_indicadores_download(query_data: Any, download_kind: str, download_format: str) -> dict[str, Any] | None:
     """Construye un archivo descargable para el dashboard de indicadores."""
-    kind = str(download_kind or "").strip().lower()
+    raw_kinds = str(download_kind or "").strip().lower()
     export_format = str(download_format or "xlsx").strip().lower()
     dashboard = _build_dashboard_data(query_data)
     dataframes = dashboard.get("dataframes", {})
 
-    if kind not in {"capacitacion", "region", "iged"}:
+    VALID_KINDS = {"capacitacion", "region", "iged", "difoca"}
+    SHEET_NAMES = {
+        "capacitacion": "Por Capacitacion",
+        "region": "Por Region",
+        "iged": "Por IGED",
+        "difoca": "Base DIFOCA",
+    }
+
+    kinds = [k.strip() for k in raw_kinds.split(",") if k.strip() in VALID_KINDS]
+    if not kinds:
         return None
     if export_format not in {"xlsx", "csv"}:
         return None
 
-    dataframe = dataframes.get(kind, pd.DataFrame())
-    if export_format == "xlsx":
-        payload = _excel_bytes([(kind.title(), dataframe)])
+    if len(kinds) == 1:
+        kind = kinds[0]
+        dataframe = dataframes.get(kind, pd.DataFrame())
+        if export_format == "xlsx":
+            payload = _excel_bytes([(SHEET_NAMES.get(kind, kind.title()), dataframe)])
+            return {
+                "content": payload,
+                "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "filename": f"indicadores_{kind}.xlsx",
+            }
         return {
-            "content": payload,
-            "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "filename": f"indicadores_{kind}.xlsx",
+            "content": dataframe.to_csv(index=False).encode("utf-8-sig"),
+            "content_type": "text/csv; charset=utf-8",
+            "filename": f"indicadores_{kind}.csv",
         }
 
+    sheets = [(SHEET_NAMES.get(k, k.title()), dataframes.get(k, pd.DataFrame())) for k in kinds]
+    payload = _excel_bytes(sheets)
     return {
-        "content": dataframe.to_csv(index=False).encode("utf-8-sig"),
-        "content_type": "text/csv; charset=utf-8",
-        "filename": f"indicadores_{kind}.csv",
+        "content": payload,
+        "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "filename": "indicadores_descarga.xlsx",
     }
 
 

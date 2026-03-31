@@ -159,9 +159,81 @@
     </section>
 {% endif %}
 
-{% if indicadores_download_excel_url or indicadores_download_csv_url %}
+{% if indicadores_download_base_url %}
     <div class="indicadores-export-actions indicadores-export-actions--footer">
-        <a href="{{ indicadores_download_excel_url }}" class="btn-primary-soft">Descargar Excel</a>
-        <a href="{{ indicadores_download_csv_url }}" class="btn-secondary-soft">Descargar CSV</a>
+        <button type="button" class="btn-primary-soft" id="btn-gestionar-descarga">Gestionar descarga</button>
     </div>
+
+    <dialog class="indicadores-dl-modal" id="dlModal">
+        <div class="indicadores-dl-modal__content">
+            <header class="indicadores-dl-modal__header">
+                <h3>Gestionar descarga</h3>
+                <button type="button" class="indicadores-dl-modal__close" id="dlModalClose">&times;</button>
+            </header>
+            <form id="dlForm" class="indicadores-dl-modal__body">
+                <p class="indicadores-dl-modal__hint">Seleccione las bases que desea descargar con los filtros aplicados:</p>
+                <label class="indicadores-dl-modal__option">
+                    <input type="checkbox" name="dl_kind" value="capacitacion" checked>
+                    <span>Por Capacitación</span>
+                </label>
+                <label class="indicadores-dl-modal__option">
+                    <input type="checkbox" name="dl_kind" value="region">
+                    <span>Por Región</span>
+                </label>
+                <label class="indicadores-dl-modal__option">
+                    <input type="checkbox" name="dl_kind" value="iged">
+                    <span>Por IGED</span>
+                </label>
+                <label class="indicadores-dl-modal__option">
+                    <input type="checkbox" name="dl_kind" value="difoca">
+                    <span>Base DIFOCA</span>
+                </label>
+
+                <fieldset class="indicadores-dl-modal__format">
+                    <legend>Formato</legend>
+                    <label><input type="radio" name="dl_format" value="xlsx" checked> Excel</label>
+                    <label><input type="radio" name="dl_format" value="csv"> CSV</label>
+                </fieldset>
+                <p class="indicadores-dl-modal__csv-note" id="dlCsvNote" hidden>CSV solo permite una opción. Si selecciona varias, se descargará como Excel.</p>
+            </form>
+            <footer class="indicadores-dl-modal__footer">
+                <button type="button" class="btn-secondary-soft" id="dlModalCancel">Cancelar</button>
+                <button type="button" class="btn-primary-soft" id="dlModalDownload">Descargar</button>
+            </footer>
+        </div>
+    </dialog>
+
+    <script>
+    (function(){
+        var baseUrl = "{{ indicadores_download_base_url|escapejs }}";
+        var modal = document.getElementById("dlModal");
+        var form = document.getElementById("dlForm");
+
+        document.getElementById("btn-gestionar-descarga").addEventListener("click", function(){
+            modal.showModal();
+        });
+        document.getElementById("dlModalClose").addEventListener("click", function(){ modal.close(); });
+        document.getElementById("dlModalCancel").addEventListener("click", function(){ modal.close(); });
+        modal.addEventListener("click", function(e){ if(e.target === modal) modal.close(); });
+
+        form.addEventListener("change", function(){
+            var checked = form.querySelectorAll('input[name="dl_kind"]:checked');
+            var csvRadio = form.querySelector('input[name="dl_format"][value="csv"]');
+            var note = document.getElementById("dlCsvNote");
+            note.hidden = !(csvRadio.checked && checked.length > 1);
+        });
+
+        document.getElementById("dlModalDownload").addEventListener("click", function(){
+            var checked = form.querySelectorAll('input[name="dl_kind"]:checked');
+            if(!checked.length){ alert("Seleccione al menos una opción."); return; }
+            var kinds = Array.prototype.map.call(checked, function(c){ return c.value; });
+            var fmt = form.querySelector('input[name="dl_format"]:checked').value;
+            if(kinds.length > 1 && fmt === "csv") fmt = "xlsx";
+            var sep = baseUrl.indexOf("?") === -1 ? "?" : "&";
+            var url = baseUrl + sep + "download=" + encodeURIComponent(kinds.join(",")) + "&format=" + encodeURIComponent(fmt);
+            window.location.href = url;
+            modal.close();
+        });
+    })();
+    </script>
 {% endif %}

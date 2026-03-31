@@ -2701,6 +2701,8 @@ h1 {
     color: #19344d;
     padding: 0.72rem 0.8rem;
     font: inherit;
+    min-height: 2.75rem;
+    box-sizing: border-box;
 }
 
 .indicadores-filters__group--wide {
@@ -2713,6 +2715,18 @@ h1 {
     align-items: flex-end;
     gap: 0.46rem;
     grid-column: 9 / span 4;
+}
+
+.indicadores-filters__actions .btn-primary-soft,
+.indicadores-filters__actions .btn-secondary-soft {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 128px;
+    padding: 0.72rem 1rem;
+    font-size: 0.88rem;
+    line-height: 1.25;
+    box-sizing: border-box;
 }
 
 .indicadores-filter-pills {
@@ -2783,6 +2797,102 @@ h1 {
     justify-content: flex-end;
     margin-top: 0.85rem;
     padding-top: 0.9rem;
+    border-top: 1px solid #dfeaf5;
+}
+
+/* ---------- Modal Gestionar descarga ---------- */
+.indicadores-dl-modal {
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0;
+    max-width: 420px;
+    width: 92vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    background: #fff;
+}
+.indicadores-dl-modal::backdrop {
+    background: rgba(0,0,0,.35);
+}
+.indicadores-dl-modal__content {
+    display: flex;
+    flex-direction: column;
+}
+.indicadores-dl-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #dfeaf5;
+}
+.indicadores-dl-modal__header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #1a2744;
+}
+.indicadores-dl-modal__close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #6b7b94;
+    line-height: 1;
+    padding: 0;
+}
+.indicadores-dl-modal__body {
+    padding: 1rem 1.25rem;
+}
+.indicadores-dl-modal__hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.88rem;
+    color: #4a5568;
+}
+.indicadores-dl-modal__option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0;
+    font-size: 0.92rem;
+    cursor: pointer;
+    color: #1a2744;
+}
+.indicadores-dl-modal__option input[type="checkbox"] {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: #2563eb;
+    cursor: pointer;
+}
+.indicadores-dl-modal__format {
+    border: none;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+}
+.indicadores-dl-modal__format legend {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #4a5568;
+    margin-right: 0.5rem;
+}
+.indicadores-dl-modal__format label {
+    font-size: 0.88rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: #1a2744;
+}
+.indicadores-dl-modal__csv-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.8rem;
+    color: #b45309;
+}
+.indicadores-dl-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem;
     border-top: 1px solid #dfeaf5;
 }
 
@@ -3711,6 +3821,8 @@ h1 {
         justify-content: stretch;
     }
 
+    .indicadores-filters__actions .btn-primary-soft,
+    .indicadores-filters__actions .btn-secondary-soft,
     .indicadores-export-actions--footer a {
         flex: 1 1 100%;
         justify-content: center;

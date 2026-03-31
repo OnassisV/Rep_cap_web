@@ -2106,14 +2106,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             tabs_with_urls.append({**tab, "url": url})
 
         indicadores_context["indicadores_tabs"] = tabs_with_urls
-        params_excel = request.GET.copy()
-        params_excel["download"] = indicadores_context.get("indicadores_active_tab", "capacitacion")
-        params_excel["format"] = "xlsx"
-        params_csv = request.GET.copy()
-        params_csv["download"] = indicadores_context.get("indicadores_active_tab", "capacitacion")
-        params_csv["format"] = "csv"
-        indicadores_context["indicadores_download_excel_url"] = f"{base_url}?{params_excel.urlencode()}"
-        indicadores_context["indicadores_download_csv_url"] = f"{base_url}?{params_csv.urlencode()}"
+        indicadores_context["indicadores_download_base_url"] = f"{base_url}?{request.GET.urlencode()}" if request.GET else base_url
         context["mostrar_filtro_anio"] = False
         context.update(indicadores_context)
 
