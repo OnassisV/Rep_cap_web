@@ -498,59 +498,104 @@ def _table_payload(df: pd.DataFrame, *, limit: int = 200) -> dict[str, Any]:
     return {"columns": list(df.columns), "rows": rows, "total_rows": int(len(df.index)), "truncated": len(df.index) > limit}
 
 
-def _summary_cards(active_tab: str, dataframes: dict[str, pd.DataFrame]) -> list[dict[str, str]]:
-    dataframe = dataframes.get(active_tab, pd.DataFrame())
-    if dataframe.empty:
+def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame, satisf_global: float | None) -> list[dict[str, str]]:
+    """Calcula las tarjetas KPI desde la data cruda filtrada (merged), no desde las tablas agrupadas."""
+    if merged.empty:
         return []
 
-    identity_columns = {
-        "capacitacion": {"Año", "Codigo", "Proceso Formativo", "Especialista", "Condicion", "Objetivo"},
-        "region": {"Region"},
-        "iged": {"Region", "IGED", "Tipo IGED"},
-    }.get(active_tab, set())
+    postulaciones = len(merged)
+    matriculaciones = int((merged.get("estado_num", pd.Series(dtype=float)) == 2).sum())
+    participaciones = int(merged.get("base_participa", pd.Series(dtype=bool)).fillna(False).sum())
+    retiros = int(merged.get("retiros_base", pd.Series(dtype=int)).fillna(0).sum())
+    finalizaciones = int(merged.get("finalizados", pd.Series(dtype=int)).fillna(0).sum())
+    certificaciones = int(merged.get("cert_base", pd.Series(dtype=int)).fillna(0).sum())
+    evaluados = int(merged.get("evaluados_base", pd.Series(dtype=int)).fillna(0).sum())
+    progreso = int(merged.get("progreso_base", pd.Series(dtype=int)).fillna(0).sum())
+
+    codigos = merged.get("codigo", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
+    num_capacitaciones = int(codigos[codigos != ""].nunique())
+    regiones = merged.get("region", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
+    num_regiones = int(regiones[regiones != ""].nunique())
+
+    tipo_norm = merged.get("tipo_iged_norm", pd.Series(dtype=str)).fillna("")
+    nombre_iged = merged.get("nombre_iged", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
+    dre_cobertura = int(nombre_iged[tipo_norm == "DRE/GRE"].nunique())
+    ugel_cobertura = int(nombre_iged[tipo_norm == "UGEL"].nunique())
+    dre_fortalecida = int(nombre_iged[(tipo_norm == "DRE/GRE") & (merged.get("cert_base", 0) == 1)].nunique())
+    ugel_fortalecida = int(nombre_iged[(tipo_norm == "UGEL") & (merged.get("cert_base", 0) == 1)].nunique())
+
+    total_dre, total_ugel = _national_iged_totals(iged_df)
+    tasa_retencion = participaciones / matriculaciones if matriculaciones else pd.NA
+    tasa_finalizacion = finalizaciones / participaciones if participaciones else pd.NA
+    tasa_certificacion = certificaciones / finalizaciones if finalizaciones else pd.NA
+    tasa_progreso = progreso / evaluados if evaluados else pd.NA
+    tasa_cobertura_dre = dre_cobertura / total_dre if total_dre else pd.NA
+    tasa_cobertura_ugel = ugel_cobertura / total_ugel if total_ugel else pd.NA
+    tasa_dre_fortalecida = dre_fortalecida / dre_cobertura if dre_cobertura else pd.NA
+    tasa_ugel_fortalecida = ugel_fortalecida / ugel_cobertura if ugel_cobertura else pd.NA
+    efectividad = 1 if (finalizaciones > 0 and (certificaciones / finalizaciones) >= 0.6) else 0
+
     scope_card = {
-        "capacitacion": {"label": "Capacitaciones", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Procesos formativos en la tabla activa"},
-        "region": {"label": "Regiones", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Ambitos territoriales con datos en la tabla activa"},
-        "iged": {"label": "IGED", "value": _format_cell("Capacitacion", len(dataframe.index)), "meta": "Instancias de gestion en la tabla activa"},
+        "capacitacion": {"label": "Capacitaciones", "value": _format_cell("Capacitacion", num_capacitaciones), "meta": "Procesos formativos con los filtros aplicados"},
+        "region": {"label": "Regiones", "value": _format_cell("Capacitacion", num_regiones), "meta": "Ámbitos territoriales con los filtros aplicados"},
+        "iged": {"label": "IGED", "value": _format_cell("Capacitacion", dre_cobertura + ugel_cobertura), "meta": "Instancias de gestión con los filtros aplicados"},
     }.get(active_tab)
 
     cards: list[dict[str, str]] = [scope_card] if scope_card else []
-    for column in dataframe.columns:
-        if column in identity_columns:
+
+    CARD_DEFS: dict[str, list[tuple[str, str, Any, str]]] = {
+        "capacitacion": [
+            ("Postulaciones", "Capacitacion", postulaciones, "Total con filtros aplicados"),
+            ("Matriculaciones", "Capacitacion", matriculaciones, "Total con filtros aplicados"),
+            ("Participaciones", "Capacitacion", participaciones, "Total con filtros aplicados"),
+            ("Retiros", "Capacitacion", retiros, "Total con filtros aplicados"),
+            ("Finalizaciones", "Capacitacion", finalizaciones, "Total con filtros aplicados"),
+            ("Certificaciones", "Capacitacion", certificaciones, "Total con filtros aplicados"),
+            ("Evaluados", "Capacitacion", evaluados, "Total con filtros aplicados"),
+            ("Progreso", "Capacitacion", progreso, "Total con filtros aplicados"),
+            ("Tasa Retencion", "Tasa Retencion", tasa_retencion, "Participaciones / Matriculaciones"),
+            ("Tasa Finalizacion", "Tasa Finalizacion", tasa_finalizacion, "Finalizaciones / Participaciones"),
+            ("Tasa Certificacion", "Tasa Certificacion", tasa_certificacion, "Certificaciones / Finalizaciones"),
+            ("Tasa Progreso", "Tasa Progreso", tasa_progreso, "Progreso / Evaluados"),
+            ("Tasa Satisfaccion", "Tasa Satisfaccion", satisf_global, "Tasa global de satisfacción"),
+            ("Efectividad", "Tasa Finalizacion", tasa_certificacion if finalizaciones else pd.NA, f"{'Si' if efectividad else 'No'} — Cert/Fin {'≥' if efectividad else '<'} 60%"),
+        ],
+        "region": [
+            ("Capacitacion", "Capacitacion", num_capacitaciones, "Total con filtros aplicados"),
+            ("Postulaciones", "Capacitacion", postulaciones, "Total con filtros aplicados"),
+            ("Matriculaciones", "Capacitacion", matriculaciones, "Total con filtros aplicados"),
+            ("Participaciones", "Capacitacion", participaciones, "Total con filtros aplicados"),
+            ("Finalizaciones", "Capacitacion", finalizaciones, "Total con filtros aplicados"),
+            ("Certificaciones", "Capacitacion", certificaciones, "Total con filtros aplicados"),
+            ("DRE/GRE Coberturada", "Capacitacion", dre_cobertura, "Total con filtros aplicados"),
+            ("UGEL Coberturada", "Capacitacion", ugel_cobertura, "Total con filtros aplicados"),
+            ("Tasa Cobertura DRE/GRE", "Tasa Cobertura DRE/GRE", tasa_cobertura_dre, "Coberturadas / Total nacional"),
+            ("Tasa Cobertura UGEL", "Tasa Cobertura UGEL", tasa_cobertura_ugel, "Coberturadas / Total nacional"),
+            ("Tasa Retencion", "Tasa Retencion", tasa_retencion, "Participaciones / Matriculaciones"),
+            ("Tasa Finalizacion", "Tasa Finalizacion", tasa_finalizacion, "Finalizaciones / Participaciones"),
+            ("Tasa Certificacion", "Tasa Certificacion", tasa_certificacion, "Certificaciones / Finalizaciones"),
+        ],
+        "iged": [
+            ("Capacitacion", "Capacitacion", num_capacitaciones, "Total con filtros aplicados"),
+            ("Postulaciones", "Capacitacion", postulaciones, "Total con filtros aplicados"),
+            ("Participaciones", "Capacitacion", participaciones, "Total con filtros aplicados"),
+            ("Finalizaciones", "Capacitacion", finalizaciones, "Total con filtros aplicados"),
+            ("Certificaciones", "Capacitacion", certificaciones, "Total con filtros aplicados"),
+            ("Tasa Cobertura DRE/GRE", "Tasa Cobertura DRE/GRE", tasa_cobertura_dre, "Coberturadas / Total nacional"),
+            ("Tasa Cobertura UGEL", "Tasa Cobertura UGEL", tasa_cobertura_ugel, "Coberturadas / Total nacional"),
+            ("Tasa DRE/GRE Fortalecida", "Tasa DRE/GRE Fortalecida", tasa_dre_fortalecida, "Fortalecidas / Coberturadas"),
+            ("Tasa UGEL Fortalecida", "Tasa UGEL Fortalecida", tasa_ugel_fortalecida, "Fortalecidas / Coberturadas"),
+            ("Tasa Retencion", "Tasa Retencion", tasa_retencion, "Participaciones / Matriculaciones"),
+            ("Tasa Finalizacion", "Tasa Finalizacion", tasa_finalizacion, "Finalizaciones / Participaciones"),
+            ("Tasa Certificacion", "Tasa Certificacion", tasa_certificacion, "Certificaciones / Finalizaciones"),
+        ],
+    }
+
+    for label, fmt_col, value, meta in CARD_DEFS.get(active_tab, []):
+        if value is None or value is pd.NA or (isinstance(value, float) and pd.isna(value)):
             continue
-        series = dataframe[column]
-        if column == "Efectividad":
-            values = pd.to_numeric(series, errors="coerce")
-            effective_count = int((values.fillna(0) == 1).sum())
-            effective_rate = effective_count / len(dataframe.index) if len(dataframe.index) else pd.NA
-            cards.append(
-                {
-                    "label": "Efectividad",
-                    "value": _format_cell("Tasa Finalizacion", effective_rate),
-                    "meta": f"{_format_cell('Capacitacion', effective_count)} fila(s) efectivas de la tabla visible",
-                }
-            )
-            continue
-        if column in COUNT_COLUMNS:
-            total = pd.to_numeric(series, errors="coerce").fillna(0).sum()
-            cards.append(
-                {
-                    "label": column,
-                    "value": _format_cell(column, total),
-                    "meta": "Suma consolidada de la tabla activa",
-                }
-            )
-            continue
-        if column in RATE_COLUMNS:
-            values = pd.to_numeric(series, errors="coerce").dropna()
-            average = values.mean() if not values.empty else pd.NA
-            cards.append(
-                {
-                    "label": column,
-                    "value": _format_cell(column, average),
-                    "meta": "Promedio del KPI en la tabla activa",
-                }
-            )
+        cards.append({"label": label, "value": _format_cell(fmt_col, value), "meta": meta})
+
     return cards
 
 
@@ -636,7 +681,7 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
         },
         "tabs": tabs,
         "active_tab": active_tab,
-        "summary_cards": _summary_cards(active_tab, dataframes),
+        "summary_cards": _summary_cards(active_tab, _merged_cap, iged, _sat_global),
         "dataframes": dataframes,
     }
 
