@@ -138,6 +138,20 @@ def _selected_value(value: Any, options: list[str], default: str = "") -> str:
     return default if default in options or default == "" else ""
 
 
+def _selected_values(raw: Any, options: list[str], default: str = "") -> list[str]:
+    """Devuelve lista de valores seleccionados validados contra opciones disponibles."""
+    if isinstance(raw, list):
+        items = [str(v).strip() for v in raw if str(v).strip()]
+    elif raw:
+        items = [str(raw).strip()]
+    else:
+        items = []
+    valid = [v for v in items if v in options]
+    if not valid and default and default in options:
+        valid = [default]
+    return valid
+
+
 def _series_options(series: pd.Series, *, reverse: bool = False) -> list[str]:
     values = [str(value).strip() for value in series.dropna().tolist() if str(value).strip()]
     return sorted(pd.Index(values).unique().tolist(), reverse=reverse)
@@ -145,9 +159,9 @@ def _series_options(series: pd.Series, *, reverse: bool = False) -> list[str]:
 
 def _filter_offer(
     oferta: pd.DataFrame,
-    selected_year: str,
+    selected_years: list[str],
     selected_condition: str,
-    selected_process: str,
+    selected_processes: list[str],
     fecha_inicio: str,
     fecha_fin: str,
 ) -> pd.DataFrame:
@@ -155,12 +169,12 @@ def _filter_offer(
     filtered.loc[:, "anio_text"] = filtered.get("anio", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
     filtered.loc[:, "Proceso Formativo"] = _build_process_label(filtered)
 
-    if selected_year:
-        filtered = filtered[filtered["anio_text"] == selected_year]
+    if selected_years:
+        filtered = filtered[filtered["anio_text"].isin(selected_years)]
     if selected_condition:
         filtered = filtered[filtered.get("condicion", "").fillna("").astype(str).str.strip() == selected_condition]
-    if selected_process:
-        filtered = filtered[filtered["Proceso Formativo"] == selected_process]
+    if selected_processes:
+        filtered = filtered[filtered["Proceso Formativo"].isin(selected_processes)]
 
     if fecha_inicio or fecha_fin:
         fechas = pd.to_datetime(filtered.get("implementacion_final"), errors="coerce")
@@ -173,15 +187,15 @@ def _filter_offer(
     return filtered
 
 
-def _filter_participants(bbdd: pd.DataFrame, selected_region: str, selected_iged: str) -> pd.DataFrame:
+def _filter_participants(bbdd: pd.DataFrame, selected_regions: list[str], selected_igeds: list[str]) -> pd.DataFrame:
     filtered = bbdd.copy()
     filtered.loc[:, "region_text"] = filtered.get("region", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
     filtered.loc[:, "iged_text"] = filtered.get("nombre_iged", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
 
-    if selected_region:
-        filtered = filtered[filtered["region_text"] == selected_region]
-    if selected_iged:
-        filtered = filtered[filtered["iged_text"] == selected_iged]
+    if selected_regions:
+        filtered = filtered[filtered["region_text"].isin(selected_regions)]
+    if selected_igeds:
+        filtered = filtered[filtered["iged_text"].isin(selected_igeds)]
     return filtered
 
 
@@ -618,6 +632,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
 
 def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     """Calcula una sola vez los datasets base del dashboard y sus filtros activos."""
+    _getlist = getattr(query_data, "getlist", None)
+
     oferta, bbdd, satisfaccion, iged = _load_base_tables()
     oferta = oferta.copy()
     oferta.loc[:, "anio_text"] = oferta.get("anio", pd.Series(index=oferta.index, dtype=object)).fillna("").astype(str).str.strip()
@@ -627,7 +643,8 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     condition_options = _series_options(oferta.get("condicion", pd.Series(dtype=str)))
 
     current_year = str(datetime.now().year)
-    selected_year = _selected_value(query_data.get("anio"), year_options, current_year if current_year in year_options else "")
+    raw_years = _getlist("anio") if _getlist else query_data.get("anio")
+    selected_years = _selected_values(raw_years, year_options, current_year if current_year in year_options else "")
 
     default_condition = "Cerrado" if "Cerrado" in condition_options else ""
     selected_condition = _selected_value(query_data.get("condicion"), condition_options, default_condition)
@@ -635,32 +652,35 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     fecha_inicio = str(query_data.get("fecha_inicio", "")).strip()
     fecha_fin = str(query_data.get("fecha_fin", "")).strip()
 
-    oferta_for_processes = _filter_offer(oferta, selected_year, selected_condition, "", fecha_inicio, fecha_fin)
+    oferta_for_processes = _filter_offer(oferta, selected_years, selected_condition, [], fecha_inicio, fecha_fin)
     process_options = _series_options(oferta_for_processes.get("Proceso Formativo", pd.Series(dtype=str)))
-    selected_process = _selected_value(query_data.get("proceso"), process_options, "")
+    raw_processes = _getlist("proceso") if _getlist else query_data.get("proceso")
+    selected_processes = _selected_values(raw_processes, process_options, "")
 
-    oferta_filtrada_base = _filter_offer(oferta, selected_year, selected_condition, selected_process, fecha_inicio, fecha_fin)
+    oferta_filtrada_base = _filter_offer(oferta, selected_years, selected_condition, selected_processes, fecha_inicio, fecha_fin)
     codigos_filtrados = oferta_filtrada_base[["codigo"]].copy() if "codigo" in oferta_filtrada_base.columns else pd.DataFrame(columns=["codigo"])
     participantes_base = pd.merge(bbdd, codigos_filtrados.drop_duplicates(), on="codigo", how="inner") if not codigos_filtrados.empty else pd.DataFrame(columns=bbdd.columns)
     region_options = _series_options(participantes_base.get("region", pd.Series(dtype=str)))
-    selected_region = _selected_value(query_data.get("region"), region_options, "")
+    raw_regions = _getlist("region") if _getlist else query_data.get("region")
+    selected_regions = _selected_values(raw_regions, region_options, "")
 
     participantes_iged = participantes_base.copy()
-    if selected_region and not participantes_iged.empty:
-        participantes_iged = participantes_iged[participantes_iged.get("region", "").fillna("").astype(str).str.strip() == selected_region]
+    if selected_regions and not participantes_iged.empty:
+        participantes_iged = participantes_iged[participantes_iged.get("region", "").fillna("").astype(str).str.strip().isin(selected_regions)]
     iged_options = _series_options(participantes_iged.get("nombre_iged", pd.Series(dtype=str)))
-    selected_iged = _selected_value(query_data.get("iged"), iged_options, "")
+    raw_igeds = _getlist("iged") if _getlist else query_data.get("iged")
+    selected_igeds = _selected_values(raw_igeds, iged_options, "")
 
     active_tab = str(query_data.get("vista", "capacitacion")).strip().lower() or "capacitacion"
     if active_tab not in {"capacitacion", "region", "iged"}:
         active_tab = "capacitacion"
 
-    bbdd_filtrada = _filter_participants(participantes_base, selected_region, selected_iged)
+    bbdd_filtrada = _filter_participants(participantes_base, selected_regions, selected_igeds)
     oferta_filtrada = oferta_filtrada_base
-    if not bbdd_filtrada.empty and (selected_region or selected_iged):
+    if not bbdd_filtrada.empty and (selected_regions or selected_igeds):
         codigos_visibles = bbdd_filtrada.get("codigo", pd.Series(dtype=object)).fillna("").astype(str).str.strip().unique().tolist()
         oferta_filtrada = oferta_filtrada_base[oferta_filtrada_base.get("codigo", pd.Series(dtype=object)).fillna("").astype(str).str.strip().isin(codigos_visibles)]
-    elif selected_region or selected_iged:
+    elif selected_regions or selected_igeds:
         oferta_filtrada = oferta_filtrada_base.iloc[0:0].copy()
 
     df_cap, _merged_cap, _sat_global = _calculate_capacitacion_kpis(oferta_filtrada, bbdd_filtrada, satisfaccion, iged)
@@ -688,11 +708,11 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
             "process_options": process_options,
             "region_options": region_options,
             "iged_options": iged_options,
-            "selected_year": selected_year,
+            "selected_years": selected_years,
             "selected_condition": selected_condition,
-            "selected_process": selected_process,
-            "selected_region": selected_region,
-            "selected_iged": selected_iged,
+            "selected_processes": selected_processes,
+            "selected_regions": selected_regions,
+            "selected_igeds": selected_igeds,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
         },

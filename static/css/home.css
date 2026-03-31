@@ -2705,6 +2705,22 @@ h1 {
     box-sizing: border-box;
 }
 
+.indicadores-filters__group select.indicadores-multiselect {
+    min-height: 5.5rem;
+    padding: 0.35rem 0.5rem;
+    overflow-y: auto;
+}
+
+.indicadores-filters__group select.indicadores-multiselect option {
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.35rem;
+}
+
+.indicadores-filters__group select.indicadores-multiselect option:checked {
+    background: linear-gradient(0deg, #2563eb 0%, #2563eb 100%);
+    color: #fff;
+}
+
 .indicadores-filters__group--wide {
     grid-column: span 4;
 }

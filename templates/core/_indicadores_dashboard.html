@@ -14,10 +14,9 @@
 
     <label class="indicadores-filters__group">
         <span>Años</span>
-        <select name="anio">
-            <option value="">Todos</option>
+        <select name="anio" multiple class="indicadores-multiselect">
             {% for option in indicadores_filters.year_options %}
-                <option value="{{ option }}" {% if option == indicadores_filters.selected_year %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_years %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
@@ -34,30 +33,27 @@
 
     <label class="indicadores-filters__group indicadores-filters__group--wide">
         <span>Procesos formativos</span>
-        <select name="proceso">
-            <option value="">Todos</option>
+        <select name="proceso" multiple class="indicadores-multiselect">
             {% for option in indicadores_filters.process_options %}
-                <option value="{{ option }}" {% if option == indicadores_filters.selected_process %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_processes %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
 
     <label class="indicadores-filters__group">
-        <span>Region</span>
-        <select name="region">
-            <option value="">Todas</option>
+        <span>Región</span>
+        <select name="region" multiple class="indicadores-multiselect">
             {% for option in indicadores_filters.region_options %}
-                <option value="{{ option }}" {% if option == indicadores_filters.selected_region %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_regions %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
 
     <label class="indicadores-filters__group indicadores-filters__group--wide">
         <span>IGED</span>
-        <select name="iged">
-            <option value="">Todas</option>
+        <select name="iged" multiple class="indicadores-multiselect">
             {% for option in indicadores_filters.iged_options %}
-                <option value="{{ option }}" {% if option == indicadores_filters.selected_iged %}selected{% endif %}>{{ option }}</option>
+                <option value="{{ option }}" {% if option in indicadores_filters.selected_igeds %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
     </label>
@@ -79,21 +75,21 @@
 </form>
 
 <section class="indicadores-filter-pills" aria-label="Filtros activos">
-    {% if indicadores_filters.selected_year %}
-        <span class="indicadores-filter-pill">Año: {{ indicadores_filters.selected_year }}</span>
-    {% endif %}
+    {% for y in indicadores_filters.selected_years %}
+        <span class="indicadores-filter-pill">Año: {{ y }}</span>
+    {% endfor %}
     {% if indicadores_filters.selected_condition %}
         <span class="indicadores-filter-pill">Condición: {{ indicadores_filters.selected_condition }}</span>
     {% endif %}
-    {% if indicadores_filters.selected_process %}
-        <span class="indicadores-filter-pill">Proceso: {{ indicadores_filters.selected_process }}</span>
-    {% endif %}
-    {% if indicadores_filters.selected_region %}
-        <span class="indicadores-filter-pill">Región: {{ indicadores_filters.selected_region }}</span>
-    {% endif %}
-    {% if indicadores_filters.selected_iged %}
-        <span class="indicadores-filter-pill">IGED: {{ indicadores_filters.selected_iged }}</span>
-    {% endif %}
+    {% for p in indicadores_filters.selected_processes %}
+        <span class="indicadores-filter-pill">Proceso: {{ p }}</span>
+    {% endfor %}
+    {% for r in indicadores_filters.selected_regions %}
+        <span class="indicadores-filter-pill">Región: {{ r }}</span>
+    {% endfor %}
+    {% for i in indicadores_filters.selected_igeds %}
+        <span class="indicadores-filter-pill">IGED: {{ i }}</span>
+    {% endfor %}
     {% if indicadores_filters.fecha_inicio %}
         <span class="indicadores-filter-pill">Desde: {{ indicadores_filters.fecha_inicio }}</span>
     {% endif %}
