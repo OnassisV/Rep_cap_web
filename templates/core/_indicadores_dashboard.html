@@ -12,14 +12,23 @@
         </div>
     </div>
 
-    <label class="indicadores-filters__group">
+    <div class="indicadores-filters__group">
         <span>Años</span>
-        <select name="anio" multiple class="indicadores-multiselect">
-            {% for option in indicadores_filters.year_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_years %}selected{% endif %}>{{ option }}</option>
-            {% endfor %}
-        </select>
-    </label>
+        <div class="ms-dropdown" data-name="anio" data-placeholder="Todos">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todos</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in indicadores_filters.year_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="anio" value="{{ option }}" {% if option in indicadores_filters.selected_years %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 
     <label class="indicadores-filters__group">
         <span>Condiciones</span>
@@ -31,32 +40,59 @@
         </select>
     </label>
 
-    <label class="indicadores-filters__group indicadores-filters__group--wide">
+    <div class="indicadores-filters__group indicadores-filters__group--wide">
         <span>Procesos formativos</span>
-        <select name="proceso" multiple class="indicadores-multiselect">
-            {% for option in indicadores_filters.process_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_processes %}selected{% endif %}>{{ option }}</option>
-            {% endfor %}
-        </select>
-    </label>
+        <div class="ms-dropdown" data-name="proceso" data-placeholder="Todos">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todos</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in indicadores_filters.process_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="proceso" value="{{ option }}" {% if option in indicadores_filters.selected_processes %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 
-    <label class="indicadores-filters__group">
+    <div class="indicadores-filters__group">
         <span>Región</span>
-        <select name="region" multiple class="indicadores-multiselect">
-            {% for option in indicadores_filters.region_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_regions %}selected{% endif %}>{{ option }}</option>
-            {% endfor %}
-        </select>
-    </label>
+        <div class="ms-dropdown" data-name="region" data-placeholder="Todas">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todas</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in indicadores_filters.region_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="region" value="{{ option }}" {% if option in indicadores_filters.selected_regions %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 
-    <label class="indicadores-filters__group indicadores-filters__group--wide">
+    <div class="indicadores-filters__group indicadores-filters__group--wide">
         <span>IGED</span>
-        <select name="iged" multiple class="indicadores-multiselect">
-            {% for option in indicadores_filters.iged_options %}
-                <option value="{{ option }}" {% if option in indicadores_filters.selected_igeds %}selected{% endif %}>{{ option }}</option>
-            {% endfor %}
-        </select>
-    </label>
+        <div class="ms-dropdown" data-name="iged" data-placeholder="Todas">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todas</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in indicadores_filters.iged_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="iged" value="{{ option }}" {% if option in indicadores_filters.selected_igeds %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 
     <label class="indicadores-filters__group">
         <span>Desde</span>
@@ -233,3 +269,36 @@
     })();
     </script>
 {% endif %}
+
+<script>
+(function(){
+    document.querySelectorAll('.ms-dropdown').forEach(function(dd){
+        var trigger = dd.querySelector('.ms-dropdown__trigger');
+        var menu = dd.querySelector('.ms-dropdown__menu');
+        var label = dd.querySelector('.ms-dropdown__label');
+        var placeholder = dd.getAttribute('data-placeholder') || 'Todos';
+        var checkboxes = dd.querySelectorAll('input[type="checkbox"]');
+
+        function updateLabel(){
+            var sel = [];
+            checkboxes.forEach(function(cb){ if(cb.checked) sel.push(cb.parentElement.querySelector('span').textContent.trim()); });
+            if(!sel.length){ label.textContent = placeholder; label.classList.add('ms-dropdown__label--placeholder'); }
+            else if(sel.length <= 2){ label.textContent = sel.join(', '); label.classList.remove('ms-dropdown__label--placeholder'); }
+            else { label.textContent = sel.length + ' seleccionados'; label.classList.remove('ms-dropdown__label--placeholder'); }
+        }
+
+        trigger.addEventListener('click', function(e){
+            e.preventDefault(); e.stopPropagation();
+            var wasOpen = dd.classList.contains('is-open');
+            document.querySelectorAll('.ms-dropdown.is-open').forEach(function(d){ d.classList.remove('is-open'); });
+            if(!wasOpen) dd.classList.add('is-open');
+        });
+
+        menu.addEventListener('click', function(e){ e.stopPropagation(); });
+        checkboxes.forEach(function(cb){ cb.addEventListener('change', updateLabel); });
+        updateLabel();
+    });
+
+    document.addEventListener('click', function(){ document.querySelectorAll('.ms-dropdown.is-open').forEach(function(d){ d.classList.remove('is-open'); }); });
+})();
+</script>
