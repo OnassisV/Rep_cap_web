@@ -247,7 +247,7 @@
 
                             <div class="registro-diagnostico-banner{% if registro_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>
                                 <strong>Activa al menos una decision de sustento en la fase preliminar.</strong>
-                                <p>Cuando marques matriz de sustento o diagnostico, se habilitaran sus recorridos de registro.</p>
+                                <p>Cuando marques matriz de sustento o diagnostico, se habilitara el acceso directo a su modal correspondiente.</p>
                             </div>
 
                             <div class="registro-sustento-actions">
@@ -255,10 +255,10 @@
                                     <article class="registro-sustento-card{% if not registro_matriz_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="matriz" aria-hidden="{% if registro_matriz_flujo.is_enabled %}false{% else %}true{% endif %}">
                                         <p class="registro-block__eyebrow">Ruta 1</p>
                                         <h4>Matriz de sustento</h4>
-                                        <p>Muestra un recorrido de 3 pasos en esta misma pagina para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
+                                        <p>Abre un modal de 3 pasos para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
                                         <div class="registro-sustento-card__meta">
                                             <small>{{ registro_matriz_flujo.steps|length }} pasos guiados</small>
-                                            <button type="button" class="btn-primary-soft" data-open-sustento-inline="matriz" {% if not registro_matriz_flujo.is_enabled %}disabled{% endif %}>Ir a matriz</button>
+                                            <button type="button" class="btn-primary-soft" data-open-sustento-modal="matriz" {% if not registro_matriz_flujo.is_enabled %}disabled{% endif %}>Abrir matriz</button>
                                         </div>
                                     </article>
                                 {% endif %}
@@ -276,14 +276,15 @@
                             </div>
 
                             {% if registro_matriz_flujo %}
-                                <section class="registro-sustento-inline{% if not registro_matriz_flujo.is_enabled %} is-hidden{% endif %}" data-sustento-flow-root="matriz" aria-hidden="{% if registro_matriz_flujo.is_enabled %}false{% else %}true{% endif %}">
-                                    <div class="registro-sustento-inline__panel">
-                                        <header class="actividad-modal__header sustento-modal__header registro-sustento-inline__header">
+                                <dialog id="sustento-matriz-modal" class="actividad-modal sustento-modal" data-sustento-modal="matriz">
+                                    <div class="actividad-modal__panel sustento-modal__panel">
+                                        <header class="actividad-modal__header sustento-modal__header">
                                             <div>
                                                 <p class="registro-block__eyebrow">Matriz de sustento</p>
                                                 <h3>{{ registro_matriz_flujo.titulo }}</h3>
                                                 <p class="module-panel__note">{{ registro_matriz_flujo.descripcion }}</p>
                                             </div>
+                                            <button type="button" class="actividad-modal__close" data-close-sustento-modal="matriz" aria-label="Cerrar">x</button>
                                         </header>
 
                                         <div class="registro-diagnostico-roadmap" aria-label="Pasos de matriz de sustento" data-sustento-flow="matriz">
@@ -347,7 +348,7 @@
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
                                                                     <h4>Descripcion del(de los) problema(s)</h4>
-                                                                    <p>Cada problema se registra con su evidencia principal, la fuente y el enlace de consulta.</p>
+                                                                    <p>Cada problema se registra por separado con prioridad, desempenos relacionados y su justificacion.</p>
                                                                 </div>
                                                                 <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema</button>
                                                             </div>
@@ -360,16 +361,16 @@
                                                                             <textarea rows="3" data-field="problema" placeholder="Describe el problema de gestion o desempeno"></textarea>
                                                                         </label>
                                                                         <label>
-                                                                            <span>Evidencia</span>
-                                                                            <textarea rows="3" data-field="evidencia" placeholder="Describe la evidencia observada o documentada"></textarea>
+                                                                            <span>Prioridad</span>
+                                                                            <input type="number" min="1" step="1" data-field="prioridad" placeholder="1, 2, 3...">
                                                                         </label>
                                                                         <label>
-                                                                            <span>Fuente</span>
-                                                                            <input type="text" data-field="fuente" placeholder="Informe, reporte, encuesta, supervision...">
+                                                                            <span>Desempeños relacionados con el problema</span>
+                                                                            <textarea rows="3" data-field="desempenios_relacionados" placeholder="Desempeños, conductas o capacidades afectadas"></textarea>
                                                                         </label>
                                                                         <label>
-                                                                            <span>Enlace de fuente</span>
-                                                                            <input type="url" data-field="enlace_fuente" placeholder="https://...">
+                                                                            <span>Justificación de la prioridad</span>
+                                                                            <textarea rows="3" data-field="justificacion_prioridad" placeholder="Explica por qué este problema debe atenderse primero"></textarea>
                                                                         </label>
                                                                     </div>
                                                                     <div class="diagnostico-item-card__actions">
@@ -468,13 +469,13 @@
 
                                                     <div class="registro-diagnostico-nav">
                                                         <button type="button" class="btn-secondary-soft" data-sustento-prev data-flow="matriz" {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
-                                                        <button type="button" class="btn-primary-soft" data-sustento-next data-flow="matriz">{% if forloop.last %}Continuar al expediente{% else %}Siguiente paso{% endif %}</button>
+                                                        <button type="button" class="btn-primary-soft" data-sustento-next data-flow="matriz">{% if forloop.last %}Cerrar recorrido{% else %}Siguiente paso{% endif %}</button>
                                                     </div>
                                                 </section>
                                             {% endfor %}
                                         </div>
                                     </div>
-                                </section>
+                                </dialog>
                             {% endif %}
 
                             {% if registro_diagnostico_flujo %}
@@ -2072,17 +2073,13 @@
                 });
             };
 
-            var getSustentoFlowRoot = function (flowName) {
-                return form.querySelector("[data-sustento-modal='" + flowName + "'], [data-sustento-flow-root='" + flowName + "']");
-            };
-
             var setFlowStep = function (flowName, stepIndex) {
-                var flowRoot = getSustentoFlowRoot(flowName);
-                if (!flowRoot) {
+                var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                if (!modal) {
                     return;
                 }
-                var panels = flowRoot.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']");
-                var tags = flowRoot.querySelectorAll("[data-sustento-step-tag][data-flow='" + flowName + "']");
+                var panels = modal.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']");
+                var tags = modal.querySelectorAll("[data-sustento-step-tag][data-flow='" + flowName + "']");
                 if (!panels.length) {
                     return;
                 }
@@ -2139,19 +2136,14 @@
             };
 
             var openSustentoModal = function (flowName) {
-                var flowRoot = getSustentoFlowRoot(flowName);
-                if (!flowRoot) {
+                var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                if (!modal) {
                     return;
                 }
 
                 setFlowStep(flowName, flowState[flowName] || 1);
 
-                if (flowRoot.matches("[data-sustento-modal]")) {
-                    openDialogModal(flowRoot);
-                    return;
-                }
-
-                flowRoot.scrollIntoView({ behavior: "smooth", block: "start" });
+                openDialogModal(modal);
             };
 
             var setExpedienteStep = function (stepIndex) {
@@ -2192,8 +2184,6 @@
                     anyEnabled = anyEnabled || enabled;
                     var card = sustentoHub.querySelector("[data-sustento-card='" + flowName + "']");
                     var openButton = sustentoHub.querySelector("[data-open-sustento-modal='" + flowName + "']");
-                    var inlineButton = sustentoHub.querySelector("[data-open-sustento-inline='" + flowName + "']");
-                    var flowRoot = getSustentoFlowRoot(flowName);
                     if (card) {
                         card.classList.toggle("is-hidden", !enabled);
                         card.classList.toggle("is-disabled", !enabled);
@@ -2202,16 +2192,10 @@
                     if (openButton) {
                         openButton.disabled = !enabled;
                     }
-                    if (inlineButton) {
-                        inlineButton.disabled = !enabled;
-                    }
-                    if (flowRoot && flowRoot.matches("[data-sustento-flow-root]")) {
-                        flowRoot.classList.toggle("is-hidden", !enabled);
-                        flowRoot.setAttribute("aria-hidden", enabled ? "false" : "true");
-                    }
                     if (!enabled) {
-                        if (flowRoot && flowRoot.matches("[data-sustento-modal]") && flowRoot.open) {
-                            closeSustentoModal(flowRoot);
+                        var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                        if (modal && modal.open) {
+                            closeSustentoModal(modal);
                         }
                     }
                 });
@@ -2237,15 +2221,8 @@
                         return;
                     }
 
-                    var getFieldInitialValue = function (key, data) {
-                        if (!data || !Object.prototype.hasOwnProperty.call(data, key)) {
-                            return "";
-                        }
-                        return data[key];
-                    };
-
                     var buildRowData = function (card) {
-                        var row = Object.assign({}, card._builderOriginalRow || {});
+                        var row = {};
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
                             var rawValue = String(field.value || "").trim();
@@ -2266,11 +2243,9 @@
                     };
 
                     var bindCard = function (card, data) {
-                        card._builderOriginalRow = Object.assign({}, data || {});
-
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
-                            var value = getFieldInitialValue(key, data);
+                            var value = data && Object.prototype.hasOwnProperty.call(data, key) ? data[key] : "";
                             field.value = field.hasAttribute("data-multiline-list") ? toLines(value) : String(value || "");
                             field.addEventListener("input", syncField);
                             field.addEventListener("change", syncField);
@@ -2316,16 +2291,6 @@
                 });
             });
 
-            form.querySelectorAll("[data-open-sustento-inline]").forEach(function (button) {
-                button.addEventListener("click", function () {
-                    var flowName = String(button.getAttribute("data-open-sustento-inline") || "");
-                    if (button.disabled) {
-                        return;
-                    }
-                    openSustentoModal(flowName);
-                });
-            });
-
             form.querySelectorAll("[data-close-sustento-modal]").forEach(function (button) {
                 button.addEventListener("click", function () {
                     var flowName = String(button.getAttribute("data-close-sustento-modal") || "");
@@ -2356,11 +2321,11 @@
             form.querySelectorAll("[data-sustento-next]").forEach(function (button) {
                 button.addEventListener("click", function () {
                     var flowName = String(button.getAttribute("data-flow") || "");
-                    var flowRoot = getSustentoFlowRoot(flowName);
-                    var panels = flowRoot ? flowRoot.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']") : [];
+                    var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
+                    var panels = modal ? modal.querySelectorAll("[data-sustento-panel][data-flow='" + flowName + "']") : [];
                     if ((flowState[flowName] || 1) >= panels.length) {
-                        if (flowRoot && flowRoot.matches("[data-sustento-modal]")) {
-                            closeSustentoModal(flowRoot);
+                        if (modal) {
+                            closeSustentoModal(modal);
                         }
                         if (expedienteFlow) {
                             setExpedienteStep(1);

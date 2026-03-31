@@ -429,14 +429,14 @@ def _construir_pasarela_sustento(
     matriz_flujo: dict[str, Any] | None,
     diagnostico_flujo: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """Construye la etapa intermedia con matriz en linea y diagnostico en modal."""
+    """Construye la etapa intermedia con dos accesos paralelos via modales."""
     if not matriz_flujo and not diagnostico_flujo:
         return None
 
     return {
         "slug": "etapa-sustento",
         "titulo": "Sustento técnico previo",
-        "descripcion": "Despues de la fase preliminar puedes desarrollar la matriz de sustento en la misma pagina y abrir el diagnostico desde su modal guiado.",
+        "descripcion": "Despues de la fase preliminar puedes desarrollar la matriz de sustento y el diagnostico en paralelo, cada uno desde su propio modal guiado.",
         "is_enabled": bool((matriz_flujo and matriz_flujo.get("is_enabled")) or (diagnostico_flujo and diagnostico_flujo.get("is_enabled"))),
         "matriz": matriz_flujo,
         "diagnostico": diagnostico_flujo,
@@ -606,7 +606,7 @@ def _construir_flujo_matriz_sustento(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
 ) -> dict[str, Any] | None:
-    """Construye el flujo en linea de matriz de sustento en tres pasos."""
+    """Construye el modal de matriz de sustento inspirado en el flujo de tres pasos."""
     matriz_activa = _matriz_habilitada(valores_form)
 
     pasos_base = {
@@ -675,7 +675,7 @@ def _construir_flujo_matriz_sustento(
     return {
         "slug": "matriz-sustento-modal",
         "titulo": "Matriz de sustento",
-        "descripcion": "Recorrido guiado en la misma pagina para documentar problemas, indicadores y proyeccion de resultados antes del diseno formativo.",
+        "descripcion": "Modal guiado para documentar problemas, indicadores y proyeccion de resultados antes del diseno formativo.",
         "is_enabled": matriz_activa,
         "steps": pasos,
         "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
