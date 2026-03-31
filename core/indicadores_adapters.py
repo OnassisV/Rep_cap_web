@@ -208,6 +208,10 @@ def _calculate_base_kpis(
 
     merged["Proceso Formativo"] = _build_process_label(merged)
     merged["tipo_iged_norm"] = _normalize_iged_type(merged.get("tipo_iged", pd.Series(dtype=str)))
+    for _text_col in ["region", "nombre_iged", "tipo_iged"]:
+        if _text_col in merged.columns:
+            merged[_text_col] = merged[_text_col].fillna("").astype(str).str.strip()
+            merged.loc[merged[_text_col].str.lower() == "none", _text_col] = ""
     merged["estado_num"] = pd.to_numeric(merged.get("estado"), errors="coerce")
     merged["compromiso_num"] = pd.to_numeric(merged.get("compromiso"), errors="coerce")
     merged["aprobados_certificados_flag"] = _to_flag(merged.get("aprobados_certificados", pd.Series(dtype=object)))
@@ -242,6 +246,10 @@ def _calculate_base_kpis(
     agrupadores = [column for column in group_by if column in merged.columns]
     if not agrupadores:
         return pd.DataFrame(), merged
+
+    for col in agrupadores:
+        merged[col] = merged[col].fillna("").astype(str).str.strip()
+        merged.loc[merged[col].str.lower() == "none", col] = ""
 
     kpis = merged.groupby(agrupadores, dropna=False).agg(
         Postulaciones=("dni", "count"),
@@ -367,7 +375,10 @@ def _calculate_capacitacion_kpis(
         "Tasa Satisfaccion",
         "Efectividad",
     ]
-    return kpis[[column for column in ordered_columns if column in kpis.columns]], merged, satisf_global
+    result = kpis[[column for column in ordered_columns if column in kpis.columns]]
+    sort_key = result["Proceso Formativo"].eq("") if "Proceso Formativo" in result.columns else pd.Series(False, index=result.index)
+    result = result.assign(_blank=sort_key).sort_values(["_blank", "Año", "Proceso Formativo"] if "Año" in result.columns else ["_blank"], na_position="last").drop(columns="_blank").reset_index(drop=True)
+    return result, merged, satisf_global
 
 
 def _calculate_region_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, iged: pd.DataFrame) -> pd.DataFrame:
@@ -404,7 +415,9 @@ def _calculate_region_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, ig
         "Tasa Finalizacion",
         "Tasa Certificacion",
     ]
-    return kpis[[column for column in ordered_columns if column in kpis.columns]]
+    result = kpis[[column for column in ordered_columns if column in kpis.columns]]
+    result = result.assign(_blank=result["Region"].eq("")).sort_values(["_blank", "Region"], na_position="last").drop(columns="_blank").reset_index(drop=True)
+    return result
 
 
 def _calculate_iged_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, iged: pd.DataFrame) -> pd.DataFrame:
@@ -437,7 +450,11 @@ def _calculate_iged_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, iged
         "Tasa Finalizacion",
         "Tasa Certificacion",
     ]
-    return kpis[[column for column in ordered_columns if column in kpis.columns]]
+    result = kpis[[column for column in ordered_columns if column in kpis.columns]]
+    blank_region = result["Region"].eq("") if "Region" in result.columns else pd.Series(False, index=result.index)
+    blank_iged = result["IGED"].eq("") if "IGED" in result.columns else pd.Series(False, index=result.index)
+    result = result.assign(_br=blank_region, _bi=blank_iged).sort_values(["_br", "Region", "_bi", "IGED"], na_position="last").drop(columns=["_br", "_bi"]).reset_index(drop=True)
+    return result
 
 
 def _calculate_dni_tables(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, dni_query: str) -> tuple[pd.DataFrame, pd.DataFrame]:
