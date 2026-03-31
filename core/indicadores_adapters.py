@@ -79,22 +79,20 @@ def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Da
     bbdd = _fetch_dataframe(
         "bbdd_difoca",
         [
-            "codigo",
-            "dni",
-            "nombres",
-            "apellidos",
-            "email",
-            "telefono_celular",
-            "estado",
-            "compromiso",
-            "aprobados_certificados",
-            "desaprobado_permanente",
-            "cuestionario_entrada",
-            "cuestionario_salida",
-            "region",
-            "nombre_iged",
-            "tipo_iged",
-            "retiros",
+            "ID", "obs", "numero", "codigo", "tipo_documento", "dni",
+            "apellidos", "nombres", "genero", "fecha_nacimiento",
+            "telefono_celular", "email", "actualizo_datos",
+            "region", "tipo_iged", "codigo_iged", "nombre_iged",
+            "ambitos", "nivel_puesto", "nombre_puesto", "regimen_laboral",
+            "publico_objetivo", "ultimo_acceso_curso", "dias_ausencia",
+            "ingreso_curso", "estado", "compromiso",
+            "promedio_final_general", "promedio_final_condicion",
+            "avance_curso_certificacion", "estado_participante_curso",
+            "situacion_participante", "retiros", "aprobados_certificados",
+            "desaprobado_permanente", "desaprobado_abandono",
+            "cuestionario_entrada", "cuestionario_salida",
+            "encuesta", "ev_progreso_aprendizaje", "mantuvo_o_progreso",
+            "progreso", "nivel_c_entrada", "nivel_c_salida", "telefono_fijo",
         ],
     )
     satisfaccion = _fetch_dataframe(
@@ -686,7 +684,25 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     df_cap, _merged_cap, _sat_global = _calculate_capacitacion_kpis(oferta_filtrada, bbdd_filtrada, satisfaccion, iged)
     df_region = _calculate_region_kpis(oferta_filtrada, bbdd_filtrada, iged)
     df_iged = _calculate_iged_kpis(oferta_filtrada, bbdd_filtrada, iged)
-    _df_participantes, df_difoca_detalle = _calculate_dni_tables(oferta_filtrada, bbdd_filtrada, "")
+
+    df_difoca = bbdd_filtrada.copy()
+    difoca_columns = [
+        "ID", "obs", "numero", "codigo", "tipo_documento", "dni",
+        "apellidos", "nombres", "genero", "fecha_nacimiento",
+        "telefono_celular", "email", "actualizo_datos",
+        "region", "tipo_iged", "codigo_iged", "nombre_iged",
+        "ambitos", "nivel_puesto", "nombre_puesto", "regimen_laboral",
+        "publico_objetivo", "ultimo_acceso_curso", "dias_ausencia",
+        "ingreso_curso", "estado", "compromiso",
+        "promedio_final_general", "promedio_final_condicion",
+        "avance_curso_certificacion", "estado_participante_curso",
+        "situacion_participante", "retiros", "aprobados_certificados",
+        "desaprobado_permanente", "desaprobado_abandono",
+        "cuestionario_entrada", "cuestionario_salida",
+        "encuesta", "ev_progreso_aprendizaje", "mantuvo_o_progreso",
+        "progreso", "nivel_c_entrada", "nivel_c_salida", "telefono_fijo",
+    ]
+    df_difoca = df_difoca[[c for c in difoca_columns if c in df_difoca.columns]]
 
     tabs = [
         {"slug": "capacitacion", "title": "Por Capacitacion"},
@@ -698,7 +714,7 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
         "capacitacion": df_cap,
         "region": df_region,
         "iged": df_iged,
-        "difoca": df_difoca_detalle,
+        "difoca": df_difoca,
     }
 
     return {
