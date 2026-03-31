@@ -2683,7 +2683,7 @@ h1 {
 .indicadores-filters__group {
     display: grid;
     gap: 0.32rem;
-    grid-column: span 2;
+    grid-column: span 3;
 }
 
 .indicadores-filters__group span {
@@ -2792,7 +2792,7 @@ h1 {
 }
 
 .indicadores-filters__group--wide {
-    grid-column: span 4;
+    grid-column: span 3;
 }
 
 .indicadores-filters__actions {
@@ -2800,7 +2800,7 @@ h1 {
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 0.46rem;
-    grid-column: 9 / span 4;
+    grid-column: span 3;
 }
 
 .indicadores-filters__actions .btn-primary-soft,
