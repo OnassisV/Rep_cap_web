@@ -2237,8 +2237,15 @@
                         return;
                     }
 
+                    var getFieldInitialValue = function (key, data) {
+                        if (!data || !Object.prototype.hasOwnProperty.call(data, key)) {
+                            return "";
+                        }
+                        return data[key];
+                    };
+
                     var buildRowData = function (card) {
-                        var row = {};
+                        var row = Object.assign({}, card._builderOriginalRow || {});
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
                             var rawValue = String(field.value || "").trim();
@@ -2259,9 +2266,11 @@
                     };
 
                     var bindCard = function (card, data) {
+                        card._builderOriginalRow = Object.assign({}, data || {});
+
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
-                            var value = data && Object.prototype.hasOwnProperty.call(data, key) ? data[key] : "";
+                            var value = getFieldInitialValue(key, data);
                             field.value = field.hasAttribute("data-multiline-list") ? toLines(value) : String(value || "");
                             field.addEventListener("input", syncField);
                             field.addEventListener("change", syncField);
