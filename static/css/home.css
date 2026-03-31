@@ -2683,7 +2683,7 @@ h1 {
 .indicadores-filters__group {
     display: grid;
     gap: 0.32rem;
-    grid-column: span 3;
+    grid-column: span 2;
 }
 
 .indicadores-filters__group span {
@@ -2701,7 +2701,7 @@ h1 {
     color: #19344d;
     padding: 0.72rem 0.8rem;
     font: inherit;
-    min-height: 2.75rem;
+    height: 2.75rem;
     box-sizing: border-box;
 }
 
@@ -2721,7 +2721,7 @@ h1 {
     color: #19344d;
     padding: 0.72rem 0.8rem;
     font: inherit;
-    min-height: 2.75rem;
+    height: 2.75rem;
     box-sizing: border-box;
     cursor: pointer;
     user-select: none;
@@ -2792,7 +2792,7 @@ h1 {
 }
 
 .indicadores-filters__group--wide {
-    grid-column: span 3;
+    grid-column: span 4;
 }
 
 .indicadores-filters__actions {
@@ -2800,7 +2800,7 @@ h1 {
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 0.46rem;
-    grid-column: span 3;
+    grid-column: 9 / span 4;
 }
 
 .indicadores-filters__actions .btn-primary-soft,
