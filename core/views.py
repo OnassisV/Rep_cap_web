@@ -539,22 +539,33 @@ def _construir_flujo_diagnostico(
     definiciones = [
         {
             "slug": "diagnostico-modal-paso-1",
-            "source_slug": "diagnostico-paso-3",
-            "titulo": "Paso 1. Elaborar instrumento(s) de evaluacion",
-            "descripcion": "Configura perfiles, indicadores, items e instrucciones del instrumento diagnostico.",
+            "source_slug": "diagnostico-paso-1",
+            "titulo": "Paso 1. Registrar datos del proceso",
+            "descripcion": "Completa la base normativa, el contexto y las validaciones iniciales del diagnostico.",
         },
         {
             "slug": "diagnostico-modal-paso-2",
-            "source_slug": "diagnostico-paso-4",
-            "titulo": "Paso 2. Generar instrumento(s) de evaluacion",
-            "descripcion": "Deja preparada la salida operativa del instrumento para su uso.",
+            "source_slug": "diagnostico-paso-2",
+            "titulo": "Paso 2. Generar matriz de evaluacion",
+            "descripcion": "Organiza dimensiones y subdimensiones que serviran como base del instrumento.",
         },
         {
             "slug": "diagnostico-modal-paso-3",
+            "source_slug": "diagnostico-paso-3",
+            "titulo": "Paso 3. Elaborar instrumento(s) de evaluacion",
+            "descripcion": "Configura perfiles, indicadores, items e instrucciones del instrumento diagnostico.",
+        },
+        {
+            "slug": "diagnostico-modal-paso-4",
+            "source_slug": "diagnostico-paso-4",
+            "titulo": "Paso 4. Generar instrumento(s) de evaluacion",
+            "descripcion": "Deja preparada la salida operativa del instrumento para su uso.",
+        },
+        {
+            "slug": "diagnostico-modal-paso-5",
             "source_slug": "diagnostico-paso-5",
-            "titulo": "Paso 3. Analisis e informe del diagnostico",
+            "titulo": "Paso 5. Resultados e informe",
             "descripcion": "Consolida analisis, evidencias, linea base y justificaciones finales.",
-            "exclude_fields": {"diag_resultados_json"},
         },
     ]
 
@@ -596,9 +607,12 @@ def _construir_flujo_diagnostico(
     return {
         "slug": "diagnostico-modal",
         "titulo": "Diagnostico",
-        "descripcion": "Modal guiado para desarrollar el diagnostico, sus instrumentos y el informe final.",
+        "descripcion": "Modal guiado de cinco pasos para registrar el proceso, estructurar la evaluacion y consolidar el informe diagnostico.",
         "is_enabled": diagnostico_activo,
         "steps": pasos,
+        "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
+        "cap_codigo": str(valores_form.get("cap_codigo", "")).strip(),
+        "cap_anio": str(valores_form.get("cap_anio", "")).strip(),
     }
 
 
@@ -1671,6 +1685,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             context.update(
                 {
+                    "valores_form": valores_form,
                     "registro_form_sections": secciones_render,
                     "registro_form_sections_rest": secciones_posteriores,
                     "registro_form_sections_restantes": secciones_posteriores,

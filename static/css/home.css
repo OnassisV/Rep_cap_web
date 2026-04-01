@@ -2254,13 +2254,139 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.diagnostico-item-card__grid--matrix-outline,
+.diagnostico-item-card__grid--instrument-sheet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .diagnostico-item-card__grid--generation {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .diagnostico-item-card__grid textarea,
-.diagnostico-item-card__grid input {
+.diagnostico-item-card__grid input,
+.diagnostico-item-card__grid select,
+.diagnostico-inline-field textarea,
+.diagnostico-inline-field input,
+.diagnostico-inline-field select {
     width: 100%;
+}
+
+.diagnostico-builder--mockup {
+    border-color: #d9d7fb;
+    background: linear-gradient(180deg, #ffffff 0%, #fbf9ff 100%);
+}
+
+.diagnostico-note-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.68rem;
+    margin-bottom: 0.82rem;
+}
+
+.diagnostico-note-strip--warning {
+    margin-top: 0.1rem;
+}
+
+.diagnostico-note-chip {
+    display: grid;
+    gap: 0.18rem;
+    padding: 0.82rem 0.9rem;
+    border: 1px solid #e1defa;
+    border-radius: 0.9rem;
+    background: linear-gradient(145deg, #f8f6ff 0%, #ffffff 100%);
+}
+
+.diagnostico-note-chip strong {
+    color: #4b37a7;
+    font-size: 0.82rem;
+}
+
+.diagnostico-note-chip small {
+    color: #647b92;
+}
+
+.diagnostico-note-chip--soft {
+    border-color: #d9e6f1;
+    background: linear-gradient(145deg, #f7fbff 0%, #ffffff 100%);
+}
+
+.diagnostico-note-chip--success {
+    border-color: #b5decf;
+    background: linear-gradient(145deg, #eefbf5 0%, #ffffff 100%);
+}
+
+.diagnostico-action-grid {
+    display: grid;
+    gap: 0.7rem;
+    margin-bottom: 0.82rem;
+}
+
+.diagnostico-action-grid--triple {
+    grid-template-columns: 1.15fr 1fr 1fr;
+    align-items: stretch;
+}
+
+.diagnostico-action-grid--results {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.diagnostico-action-tile {
+    display: grid;
+    gap: 0.26rem;
+    padding: 0.82rem 0.88rem;
+    border: 1px solid #ddd9fb;
+    border-radius: 0.92rem;
+    background: linear-gradient(150deg, #faf8ff 0%, #ffffff 100%);
+    text-align: left;
+    color: #3b3d66;
+}
+
+.diagnostico-action-tile strong {
+    color: #5a38cf;
+    font-size: 0.82rem;
+}
+
+.diagnostico-action-tile small {
+    color: #6b7f93;
+}
+
+.diagnostico-action-tile--accent {
+    border-color: #cdbff6;
+    background: linear-gradient(150deg, #f2ecff 0%, #ffffff 100%);
+}
+
+.diagnostico-inline-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.72rem;
+}
+
+.diagnostico-inline-field {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.82rem 0.9rem;
+    border: 1px solid #d9e4f0;
+    border-radius: 0.9rem;
+    background: #fff;
+}
+
+.diagnostico-inline-field span {
+    color: #45627b;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.diagnostico-inline-field--full {
+    min-height: 100%;
+}
+
+.diagnostico-inline-field--select {
+    background: linear-gradient(145deg, #ffffff 0%, #faf8ff 100%);
+}
+
+.diagnostico-results-grid {
+    margin-top: 0.1rem;
 }
 
 .diagnostico-item-card__actions {
@@ -3712,6 +3838,16 @@ h1 {
     .submenu-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .diagnostico-action-grid--results {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .diagnostico-action-grid--triple,
+    .diagnostico-inline-form,
+    .diagnostico-note-strip {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Adaptacion para moviles. */
@@ -3811,7 +3947,16 @@ h1 {
     .diagnostico-item-card__grid--generation,
     .diagnostico-item-card__grid--problems,
     .diagnostico-item-card__grid--matrix-flow,
+    .diagnostico-item-card__grid--matrix-outline,
+    .diagnostico-item-card__grid--instrument-sheet,
     .diagnostico-item-card__grid--results-flow {
+        grid-template-columns: 1fr;
+    }
+
+    .diagnostico-action-grid--results,
+    .diagnostico-action-grid--triple,
+    .diagnostico-inline-form,
+    .diagnostico-note-strip {
         grid-template-columns: 1fr;
     }
 

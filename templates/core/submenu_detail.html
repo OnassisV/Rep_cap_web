@@ -266,7 +266,7 @@
                                     <article class="registro-sustento-card{% if not registro_diagnostico_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="diagnostico" aria-hidden="{% if registro_diagnostico_flujo.is_enabled %}false{% else %}true{% endif %}">
                                         <p class="registro-block__eyebrow">Ruta 2</p>
                                         <h4>Diagnostico</h4>
-                                        <p>Abre un modal técnico para configurar instrumentos, salidas operativas y el informe de diagnostico.</p>
+                                        <p>Abre un modal técnico de 5 pasos para registrar el proceso, estructurar la evaluación y consolidar el informe de diagnostico.</p>
                                         <div class="registro-sustento-card__meta">
                                             <small>{{ registro_diagnostico_flujo.steps|length }} pasos guiados</small>
                                             <button type="button" class="btn-primary-soft" data-open-sustento-modal="diagnostico" {% if not registro_diagnostico_flujo.is_enabled %}disabled{% endif %}>Abrir diagnostico</button>
@@ -522,42 +522,136 @@
                                                     </header>
 
                                                     {% if paso.slug == 'diagnostico-modal-paso-1' %}
+                                                        <div class="registro-diagnostico-meta">
+                                                            <article class="registro-diagnostico-meta__card">
+                                                                <span>Nombre de la capacitacion</span>
+                                                                <strong>{{ registro_diagnostico_flujo.cap_nombre|default:'(autogenerado desde fase preliminar)' }}</strong>
+                                                            </article>
+                                                            <article class="registro-diagnostico-meta__card">
+                                                                <span>Codigo interno</span>
+                                                                <strong>{{ registro_diagnostico_flujo.cap_codigo|default:'(se completara en la ficha tecnica)' }}</strong>
+                                                            </article>
+                                                            <article class="registro-diagnostico-meta__card">
+                                                                <span>Año de intervencion</span>
+                                                                <strong>{{ registro_diagnostico_flujo.cap_anio|default:'-' }}</strong>
+                                                            </article>
+                                                        </div>
                                                         {% for campo in paso.campos %}
                                                             {% if campo.tipo == 'hidden_json' %}
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endif %}
                                                         {% endfor %}
-                                                        <div class="diagnostico-builder" data-diagnostico-builder="instrument" data-target-field="diag_instrumento_json">
+                                                        <div class="diagnostico-note-strip diagnostico-note-strip--warning">
+                                                            <article class="diagnostico-note-chip">
+                                                                <strong>Base normativa</strong>
+                                                                <small>Define el marco inicial del diagnostico antes de pasar a la matriz de evaluación.</small>
+                                                            </article>
+                                                            <article class="diagnostico-note-chip diagnostico-note-chip--soft">
+                                                                <strong>Validación territorial</strong>
+                                                                <small>Si la DRE/UGEL no está de acuerdo con el modelo, el proceso debe revisarse antes de continuar.</small>
+                                                            </article>
+                                                        </div>
+                                                        <div class="registro-grid registro-grid--diagnostico-wide">
+                                                            {% for campo in paso.campos %}
+                                                                {% if campo.tipo != 'hidden_json' %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-2' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="matrix-outline" data-target-field="diag_matriz_json">
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
-                                                                    <h4>Instrumentos por perfil</h4>
-                                                                    <p>Relaciona perfil, indicador y banco de items para cada instrumento.</p>
+                                                                    <h4>Descripción de la dimensión y subdimensión</h4>
+                                                                    <p>Registra cada dimensión con su subdimensión asociada para construir la matriz de evaluación.</p>
                                                                 </div>
-                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar instrumento</button>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar dimensión</button>
                                                             </div>
                                                             <div class="diagnostico-builder__list" data-builder-list></div>
                                                             <template data-builder-template>
                                                                 <article class="diagnostico-item-card">
-                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--instrument">
-                                                                        <label>
-                                                                            <span>Perfil</span>
-                                                                            <input type="text" data-field="perfil" placeholder="Ej.: Director(a)">
-                                                                        </label>
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline">
                                                                         <label>
                                                                             <span>Dimension</span>
-                                                                            <input type="text" data-field="dimension" placeholder="Dimension asociada">
+                                                                            <input type="text" data-field="dimension" placeholder="Ej.: Gestión institucional">
                                                                         </label>
                                                                         <label>
                                                                             <span>Subdimension</span>
-                                                                            <input type="text" data-field="subdimension" placeholder="Subdimension asociada">
+                                                                            <textarea rows="3" data-field="subdimension" placeholder="Describe la subdimension vinculada"></textarea>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                        <div class="diagnostico-note-strip">
+                                                            <article class="diagnostico-note-chip diagnostico-note-chip--success">
+                                                                <strong>Siguiente paso</strong>
+                                                                <small>Las dimensiones registradas alimentan los selectores del instrumento de evaluación.</small>
+                                                            </article>
+                                                        </div>
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-3' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-note-strip">
+                                                            <article class="diagnostico-note-chip">
+                                                                <strong>Instrumento de evaluación</strong>
+                                                                <small>Relaciona el perfil, la dimensión, la subdimensión, el indicador y el ítem.</small>
+                                                            </article>
+                                                            <article class="diagnostico-note-chip diagnostico-note-chip--soft">
+                                                                <strong>Escala</strong>
+                                                                <small>Si la escala cambia por perfil, redefine los puntos antes de generar el instrumento.</small>
+                                                            </article>
+                                                        </div>
+                                                        <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="instrument-sheet" data-target-field="diag_instrumento_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Generar un instrumento de evaluación</h4>
+                                                                    <p>Registra el perfil, la dimensión, la subdimensión y cada ítem del instrumento.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar perfil</button>
+                                                            </div>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card diagnostico-item-card--instrument-sheet">
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--instrument-sheet">
+                                                                        <label>
+                                                                            <span>Perfil</span>
+                                                                            <input type="text" data-field="perfil" placeholder="Perfil al que se aplicará la encuesta">
                                                                         </label>
                                                                         <label>
-                                                                            <span>Indicadores</span>
-                                                                            <textarea rows="3" data-field="indicadores" placeholder="Uno por linea"></textarea>
+                                                                            <span>Dimension</span>
+                                                                            <select data-field="dimension" data-dimension-select>
+                                                                                <option value="">Selecciona una dimensión</option>
+                                                                            </select>
                                                                         </label>
                                                                         <label>
-                                                                            <span>Items</span>
-                                                                            <textarea rows="4" data-field="items" placeholder="Uno por linea"></textarea>
+                                                                            <span>Subdimension</span>
+                                                                            <select data-field="subdimension" data-subdimension-select>
+                                                                                <option value="">Selecciona una subdimensión</option>
+                                                                            </select>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Indicador de desempeño</span>
+                                                                            <textarea rows="3" data-field="indicador_desempenio" placeholder="Describe el indicador de desempeño"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Item</span>
+                                                                            <textarea rows="3" data-field="item" placeholder="Describe el item o pregunta"></textarea>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>Preguntas adicionales</span>
+                                                                            <textarea rows="3" data-field="preguntas_extra" placeholder="Otras preguntas que deban considerarse"></textarea>
                                                                         </label>
                                                                     </div>
                                                                     <div class="diagnostico-item-card__actions">
@@ -573,17 +667,33 @@
                                                                 {% endif %}
                                                             {% endfor %}
                                                         </div>
-                                                    {% elif paso.slug == 'diagnostico-modal-paso-2' %}
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-4' %}
                                                         {% for campo in paso.campos %}
                                                             {% if campo.tipo == 'hidden_json' %}
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endif %}
                                                         {% endfor %}
-                                                        <div class="diagnostico-builder" data-diagnostico-builder="generation" data-target-field="diag_generacion_json">
+                                                        <div class="diagnostico-action-grid diagnostico-action-grid--triple">
+                                                            <label class="diagnostico-inline-field diagnostico-inline-field--select">
+                                                                <span>Escoja el perfil</span>
+                                                                <select name="diag_instr_perfil_final" data-profile-select data-current-value="{{ valores_form.diag_instr_perfil_final|default:'' }}">
+                                                                    <option value="">Selecciona un perfil</option>
+                                                                </select>
+                                                            </label>
+                                                            <button type="button" class="diagnostico-action-tile">
+                                                                <strong>Previsualice el instrumento</strong>
+                                                                <small>Revise la estructura antes de generar la salida final.</small>
+                                                            </button>
+                                                            <button type="button" class="diagnostico-action-tile diagnostico-action-tile--accent">
+                                                                <strong>Genere el link para el llenado</strong>
+                                                                <small>Prepare el enlace operativo del instrumento.</small>
+                                                            </button>
+                                                        </div>
+                                                        <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="generation" data-target-field="diag_generacion_json">
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
-                                                                    <h4>Salidas de generacion</h4>
-                                                                    <p>Define versiones operativas del instrumento antes de su aplicacion.</p>
+                                                                    <h4>Generación operativa</h4>
+                                                                    <p>Registra la salida operativa por perfil, canal y fecha referencial.</p>
                                                                 </div>
                                                                 <button type="button" class="btn-secondary-soft" data-builder-add>Agregar salida</button>
                                                             </div>
@@ -614,17 +724,45 @@
                                                                 </article>
                                                             </template>
                                                         </div>
-                                                        <div class="registro-grid registro-grid--diagnostico-compact">
+                                                        <div class="diagnostico-inline-form">
+                                                            <label class="diagnostico-inline-field diagnostico-inline-field--full">
+                                                                <span>Resumen o previsualización del instrumento</span>
+                                                                <textarea name="diag_instr_previsualizacion" rows="3">{{ valores_form.diag_instr_previsualizacion|default:'' }}</textarea>
+                                                            </label>
+                                                            <label class="diagnostico-inline-field diagnostico-inline-field--full">
+                                                                <span>Observación sobre KR-20 o validación técnica</span>
+                                                                <textarea name="diag_instr_link_kr20" rows="3">{{ valores_form.diag_instr_link_kr20|default:'' }}</textarea>
+                                                            </label>
+                                                        </div>
+                                                    {% else %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-action-grid diagnostico-action-grid--results">
+                                                            <button type="button" class="diagnostico-action-tile">
+                                                                <strong>Procesamiento de datos por dimensión</strong>
+                                                                <small>Ordena los resultados y su lectura general.</small>
+                                                            </button>
+                                                            <button type="button" class="diagnostico-action-tile">
+                                                                <strong>Procesamiento de datos por subdimensión</strong>
+                                                                <small>Desagrega hallazgos por cada subnivel evaluado.</small>
+                                                            </button>
+                                                            <button type="button" class="diagnostico-action-tile">
+                                                                <strong>Procesamiento de datos por perfil</strong>
+                                                                <small>Resume resultados por perfil participante.</small>
+                                                            </button>
+                                                            <button type="button" class="diagnostico-action-tile diagnostico-action-tile--accent">
+                                                                <strong>Generar informe de diagnóstico</strong>
+                                                                <small>Prepara el informe preliminar del diagnóstico.</small>
+                                                            </button>
+                                                        </div>
+                                                        <div class="registro-grid registro-grid--diagnostico-wide diagnostico-results-grid">
                                                             {% for campo in paso.campos %}
                                                                 {% if campo.tipo != 'hidden_json' %}
                                                                     {% include "core/_registro_field.html" with field=campo %}
                                                                 {% endif %}
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% else %}
-                                                        <div class="registro-grid registro-grid--diagnostico-wide">
-                                                            {% for campo in paso.campos %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
                                                             {% endfor %}
                                                         </div>
                                                     {% endif %}
@@ -2073,6 +2211,102 @@
                 });
             };
 
+            var collectMatrixCatalog = function () {
+                var matrixField = form.querySelector("input[name='diag_matriz_json']");
+                var dimensions = [];
+                var subdimensionsByDimension = {};
+
+                parseJsonField(matrixField).forEach(function (row) {
+                    var dimension = normalizeProblemLabel(row.dimension);
+                    var subdimension = normalizeProblemLabel(row.subdimension);
+
+                    if (dimension && dimensions.indexOf(dimension) === -1) {
+                        dimensions.push(dimension);
+                    }
+                    if (!dimension) {
+                        return;
+                    }
+                    if (!Object.prototype.hasOwnProperty.call(subdimensionsByDimension, dimension)) {
+                        subdimensionsByDimension[dimension] = [];
+                    }
+                    if (subdimension && subdimensionsByDimension[dimension].indexOf(subdimension) === -1) {
+                        subdimensionsByDimension[dimension].push(subdimension);
+                    }
+                });
+
+                return {
+                    dimensions: dimensions,
+                    subdimensionsByDimension: subdimensionsByDimension,
+                };
+            };
+
+            var fillSelectOptions = function (select, options, placeholderLabel) {
+                if (!select) {
+                    return;
+                }
+
+                var currentValue = String(select.value || select.getAttribute("data-current-value") || "");
+                select.innerHTML = "";
+
+                var placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = placeholderLabel;
+                select.appendChild(placeholder);
+
+                options.forEach(function (label) {
+                    var option = document.createElement("option");
+                    option.value = label;
+                    option.textContent = label;
+                    select.appendChild(option);
+                });
+
+                select.value = options.indexOf(currentValue) >= 0 ? currentValue : "";
+                select.setAttribute("data-current-value", String(select.value || ""));
+            };
+
+            var syncMatrixSelects = function () {
+                var catalog = collectMatrixCatalog();
+
+                form.querySelectorAll("[data-dimension-select]").forEach(function (select) {
+                    fillSelectOptions(
+                        select,
+                        catalog.dimensions,
+                        catalog.dimensions.length ? "Selecciona una dimensión" : "Primero registra una dimensión"
+                    );
+                });
+
+                form.querySelectorAll("[data-subdimension-select]").forEach(function (select) {
+                    var card = select.closest(".diagnostico-item-card");
+                    var dimensionSelect = card ? card.querySelector("[data-dimension-select]") : null;
+                    var dimension = dimensionSelect ? String(dimensionSelect.value || "").trim() : "";
+                    var options = dimension ? (catalog.subdimensionsByDimension[dimension] || []) : [];
+                    fillSelectOptions(
+                        select,
+                        options,
+                        options.length ? "Selecciona una subdimensión" : "Primero elige una dimensión"
+                    );
+                });
+            };
+
+            var syncProfileSelects = function () {
+                var instrumentField = form.querySelector("input[name='diag_instrumento_json']");
+                var profiles = parseJsonField(instrumentField)
+                    .map(function (row) {
+                        return normalizeProblemLabel(row.perfil);
+                    })
+                    .filter(function (label) {
+                        return label.length > 0;
+                    });
+
+                form.querySelectorAll("[data-profile-select]").forEach(function (select) {
+                    fillSelectOptions(
+                        select,
+                        profiles,
+                        profiles.length ? "Selecciona un perfil" : "Primero registra un perfil"
+                    );
+                });
+            };
+
             var setFlowStep = function (flowName, stepIndex) {
                 var modal = form.querySelector("[data-sustento-modal='" + flowName + "']");
                 if (!modal) {
@@ -2240,6 +2474,12 @@
                         if (targetFieldName === "diag_problemas_json") {
                             syncProblemSelects();
                         }
+                        if (targetFieldName === "diag_matriz_json") {
+                            syncMatrixSelects();
+                        }
+                        if (targetFieldName === "diag_instrumento_json") {
+                            syncProfileSelects();
+                        }
                     };
 
                     var bindCard = function (card, data) {
@@ -2249,6 +2489,9 @@
                             field.value = field.hasAttribute("data-multiline-list") ? toLines(value) : String(value || "");
                             field.addEventListener("input", syncField);
                             field.addEventListener("change", syncField);
+                            if (field.hasAttribute("data-dimension-select")) {
+                                field.addEventListener("change", syncMatrixSelects);
+                            }
                         });
 
                         var removeBtn = card.querySelector("[data-builder-remove]");
@@ -2411,6 +2654,8 @@
 
             initDiagnosticoBuilders();
             syncProblemSelects();
+            syncMatrixSelects();
+            syncProfileSelects();
             setFlowStep("matriz", flowState.matriz || 1);
             setFlowStep("diagnostico", flowState.diagnostico || 1);
             setExpedienteStep(expedienteStep || 1);
