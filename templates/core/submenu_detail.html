@@ -149,6 +149,20 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="create_capacitacion">
                     {{ registro_iged_catalogo|json_script:"registro-iged-catalogo" }}
+                    {{ registro_oferta_catalogo|json_script:"registro-oferta-catalogo" }}
+
+                    {% if registro_oferta_catalogo %}
+                    <fieldset class="registro-prefill-oferta">
+                        <legend>Pre-llenar desde oferta formativa</legend>
+                        <label for="oferta-selector">Selecciona una capacitación de la oferta vigente para auto-completar los campos base:</label>
+                        <select id="oferta-selector" data-oferta-selector>
+                            <option value="">— Registro manual (sin pre-llenado) —</option>
+                            {% for item in registro_oferta_catalogo %}
+                                <option value="{{ forloop.counter0 }}">{{ item.codigo }} — {{ item.denominacion }}</option>
+                            {% endfor %}
+                        </select>
+                    </fieldset>
+                    {% endif %}
 
                     <div class="registro-summary registro-summary--solicitud">
                         <article class="mini-metric">
@@ -1936,6 +1950,49 @@
                     igedCatalog = {};
                 }
             }
+
+            /* --- Pre-llenado desde oferta formativa --- */
+            var ofertaCatNode = document.getElementById("registro-oferta-catalogo");
+            var ofertaCatalog = [];
+            if (ofertaCatNode) {
+                try {
+                    ofertaCatalog = JSON.parse(ofertaCatNode.textContent || "[]");
+                } catch (e) {
+                    ofertaCatalog = [];
+                }
+            }
+            var ofertaSelector = form.querySelector("[data-oferta-selector]");
+            if (ofertaSelector && ofertaCatalog.length) {
+                ofertaSelector.addEventListener("change", function () {
+                    var idx = ofertaSelector.value;
+                    if (idx === "") return;
+                    var item = ofertaCatalog[parseInt(idx, 10)];
+                    if (!item) return;
+
+                    var setField = function (name, value) {
+                        var el = form.querySelector("[name='" + name + "']");
+                        if (!el || !value) return;
+                        if (el.tagName === "SELECT") {
+                            el.value = value;
+                            el.dispatchEvent(new Event("change", {bubbles: true}));
+                        } else if (el.type === "radio") {
+                            var radios = form.querySelectorAll("input[name='" + name + "']");
+                            radios.forEach(function (r) {
+                                r.checked = r.value === value;
+                            });
+                        } else {
+                            el.value = value;
+                            el.dispatchEvent(new Event("input", {bubbles: true}));
+                        }
+                    };
+
+                    setField("cap_nombre", item.denominacion);
+                    setField("cap_anio", item.anio);
+                    setField("cap_codigo", item.codigo);
+                    setField("cap_tipo", item.tipo);
+                });
+            }
+            /* --- Fin pre-llenado oferta --- */
 
             var questionItems = form.querySelectorAll("[data-question-item]");
             var originInputs = form.querySelectorAll("input[name='sol_origen_institucional']");
