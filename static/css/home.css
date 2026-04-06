@@ -1335,6 +1335,55 @@ h1 {
     background: #fff;
 }
 
+/* Modulo Editar capacitacion */
+.editar-cap-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.editar-cap-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.editar-cap-back {
+    font-size: 0.85rem;
+    color: #2563eb;
+    text-decoration: none;
+}
+.editar-cap-back:hover {
+    text-decoration: underline;
+}
+.editar-cap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+.editar-cap-table th,
+.editar-cap-table td {
+    padding: 0.5rem 0.65rem;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+.editar-cap-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #475569;
+}
+.editar-cap-table tr:hover {
+    background: #f1f5f9;
+}
+.btn--small {
+    padding: 0.28rem 0.65rem;
+    font-size: 0.78rem;
+    border-radius: 0.35rem;
+}
+
 .registro-summary {
     margin-top: 0.5rem;
     display: grid;

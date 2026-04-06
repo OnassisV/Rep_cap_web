@@ -2,7 +2,7 @@
 
 # Tipado para mantener estructura de datos del menu mas clara.
 from typing import Any
-from datetime import datetime
+from datetime import datetime, date as _date_type
 from urllib.parse import urlencode
 
 # Error HTTP para retornar 404 cuando una seccion no exista.
@@ -64,6 +64,7 @@ from .legacy_adapters import (
     obtener_resumen_estandares,
     obtener_rutas_plantilla,
     resumir_certificados_por_region,
+    _normalizar_texto,
 )
 
 # Esquema declarativo del formulario de registro de nuevas capacitaciones.
@@ -109,9 +110,9 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
             {
                 "slug": "editar-capacitacion",
                 "titulo": "Editar capacitación",
-                "descripcion": "Actualiza datos generales y metadatos del proceso.",
-                "adapter": "placeholder",
-                "legacy_module": "N/A (nuevo flujo web)",
+                "descripcion": "Continúa el registro o actualiza datos de una capacitación existente.",
+                "adapter": "editar_capacitacion",
+                "legacy_module": "core/models.py (ORM)",
             },
             {
                 "slug": "productos-capacitacion",
@@ -1231,7 +1232,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         "section_submenus": section.get("submenus", []) if len(section.get("submenus", [])) > 1 else [],
         "adapter_kind": submenu.get("adapter", "placeholder"),
         # Permite ocultar filtro de año en submenus donde no aporta al flujo.
-        "mostrar_filtro_anio": submenu_slug != "registrar-nueva-capacitacion",
+        "mostrar_filtro_anio": submenu_slug not in {"registrar-nueva-capacitacion", "editar-capacitacion"},
         "anios_disponibles": [],
         "anio_seleccionado": None,
         "capacitaciones": [],
@@ -1301,6 +1302,63 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     )
 
         return redirect(redirect_url)
+
+    # Procesa edicion de capacitacion existente (guardar cambios por paso).
+    if (
+        request.method == "POST"
+        and section_slug == "gestion-capacitacion"
+        and submenu_slug == "editar-capacitacion"
+    ):
+        from core.models import Capacitacion
+
+        action = str(request.POST.get("action", "")).strip()
+        cap_id = str(request.POST.get("cap_id", "")).strip()
+
+        redirect_params: dict[str, str] = {}
+        if cap_id:
+            redirect_params["id"] = cap_id
+
+        if action == "save_capacitacion" and cap_id:
+            username = str(request.user.username)
+            role_eff = str(user_context.get("role_effective", ""))
+            is_admin = _normalizar_texto(role_eff) in {
+                "administrador", "admin", "superusuario",
+            }
+
+            try:
+                qs = Capacitacion.objects.all()
+                if not is_admin:
+                    qs = qs.filter(creado_por=username)
+                cap_obj = qs.get(pk=int(cap_id))
+
+                # Lee TODOS los campos del formulario (sin filtro de seccion).
+                for campo in iterar_campos_registro_capacitacion():
+                    codigo = str(campo.get("codigo", "")).strip()
+                    tipo = str(campo.get("tipo", "")).strip()
+                    if tipo == "hidden_json":
+                        continue
+                    raw_val = str(request.POST.get(codigo, "")).strip()
+                    if not hasattr(cap_obj, codigo):
+                        continue
+                    coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
+                    setattr(cap_obj, codigo, coerced if coerced is not None else "")
+
+                # Actualiza paso_actual si se envio.
+                paso_post = request.POST.get("paso_actual", "")
+                if paso_post:
+                    try:
+                        cap_obj.paso_actual = max(1, int(paso_post))
+                    except (ValueError, TypeError):
+                        pass
+
+                cap_obj.save()
+                messages.success(request, "Capacitacion actualizada correctamente.")
+            except Capacitacion.DoesNotExist:
+                messages.error(request, "No se encontro la capacitacion o no tienes permisos para editarla.")
+            except Exception as exc:
+                messages.error(request, f"Error al guardar: {exc}")
+
+        return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
 
     # Procesa acciones POST para seguimiento (CRUD sin salir de la vista).
     if (
@@ -1746,6 +1804,121 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     ],
                 }
             )
+
+        # Adaptacion del submenu "Editar capacitacion" (lista + edicion ORM).
+        if submenu_slug == "editar-capacitacion":
+            from core.models import Capacitacion
+
+            username = str(request.user.username)
+            role_eff = str(user_context.get("role_effective", ""))
+            is_admin = _normalizar_texto(role_eff) in {
+                "administrador", "admin", "superusuario",
+            }
+
+            # Obtiene lista de capacitaciones del usuario (o todas si admin).
+            qs = Capacitacion.objects.all().order_by("-creado_en")
+            if not is_admin:
+                qs = qs.filter(creado_por=username)
+
+            editar_lista = list(
+                qs.values(
+                    "id", "cap_nombre", "cap_codigo", "cap_anio",
+                    "cap_estado", "paso_actual", "creado_nombre", "creado_en",
+                )[:200]
+            )
+
+            # Si se recibe ?id=X, carga la capacitacion para edicion.
+            cap_id_param = str(request.GET.get("id", "")).strip()
+            editar_cap = None
+            editar_valores = {}
+            if cap_id_param:
+                try:
+                    cap_obj = qs.get(pk=int(cap_id_param))
+                    editar_cap = cap_obj
+                    # Serializa campos escalares del modelo al dict de valores_form.
+                    for field in cap_obj._meta.get_fields():
+                        if not hasattr(field, "column"):
+                            continue
+                        val = getattr(cap_obj, field.name, None)
+                        if val is None:
+                            editar_valores[field.name] = ""
+                        elif isinstance(val, datetime):
+                            editar_valores[field.name] = val.strftime("%Y-%m-%d %H:%M")
+                        elif isinstance(val, _date_type):
+                            editar_valores[field.name] = val.strftime("%Y-%m-%d")
+                        else:
+                            editar_valores[field.name] = str(val)
+                except (Capacitacion.DoesNotExist, ValueError):
+                    pass
+
+            # Si estamos en modo edicion, construir secciones para el formulario.
+            editar_secciones_render = []
+            editar_flujo_unificado = []
+            if editar_cap:
+                # Reutiliza misma logica de secciones que en registro.
+                for seccion in REGISTRO_CAPACITACION_SECCIONES:
+                    campos_render_ed = []
+                    for campo in seccion.get("campos", []):
+                        campos_render_ed.append(
+                            _enriquecer_campo_registro(campo, editar_valores)
+                        )
+                    sec_copy = {**seccion, "campos": campos_render_ed}
+                    estado_bloque = _contar_estado_bloque_registro(campos_render_ed)
+                    sec_copy.update(estado_bloque)
+
+                    if str(sec_copy.get("slug", "")) == "solicitud-inicial":
+                        catalogo_iged_ed = obtener_catalogo_iged_por_region()
+                        regiones_iged_ed = sorted(catalogo_iged_ed.keys())
+                        for campo in sec_copy.get("campos", []):
+                            codigo = str(campo.get("codigo", "")).strip()
+                            if codigo == "sol_region_iged":
+                                campo["opciones"] = regiones_iged_ed
+                            elif codigo == "sol_iged_nombre":
+                                region_sel = str(editar_valores.get("sol_region_iged", "")).strip()
+                                campo["opciones"] = [
+                                    str(item.get("nombre", "")).strip()
+                                    for item in catalogo_iged_ed.get(region_sel, [])
+                                    if str(item.get("nombre", "")).strip()
+                                ]
+                        sec_copy["special_layout"] = "solicitud"
+                        sec_copy["campos_left"] = [
+                            c for c in sec_copy.get("campos", [])
+                            if str(c.get("ui_zone", "main")) == "left"
+                        ]
+                        sec_copy["campos_right"] = [
+                            c for c in sec_copy.get("campos", [])
+                            if str(c.get("ui_zone", "main")) == "right"
+                        ]
+
+                    editar_secciones_render.append(sec_copy)
+
+                solicitud_ed = next(
+                    (s for s in editar_secciones_render if str(s.get("slug", "")) == "solicitud-inicial"),
+                    None,
+                )
+                flujo_matriz_ed = _construir_flujo_matriz_sustento(editar_secciones_render, editar_valores)
+                flujo_diag_ed = _construir_flujo_diagnostico(editar_secciones_render, editar_valores)
+                etapa_sustento_ed = _construir_pasarela_sustento(flujo_matriz_ed, flujo_diag_ed)
+                flujo_exp_ed = _construir_flujo_expediente(editar_secciones_render, editar_valores)
+                editar_flujo_unificado = _construir_flujo_unificado(
+                    editar_secciones_render, editar_valores, solicitud_ed, etapa_sustento_ed, flujo_exp_ed,
+                )
+
+                context.update({
+                    "editar_cap": {
+                        "id": editar_cap.pk,
+                        "cap_nombre": editar_cap.cap_nombre,
+                        "cap_estado": editar_cap.cap_estado,
+                        "paso_actual": editar_cap.paso_actual,
+                    },
+                    "editar_valores": editar_valores,
+                    "editar_secciones_render": editar_secciones_render,
+                    "editar_flujo_unificado": editar_flujo_unificado,
+                    "editar_solicitud": solicitud_ed,
+                    "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
+                })
+
+            context["editar_lista"] = editar_lista
 
         # Adaptacion del submenu "Seguimiento de capacitaciones" (plantillas.py).
         if submenu_slug == "seguimiento-capacitaciones":

@@ -1872,6 +1872,175 @@
                 {% include "core/_indicadores_dashboard.html" %}
             {% endif %}
 
+            <!-- Modulo Editar capacitacion: lista + formulario de edicion. -->
+            {% if adapter_kind == "editar_capacitacion" %}
+                {% if editar_cap %}
+                    {# ---- Modo edicion: formulario completo de la capacitacion ---- #}
+                    <div class="editar-cap-header">
+                        <a href="?#" class="editar-cap-back">&larr; Volver a la lista</a>
+                        <h3>{{ editar_cap.cap_nombre }}</h3>
+                        <span class="registro-status registro-status--{{ editar_cap.cap_estado|lower|cut:" " }}">
+                            {{ editar_cap.cap_estado }}
+                        </span>
+                    </div>
+
+                    <form method="post" class="editor-form registro-form" data-registro-form data-editar-form>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="save_capacitacion">
+                        <input type="hidden" name="cap_id" value="{{ editar_cap.id }}">
+                        <input type="hidden" name="paso_actual" value="{{ editar_cap.paso_actual }}">
+                        {{ registro_iged_catalogo|json_script:"registro-iged-catalogo" }}
+
+                        {% if editar_flujo_unificado %}
+                            <section class="registro-unified-flow" data-unified-flow>
+                                <div class="registro-unified-roadmap" aria-label="Pasos del registro">
+                                    {% for paso in editar_flujo_unificado %}
+                                        <article class="registro-unified-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-unified-step-tag data-step-index="{{ paso.step_index }}">
+                                            <span class="registro-unified-step__dot">{{ paso.step_index }}</span>
+                                            <strong>{{ paso.titulo }}</strong>
+                                            <small>{{ paso.descripcion }}</small>
+                                            <div class="registro-unified-step__meta">
+                                                {% if paso.is_complete %}
+                                                    <span class="registro-status registro-status--complete">Completo</span>
+                                                {% elif paso.is_current_step %}
+                                                    <span class="registro-status registro-status--current">En curso</span>
+                                                {% elif paso.is_started %}
+                                                    <span class="registro-status registro-status--started">En progreso</span>
+                                                {% else %}
+                                                    <span class="registro-status">Pendiente</span>
+                                                {% endif %}
+                                                <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                            </div>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="registro-unified-panels">
+                                    {% for paso in editar_flujo_unificado %}
+                                        <section class="registro-block registro-block--unified{% if not paso.is_current_step %} is-hidden{% endif %}" data-unified-panel data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
+
+                                            {% if paso.panel_type == 'solicitud' and editar_solicitud %}
+                                                <header class="registro-block__header registro-block__header--solicitud">
+                                                    <div>
+                                                        <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                        <h3 class="subsection-title">Solicitud de la capacitación</h3>
+                                                    </div>
+                                                </header>
+
+                                                <div class="registro-solicitud">
+                                                    <section class="registro-solicitud__main">
+                                                        <div class="registro-grid registro-grid--solicitud">
+                                                            {% for campo in editar_solicitud.campos_left %}
+                                                                {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    </section>
+                                                    <aside class="registro-solicitud__aside">
+                                                        {% for campo in editar_solicitud.campos_right %}
+                                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                                        {% endfor %}
+                                                    </aside>
+                                                </div>
+
+                                            {% elif paso.panel_type == 'sustento' %}
+                                                <header class="registro-block__header">
+                                                    <div>
+                                                        <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                        <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                    </div>
+                                                </header>
+                                                <p class="module-panel__note">{{ paso.descripcion }}</p>
+
+                                            {% elif paso.panel_type == 'expediente' %}
+                                                <header class="registro-block__header">
+                                                    <div>
+                                                        <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                        <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                    </div>
+                                                </header>
+                                                {% for seccion in paso.secciones %}
+                                                    <fieldset class="registro-subsection">
+                                                        <legend>{{ seccion.titulo }}</legend>
+                                                        <div class="registro-grid">
+                                                            {% for campo in seccion.campos %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    </fieldset>
+                                                {% endfor %}
+                                            {% endif %}
+
+                                            <nav class="registro-unified-nav">
+                                                {% if not forloop.first %}
+                                                    <button type="button" class="btn btn--outline" data-unified-prev>&larr; Anterior</button>
+                                                {% endif %}
+                                                {% if not forloop.last %}
+                                                    <button type="button" class="btn btn--primary" data-unified-next>Siguiente &rarr;</button>
+                                                {% endif %}
+                                            </nav>
+                                        </section>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endif %}
+
+                        <div class="registro-actions">
+                            <button type="submit" class="btn btn--primary btn--wide">
+                                Guardar cambios
+                            </button>
+                        </div>
+                    </form>
+
+                {% else %}
+                    {# ---- Modo lista: capacitaciones del especialista ---- #}
+                    <p class="module-panel__note">
+                        Selecciona una capacitación para continuar su registro o actualizar sus datos.
+                    </p>
+
+                    {% if editar_lista %}
+                        <table class="data-table editar-cap-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Código</th>
+                                    <th>Año</th>
+                                    <th>Estado</th>
+                                    <th>Paso</th>
+                                    <th>Creado por</th>
+                                    <th>Fecha</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in editar_lista %}
+                                    <tr>
+                                        <td>{{ item.cap_nombre }}</td>
+                                        <td>{{ item.cap_codigo|default:"-" }}</td>
+                                        <td>{{ item.cap_anio }}</td>
+                                        <td>
+                                            <span class="registro-status registro-status--{{ item.cap_estado|lower|cut:" " }}">
+                                                {{ item.cap_estado }}
+                                            </span>
+                                        </td>
+                                        <td>{{ item.paso_actual }}/7</td>
+                                        <td>{{ item.creado_nombre|default:"-" }}</td>
+                                        <td>{{ item.creado_en|date:"d/m/Y H:i" }}</td>
+                                        <td>
+                                            <a class="btn btn--small btn--primary" href="?id={{ item.id }}">Editar</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="module-panel__note" style="margin-top: 1rem;">
+                            No tienes capacitaciones registradas aún. Puedes crear una desde
+                            <a href="{% url 'submenu_detail' 'gestion-capacitacion' 'registrar-nueva-capacitacion' %}">Registrar nueva capacitación</a>.
+                        </p>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+
             <!-- Vista de placeholder para submenus aun no implementados en detalle. -->
             {% if adapter_kind == "placeholder" %}
                 <p class="module-panel__note">
