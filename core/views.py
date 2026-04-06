@@ -838,6 +838,69 @@ def _construir_flujo_expediente(
     }
 
 
+def _construir_flujo_unificado(
+    secciones_render: list[dict[str, Any]],
+    valores_form: dict[str, str],
+    solicitud_bloque: dict[str, Any] | None,
+    sustento_etapa: dict[str, Any] | None,
+    expediente_flujo: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Construye una linea de tiempo unica con todos los pasos del registro."""
+    pasos: list[dict[str, Any]] = []
+
+    # Paso 1: Solicitud
+    sol_req = sol_done = sol_filled = 0
+    if solicitud_bloque:
+        sol_req = int(solicitud_bloque.get("required_count", 0) or 0)
+        sol_done = int(solicitud_bloque.get("required_done", 0) or 0)
+        sol_filled = int(solicitud_bloque.get("filled_count", 0) or 0)
+    pasos.append({
+        "slug": "paso-solicitud",
+        "titulo": "Solicitud",
+        "descripcion": "Clasifica el origen y los insumos iniciales del pedido.",
+        "panel_type": "solicitud",
+        "required_count": sol_req,
+        "required_done": sol_done,
+        "filled_count": sol_filled,
+        "is_complete": sol_req > 0 and sol_done >= sol_req,
+        "is_started": sol_filled > 0,
+    })
+
+    # Paso 2: Sustento tecnico
+    pasos.append({
+        "slug": "paso-sustento",
+        "titulo": "Sustento tecnico",
+        "descripcion": "Desarrolla diagnostico, brechas y alineamiento tecnico.",
+        "panel_type": "sustento",
+        "required_count": 0,
+        "required_done": 0,
+        "filled_count": 0,
+        "is_complete": False,
+        "is_started": bool(sustento_etapa and sustento_etapa.get("is_enabled")),
+    })
+
+    # Pasos 3-7: Expediente
+    if expediente_flujo:
+        for exp_paso in expediente_flujo.get("steps", []):
+            pasos.append({
+                **exp_paso,
+                "panel_type": "expediente",
+            })
+
+    current_index = 0
+    for index, paso in enumerate(pasos):
+        if not bool(paso.get("is_complete")):
+            current_index = index
+            break
+        current_index = index
+
+    for index, paso in enumerate(pasos):
+        paso["step_index"] = index + 1
+        paso["is_current_step"] = index == current_index
+
+    return pasos
+
+
 def _validar_registro_capacitacion(
     payload_raw: dict[str, str],
  ) -> tuple[list[str], dict[str, Any]]:
@@ -1612,6 +1675,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 ),
                 None,
             )
+            flujo_unificado = _construir_flujo_unificado(
+                secciones_render, valores_form, solicitud_inicial, etapa_sustento, flujo_expediente,
+            )
             slugs_diagnostico = {
                 "diagnostico-paso-1",
                 "diagnostico-paso-2",
@@ -1643,6 +1709,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_diagnostico_flujo": flujo_diagnostico,
                     "registro_sustento_etapa": etapa_sustento,
                     "registro_expediente_flujo": flujo_expediente,
+                    "registro_flujo_unificado": flujo_unificado,
                     "registro_iged_catalogo": catalogo_iged,
                     "registro_iged_regiones": regiones_iged,
                     "registro_origen_actual": origen_actual,

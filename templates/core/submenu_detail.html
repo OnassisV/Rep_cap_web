@@ -165,117 +165,185 @@
                         </article>
                     </div>
 
-                    {% if registro_timeline %}
-                        <section class="registro-roadmap" aria-label="Linea de tiempo del registro">
-                            <div class="registro-roadmap__track">
-                                {% for etapa in registro_timeline %}
-                                    <article class="registro-roadmap__step{% if etapa.is_complete %} is-complete{% elif etapa.is_current %} is-current{% elif etapa.is_started %} is-started{% endif %}">
-                                        <div class="registro-roadmap__dot">
-                                            <span>{{ etapa.index }}</span>
-                                        </div>
-                                        <div class="registro-roadmap__body">
-                                            <p class="registro-roadmap__eyebrow">Etapa {{ etapa.index }}</p>
-                                            <h3>{{ etapa.titulo }}</h3>
-                                            <p>{{ etapa.descripcion }}</p>
-                                            <div class="registro-roadmap__meta">
-                                                {% if etapa.is_skipped %}
-                                                    <span class="registro-status">Omitida</span>
-                                                {% elif etapa.is_complete %}
-                                                    <span class="registro-status registro-status--complete">Completa</span>
-                                                {% elif etapa.is_current %}
-                                                    <span class="registro-status registro-status--current">En curso</span>
-                                                {% elif etapa.is_started %}
-                                                    <span class="registro-status registro-status--started">Avance parcial</span>
-                                                {% else %}
-                                                    <span class="registro-status">Pendiente</span>
-                                                {% endif %}
-                                                <small>{% if etapa.is_skipped %}No aplica{% else %}{{ etapa.required_done }}/{{ etapa.required_count }} obligatorios{% endif %}</small>
-                                            </div>
+                    {% if registro_flujo_unificado %}
+                        <section class="registro-unified-flow" data-unified-flow>
+                            <div class="registro-unified-roadmap" aria-label="Pasos del registro">
+                                {% for paso in registro_flujo_unificado %}
+                                    <article class="registro-unified-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-unified-step-tag data-step-index="{{ paso.step_index }}">
+                                        <span class="registro-unified-step__dot">{{ paso.step_index }}</span>
+                                        <strong>{{ paso.titulo }}</strong>
+                                        <small>{{ paso.descripcion }}</small>
+                                        <div class="registro-unified-step__meta">
+                                            {% if paso.is_complete %}
+                                                <span class="registro-status registro-status--complete">Completo</span>
+                                            {% elif paso.is_current_step %}
+                                                <span class="registro-status registro-status--current">En curso</span>
+                                            {% elif paso.is_started %}
+                                                <span class="registro-status registro-status--started">En progreso</span>
+                                            {% else %}
+                                                <span class="registro-status">Pendiente</span>
+                                            {% endif %}
+                                            <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
                                         </div>
                                     </article>
+                                {% endfor %}
+                            </div>
+
+                            <div class="registro-unified-panels">
+                                {% for paso in registro_flujo_unificado %}
+                                    <section class="registro-block registro-block--unified{% if not paso.is_current_step %} is-hidden{% endif %}" data-unified-panel data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
+
+                                        {% if paso.panel_type == 'solicitud' and registro_solicitud %}
+                                            <header class="registro-block__header registro-block__header--solicitud">
+                                                <div>
+                                                    <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                    <h3 class="subsection-title">Solicitud de la capacitación</h3>
+                                                </div>
+                                                <p class="module-panel__note">
+                                                    Primero definimos el origen del requerimiento y las decisiones de entrada. Con eso la capacitación queda lista para pasar al desarrollo técnico.
+                                                </p>
+                                            </header>
+
+                                            <div class="registro-solicitud">
+                                                <section class="registro-solicitud__main">
+                                                    <div class="registro-grid registro-grid--solicitud">
+                                                        {% for campo in registro_solicitud.campos_left %}
+                                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                                        {% endfor %}
+                                                    </div>
+                                                </section>
+
+                                                <aside class="registro-solicitud__decisions">
+                                                    <div class="registro-solicitud__decisions-head">
+                                                        <p class="registro-block__eyebrow">Decisiones diferenciadas</p>
+                                                        <h4>Respuestas que orientan el flujo</h4>
+                                                        <p>Estas definiciones nos ayudan a ordenar si habrá réplica, matriz de sustento o diagnóstico antes de entrar al diseño de la capacitación.</p>
+                                                    </div>
+                                                    <div class="registro-solicitud__decision-list">
+                                                        {% for campo in registro_solicitud.campos_right %}
+                                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                                        {% endfor %}
+                                                    </div>
+                                                </aside>
+                                            </div>
+
+                                        {% elif paso.panel_type == 'sustento' %}
+                                            <div data-sustento-hub>
+                                            <header class="registro-block__header registro-block__header--split">
+                                                <div>
+                                                    <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                    <h3 class="subsection-title">Sustento técnico previo</h3>
+                                                    <p class="module-panel__note">Desde aquí puedes desarrollar la matriz de sustento y el diagnóstico en paralelo, cada uno desde su propio modal guiado.</p>
+                                                </div>
+                                            </header>
+
+                                            {% if registro_sustento_etapa %}
+                                                <div class="registro-diagnostico-banner{% if registro_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>
+                                                    <strong>Activa al menos una decision de sustento en la fase preliminar.</strong>
+                                                    <p>Cuando marques matriz de sustento o diagnostico, se habilitara el acceso directo a su modal correspondiente.</p>
+                                                </div>
+
+                                                <div class="registro-sustento-actions">
+                                                    {% if registro_matriz_flujo %}
+                                                        <article class="registro-sustento-card{% if not registro_matriz_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="matriz" aria-hidden="{% if registro_matriz_flujo.is_enabled %}false{% else %}true{% endif %}">
+                                                            <p class="registro-block__eyebrow">Ruta 1</p>
+                                                            <h4>Matriz de sustento</h4>
+                                                            <p>Abre un modal de 3 pasos para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
+                                                            <div class="registro-sustento-card__meta">
+                                                                <small>{{ registro_matriz_flujo.steps|length }} pasos guiados</small>
+                                                                <button type="button" class="btn-primary-soft" data-open-sustento-modal="matriz" {% if not registro_matriz_flujo.is_enabled %}disabled{% endif %}>Abrir matriz</button>
+                                                            </div>
+                                                        </article>
+                                                    {% endif %}
+                                                    {% if registro_diagnostico_flujo %}
+                                                        <article class="registro-sustento-card{% if not registro_diagnostico_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="diagnostico" aria-hidden="{% if registro_diagnostico_flujo.is_enabled %}false{% else %}true{% endif %}">
+                                                            <p class="registro-block__eyebrow">Ruta 2</p>
+                                                            <h4>Diagnostico</h4>
+                                                            <p>Abre un modal técnico de 5 pasos para registrar el proceso, estructurar la evaluación y consolidar el informe de diagnostico.</p>
+                                                            <div class="registro-sustento-card__meta">
+                                                                <small>{{ registro_diagnostico_flujo.steps|length }} pasos guiados</small>
+                                                                <button type="button" class="btn-primary-soft" data-open-sustento-modal="diagnostico" {% if not registro_diagnostico_flujo.is_enabled %}disabled{% endif %}>Abrir diagnostico</button>
+                                                            </div>
+                                                        </article>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            </div>{# /data-sustento-hub #}
+
+                                        {% elif paso.panel_type == 'expediente' %}
+                                            <header class="registro-block__header registro-block__header--split">
+                                                <div>
+                                                    <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+                                                    <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                    <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                                </div>
+                                                <div class="registro-block__meta">
+                                                    {% if paso.is_complete %}
+                                                        <span class="registro-status registro-status--complete">Completo</span>
+                                                    {% elif paso.is_started %}
+                                                        <span class="registro-status registro-status--current">En progreso</span>
+                                                    {% else %}
+                                                        <span class="registro-status">Pendiente</span>
+                                                    {% endif %}
+                                                    <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+                                                </div>
+                                            </header>
+
+                                            {% if paso.summary_cards %}
+                                                <div class="registro-expediente-summary">
+                                                    {% for item in paso.summary_cards %}
+                                                        <article class="registro-expediente-summary__card">
+                                                            <span>{{ item.label }}</span>
+                                                            <strong>{{ item.value }}</strong>
+                                                        </article>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+
+                                            {% if paso.blocks %}
+                                                <div class="registro-expediente-inline-blocks">
+                                                    {% for bloque in paso.blocks %}
+                                                        <div class="registro-expediente-inline-block" id="registro-{{ bloque.slug }}">
+                                                            <div class="registro-expediente-inline-block__head">
+                                                                <div>
+                                                                    <h4>{{ bloque.titulo }}</h4>
+                                                                    <p>{{ bloque.descripcion }}</p>
+                                                                </div>
+                                                                <div class="registro-block__meta">
+                                                                    {% if bloque.is_complete %}
+                                                                        <span class="registro-status registro-status--complete">Completo</span>
+                                                                    {% elif bloque.is_started %}
+                                                                        <span class="registro-status registro-status--current">En progreso</span>
+                                                                    {% else %}
+                                                                        <span class="registro-status">Pendiente</span>
+                                                                    {% endif %}
+                                                                    <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="registro-grid">
+                                                                {% for campo in bloque.campos %}
+                                                                    {% include "core/_registro_field.html" with field=campo %}
+                                                                {% endfor %}
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        {% endif %}
+
+                                        <div class="registro-unified-nav">
+                                            <button type="button" class="btn-secondary-soft" data-unified-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
+                                            <button type="button" class="btn-primary-soft" data-unified-next>{% if forloop.last %}Ir al guardado{% else %}Siguiente paso{% endif %}</button>
+                                        </div>
+                                    </section>
                                 {% endfor %}
                             </div>
                         </section>
                     {% endif %}
 
-                    {% if registro_solicitud %}
-                        <section class="registro-block registro-block--solicitud" id="registro-{{ registro_solicitud.slug }}">
-                            <header class="registro-block__header registro-block__header--solicitud">
-                                <div>
-                                    <p class="registro-block__eyebrow">Fase preliminar</p>
-                                    <h3 class="subsection-title">Solicitud de la capacitación</h3>
-                                </div>
-                                <p class="module-panel__note">
-                                    Primero definimos el origen del requerimiento y las decisiones de entrada. Con eso la capacitación queda lista para pasar al desarrollo técnico.
-                                </p>
-                            </header>
-
-                            <div class="registro-solicitud">
-                                <section class="registro-solicitud__main">
-                                    <div class="registro-grid registro-grid--solicitud">
-                                        {% for campo in registro_solicitud.campos_left %}
-                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
-                                        {% endfor %}
-                                    </div>
-                                </section>
-
-                                <aside class="registro-solicitud__decisions">
-                                    <div class="registro-solicitud__decisions-head">
-                                        <p class="registro-block__eyebrow">Decisiones diferenciadas</p>
-                                        <h4>Respuestas que orientan el flujo</h4>
-                                        <p>Estas definiciones nos ayudan a ordenar si habrá réplica, matriz de sustento o diagnóstico antes de entrar al diseño de la capacitación.</p>
-                                    </div>
-                                    <div class="registro-solicitud__decision-list">
-                                        {% for campo in registro_solicitud.campos_right %}
-                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
-                                        {% endfor %}
-                                    </div>
-                                </aside>
-                            </div>
-                        </section>
-                    {% endif %}
-
+                    {# ── Modales de diagnóstico y matriz (se abren desde paso Sustento) ── #}
                     {% if registro_sustento_etapa %}
-                        <section class="registro-sustento-hub" id="registro-{{ registro_sustento_etapa.slug }}" data-sustento-hub>
-                            <header class="registro-sections-shell__header registro-sections-shell__header--diagnostico">
-                                <div>
-                                    <p class="registro-block__eyebrow">Etapa intermedia</p>
-                                    <h3 class="subsection-title">{{ registro_sustento_etapa.titulo }}</h3>
-                                </div>
-                                <p class="module-panel__note">{{ registro_sustento_etapa.descripcion }}</p>
-                            </header>
-
-                            <div class="registro-diagnostico-banner{% if registro_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>
-                                <strong>Activa al menos una decision de sustento en la fase preliminar.</strong>
-                                <p>Cuando marques matriz de sustento o diagnostico, se habilitara el acceso directo a su modal correspondiente.</p>
-                            </div>
-
-                            <div class="registro-sustento-actions">
-                                {% if registro_matriz_flujo %}
-                                    <article class="registro-sustento-card{% if not registro_matriz_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="matriz" aria-hidden="{% if registro_matriz_flujo.is_enabled %}false{% else %}true{% endif %}">
-                                        <p class="registro-block__eyebrow">Ruta 1</p>
-                                        <h4>Matriz de sustento</h4>
-                                        <p>Abre un modal de 3 pasos para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
-                                        <div class="registro-sustento-card__meta">
-                                            <small>{{ registro_matriz_flujo.steps|length }} pasos guiados</small>
-                                            <button type="button" class="btn-primary-soft" data-open-sustento-modal="matriz" {% if not registro_matriz_flujo.is_enabled %}disabled{% endif %}>Abrir matriz</button>
-                                        </div>
-                                    </article>
-                                {% endif %}
-                                {% if registro_diagnostico_flujo %}
-                                    <article class="registro-sustento-card{% if not registro_diagnostico_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="diagnostico" aria-hidden="{% if registro_diagnostico_flujo.is_enabled %}false{% else %}true{% endif %}">
-                                        <p class="registro-block__eyebrow">Ruta 2</p>
-                                        <h4>Diagnostico</h4>
-                                        <p>Abre un modal técnico de 5 pasos para registrar el proceso, estructurar la evaluación y consolidar el informe de diagnostico.</p>
-                                        <div class="registro-sustento-card__meta">
-                                            <small>{{ registro_diagnostico_flujo.steps|length }} pasos guiados</small>
-                                            <button type="button" class="btn-primary-soft" data-open-sustento-modal="diagnostico" {% if not registro_diagnostico_flujo.is_enabled %}disabled{% endif %}>Abrir diagnostico</button>
-                                        </div>
-                                    </article>
-                                {% endif %}
-                            </div>
-
-                            {% if registro_matriz_flujo %}
+                        {% if registro_matriz_flujo %}
                                 <dialog id="sustento-matriz-modal" class="actividad-modal sustento-modal" data-sustento-modal="matriz">
                                     <div class="actividad-modal__panel sustento-modal__panel">
                                         <header class="actividad-modal__header sustento-modal__header">
@@ -798,140 +866,7 @@
                                     </div>
                                 </dialog>
                             {% endif %}
-                        </section>
-                    {% endif %}
-
-                    {% if registro_expediente_flujo %}
-                        <section class="registro-sections-shell registro-sections-shell--expediente" id="registro-expediente-flujo" data-expediente-flow>
-                            <header class="registro-sections-shell__header">
-                                <div>
-                                    <p class="registro-block__eyebrow">Ruta común posterior</p>
-                                    <h3 class="subsection-title">Secuencia del expediente técnico</h3>
-                                </div>
-                                <p class="module-panel__note">
-                                    Luego de abrir cualquiera de las dos rutas previas, la capacitación continúa con esta misma secuencia: diseño, plan, generación de recursos e implementación.
-                                </p>
-                            </header>
-
-                            <div class="registro-expediente-roadmap" aria-label="Pasos del expediente común">
-                                {% for paso in registro_expediente_flujo.steps %}
-                                    <article class="registro-expediente-step{% if paso.is_complete %} is-complete{% elif paso.is_current_step %} is-current{% elif paso.is_started %} is-started{% endif %}" data-expediente-step-tag data-step-index="{{ paso.step_index }}">
-                                        <span class="registro-expediente-step__tag">Paso {{ paso.step_index }}</span>
-                                        <strong>{{ paso.titulo }}</strong>
-                                        <small>{{ paso.required_done }}/{{ paso.required_count }} hitos</small>
-                                    </article>
-                                {% endfor %}
-                            </div>
-
-                            <div class="registro-expediente-panels">
-                                {% for paso in registro_expediente_flujo.steps %}
-                                    <section class="registro-block registro-block--expediente{% if not paso.is_current_step %} is-hidden{% endif %}" data-expediente-panel data-step-index="{{ paso.step_index }}" aria-hidden="{% if paso.is_current_step %}false{% else %}true{% endif %}">
-                                        <header class="registro-block__header registro-block__header--split">
-                                            <div>
-                                                <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
-                                                <h3 class="subsection-title">{{ paso.titulo }}</h3>
-                                                <p class="module-panel__note">{{ paso.descripcion }}</p>
-                                            </div>
-                                            <div class="registro-block__meta">
-                                                {% if paso.is_complete %}
-                                                    <span class="registro-status registro-status--complete">Completo</span>
-                                                {% elif paso.is_started %}
-                                                    <span class="registro-status registro-status--current">En progreso</span>
-                                                {% else %}
-                                                    <span class="registro-status">Pendiente</span>
-                                                {% endif %}
-                                                <small>{{ paso.required_done }}/{{ paso.required_count }} hitos</small>
-                                            </div>
-                                        </header>
-
-                                        {% if paso.summary_cards %}
-                                            <div class="registro-expediente-summary">
-                                                {% for item in paso.summary_cards %}
-                                                    <article class="registro-expediente-summary__card">
-                                                        <span>{{ item.label }}</span>
-                                                        <strong>{{ item.value }}</strong>
-                                                    </article>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-
-                                        {% if paso.blocks %}
-                                            <div class="registro-expediente-inline-blocks">
-                                                {% for bloque in paso.blocks %}
-                                                    <div class="registro-expediente-inline-block" id="registro-{{ bloque.slug }}">
-                                                        <div class="registro-expediente-inline-block__head">
-                                                            <div>
-                                                                <h4>{{ bloque.titulo }}</h4>
-                                                                <p>{{ bloque.descripcion }}</p>
-                                                            </div>
-                                                            <div class="registro-block__meta">
-                                                                {% if bloque.is_complete %}
-                                                                    <span class="registro-status registro-status--complete">Completo</span>
-                                                                {% elif bloque.is_started %}
-                                                                    <span class="registro-status registro-status--current">En progreso</span>
-                                                                {% else %}
-                                                                    <span class="registro-status">Pendiente</span>
-                                                                {% endif %}
-                                                                <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
-                                                            </div>
-                                                        </div>
-                                                        <div class="registro-grid">
-                                                            {% for campo in bloque.campos %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-
-                                        <div class="registro-expediente-nav">
-                                            <button type="button" class="btn-secondary-soft" data-expediente-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
-                                            <button type="button" class="btn-primary-soft" data-expediente-next>{% if forloop.last %}Ir al guardado{% else %}Siguiente etapa{% endif %}</button>
-                                        </div>
-                                    </section>
-                                {% endfor %}
-                            </div>
-                        </section>
-                    {% else %}
-                        <section class="registro-sections-shell">
-                            <header class="registro-sections-shell__header">
-                                <div>
-                                    <p class="registro-block__eyebrow">Ficha técnica</p>
-                                    <h3 class="subsection-title">Desarrollo del expediente</h3>
-                                </div>
-                                <p class="module-panel__note">
-                                    Una vez abierta la solicitud, completa los bloques técnicos que darán forma a la capacitación dentro de Gestión de la Capacitación.
-                                </p>
-                            </header>
-
-                            {% for bloque in registro_form_sections_restantes %}
-                                <section class="registro-block" id="registro-{{ bloque.slug }}">
-                                    <header class="registro-block__header registro-block__header--split">
-                                        <div>
-                                            <h3 class="subsection-title">{{ bloque.titulo }}</h3>
-                                            <p class="module-panel__note">{{ bloque.descripcion }}</p>
-                                        </div>
-                                        <div class="registro-block__meta">
-                                            {% if bloque.is_complete %}
-                                                <span class="registro-status registro-status--complete">Completo</span>
-                                            {% elif bloque.is_started %}
-                                                <span class="registro-status registro-status--current">En progreso</span>
-                                            {% else %}
-                                                <span class="registro-status">Pendiente</span>
-                                            {% endif %}
-                                            <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
-                                        </div>
-                                    </header>
-
-                                    <div class="registro-grid">
-                                        {% for campo in bloque.campos %}
-                                            {% include "core/_registro_field.html" with field=campo %}
-                                        {% endfor %}
-                                    </div>
-                                </section>
-                            {% endfor %}
-                        </section>
+                        {% endif %}
                     {% endif %}
 
                     <div class="registro-form__actions">
@@ -2103,6 +2038,7 @@
             var sustentoHub = form.querySelector("[data-sustento-hub]");
             var sustentoBanner = form.querySelector("[data-sustento-banner]");
             var expedienteFlow = form.querySelector("[data-expediente-flow]");
+            var unifiedFlow = form.querySelector("[data-unified-flow]");
             var decisionInputs = {
                 matriz: form.querySelectorAll("input[name='sol_tiene_matriz']"),
                 diagnostico: form.querySelectorAll("input[name='sol_tiene_diagnostico']"),
@@ -2525,6 +2461,34 @@
                 });
             };
 
+            var unifiedStep = 1;
+            var setUnifiedStep = function (stepIndex) {
+                if (!unifiedFlow) {
+                    return;
+                }
+
+                var panels = unifiedFlow.querySelectorAll("[data-unified-panel]");
+                var tags = unifiedFlow.querySelectorAll("[data-unified-step-tag]");
+                if (!panels.length) {
+                    return;
+                }
+
+                var maxStep = panels.length;
+                unifiedStep = Math.min(Math.max(stepIndex, 1), maxStep);
+
+                panels.forEach(function (panel) {
+                    var panelStep = Number(panel.getAttribute("data-step-index") || "0");
+                    var active = panelStep === unifiedStep;
+                    panel.classList.toggle("is-hidden", !active);
+                    panel.setAttribute("aria-hidden", active ? "false" : "true");
+                });
+
+                tags.forEach(function (tag) {
+                    var tagStep = Number(tag.getAttribute("data-step-index") || "0");
+                    tag.classList.toggle("is-current", tagStep === unifiedStep);
+                });
+            };
+
             var syncSustentoAccess = function () {
                 if (!sustentoHub) {
                     return;
@@ -2926,6 +2890,35 @@
                 });
             }
 
+            if (unifiedFlow) {
+                unifiedFlow.querySelectorAll("[data-unified-prev]").forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        setUnifiedStep(unifiedStep - 1);
+                    });
+                });
+
+                unifiedFlow.querySelectorAll("[data-unified-next]").forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        var panels = unifiedFlow.querySelectorAll("[data-unified-panel]");
+                        if (unifiedStep >= panels.length) {
+                            var submitButton = form.querySelector(".registro-form__actions button[type='submit']");
+                            if (submitButton) {
+                                submitButton.scrollIntoView({ behavior: "smooth", block: "center" });
+                                submitButton.focus();
+                            }
+                            return;
+                        }
+                        setUnifiedStep(unifiedStep + 1);
+                    });
+                });
+
+                unifiedFlow.querySelectorAll("[data-unified-step-tag]").forEach(function (tag) {
+                    tag.addEventListener("click", function () {
+                        setUnifiedStep(Number(tag.getAttribute("data-step-index") || "1"));
+                    });
+                });
+            }
+
             Object.keys(decisionInputs).forEach(function (flowName) {
                 decisionInputs[flowName].forEach(function (input) {
                     input.addEventListener("change", function () {
@@ -2941,6 +2934,7 @@
             setFlowStep("matriz", flowState.matriz || 1);
             setFlowStep("diagnostico", flowState.diagnostico || 1);
             setExpedienteStep(expedienteStep || 1);
+            setUnifiedStep(unifiedStep || 1);
 
             syncExternalFields();
             syncSustentoAccess();
