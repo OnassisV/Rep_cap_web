@@ -1250,12 +1250,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         # Ruta de retorno a la misma pantalla (sin parametros de año).
         redirect_url = _build_submenu_url(section_slug, submenu_slug, {})
 
-        if action == "create_capacitacion":
-            # Lee solo los campos de la seccion de solicitud (Paso 1).
-            payload_raw: dict[str, str] = {}
-            for campo in iterar_campos_registro_capacitacion(secciones_filtro=SECCIONES_PASO_1):
-                codigo = str(campo.get("codigo", "")).strip()
-                payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
+        try:
+            if action == "create_capacitacion":
+                # Lee solo los campos de la seccion de solicitud (Paso 1).
+                payload_raw: dict[str, str] = {}
+                for campo in iterar_campos_registro_capacitacion(secciones_filtro=SECCIONES_PASO_1):
+                    codigo = str(campo.get("codigo", "")).strip()
+                    payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
 
             # Campos extra que pueden venir pre-llenados desde oferta_formativa.
             for extra in ("cap_codigo", "cap_tipo"):
@@ -1300,6 +1301,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         "No se pudo registrar la capacitacion en la base de datos: "
                         f"{resultado.get('error', 'Error desconocido')}",
                     )
+        except Exception as exc:
+            import logging
+            logging.getLogger("core.views").exception("Error en create_capacitacion POST")
+            messages.error(request, f"Error inesperado al registrar: {exc}")
 
         return redirect(redirect_url)
 
