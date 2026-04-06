@@ -117,11 +117,25 @@
             <h2>{{ submenu.titulo }}</h2>
             <!-- Mensajes de resultado para operaciones CRUD del submenu. -->
             {% if messages %}
-                <div class="flash-stack">
+                <div class="flash-stack" data-flash-toast>
                     {% for message in messages %}
                         <p class="flash-item flash-item--{{ message.tags }}">{{ message }}</p>
                     {% endfor %}
                 </div>
+                <script>
+                    (function() {
+                        var toast = document.querySelector("[data-flash-toast]");
+                        if (!toast) return;
+                        setTimeout(function() {
+                            toast.classList.add("is-dismissing");
+                            setTimeout(function() { toast.remove(); }, 450);
+                        }, 5000);
+                        toast.addEventListener("click", function() {
+                            toast.classList.add("is-dismissing");
+                            setTimeout(function() { toast.remove(); }, 450);
+                        });
+                    })();
+                </script>
             {% endif %}
 
             <!-- Filtro anual comun para submenus adaptados con oferta formativa. -->

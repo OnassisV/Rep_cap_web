@@ -975,26 +975,48 @@ h1 {
 
 /* Contenedor de mensajes flash de operaciones POST. */
 .flash-stack {
-    margin: 0.46rem 0 0.7rem;
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
     display: grid;
-    gap: 0.34rem;
+    gap: 0.5rem;
+    width: max-content;
+    max-width: 90vw;
+    animation: flash-slide-in 0.35s ease-out;
+}
+
+@keyframes flash-slide-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-1.5rem); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes flash-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; transform: translateX(-50%) translateY(-1rem); }
+}
+.flash-stack.is-dismissing {
+    animation: flash-fade-out 0.4s ease-in forwards;
 }
 
 /* Mensaje individual (exito/error) para feedback inmediato. */
 .flash-item {
     margin: 0;
     border: 1px solid #c6d9eb;
-    border-radius: 0.62rem;
-    padding: 0.48rem 0.62rem;
-    font-size: 0.82rem;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1.4rem;
+    font-size: 1.05rem;
     font-weight: 700;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+    text-align: center;
+    line-height: 1.4;
 }
 
 /* Variante de exito para mensaje flash. */
 .flash-item--success {
     background: #e9f4ff;
-    border-color: #bfd7f0;
-    color: #12466f;
+    border-color: #90bee0;
+    color: #0d3b5f;
 }
 
 /* Variante de error para mensaje flash. */
