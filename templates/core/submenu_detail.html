@@ -631,16 +631,7 @@
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endif %}
                                                         {% endfor %}
-                                                        <div class="diagnostico-note-strip">
-                                                            <article class="diagnostico-note-chip">
-                                                                <strong>Instrumento de evaluación</strong>
-                                                                <small>Relaciona el perfil, la dimensión, la subdimensión, el indicador y el ítem.</small>
-                                                            </article>
-                                                            <article class="diagnostico-note-chip diagnostico-note-chip--soft">
-                                                                <strong>Escala</strong>
-                                                                <small>Si la escala cambia por perfil, redefine los puntos antes de generar el instrumento.</small>
-                                                            </article>
-                                                        </div>
+
                                                         <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="instrument-sheet" data-target-field="diag_instrumento_json">
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
@@ -865,10 +856,10 @@
                                         {% endif %}
 
                                         {% if paso.blocks %}
-                                            <div class="registro-expediente-modules">
+                                            <div class="registro-expediente-inline-blocks">
                                                 {% for bloque in paso.blocks %}
-                                                    <article class="registro-expediente-module-card" id="registro-{{ bloque.slug }}">
-                                                        <div class="registro-expediente-module-card__head">
+                                                    <div class="registro-expediente-inline-block" id="registro-{{ bloque.slug }}">
+                                                        <div class="registro-expediente-inline-block__head">
                                                             <div>
                                                                 <h4>{{ bloque.titulo }}</h4>
                                                                 <p>{{ bloque.descripcion }}</p>
@@ -884,44 +875,12 @@
                                                                 <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
                                                             </div>
                                                         </div>
-                                                        <button type="button" class="btn-primary-soft" data-open-expediente-modal="{{ bloque.modal_id }}">Abrir módulo</button>
-                                                    </article>
-                                                {% endfor %}
-                                            </div>
-
-                                            {% for bloque in paso.blocks %}
-                                                <dialog id="{{ bloque.modal_id }}" class="actividad-modal expediente-modal" data-expediente-modal="{{ bloque.modal_id }}">
-                                                    <div class="actividad-modal__panel expediente-modal__panel">
-                                                        <header class="actividad-modal__header expediente-modal__header">
-                                                            <div>
-                                                                <p class="registro-block__eyebrow">{{ paso.titulo }}</p>
-                                                                <h3>{{ bloque.titulo }}</h3>
-                                                                <p class="module-panel__note">{{ bloque.descripcion }}</p>
-                                                            </div>
-                                                            <button type="button" class="actividad-modal__close" data-close-expediente-modal="{{ bloque.modal_id }}" aria-label="Cerrar">x</button>
-                                                        </header>
-
                                                         <div class="registro-grid">
                                                             {% for campo in bloque.campos %}
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endfor %}
                                                         </div>
                                                     </div>
-                                                </dialog>
-                                            {% endfor %}
-                                        {% endif %}
-
-                                        {% if paso.checks %}
-                                            <div class="registro-implementacion-checks">
-                                                {% for item in paso.checks %}
-                                                    <article class="registro-implementacion-check{% if item.ok %} is-ok{% endif %}">
-                                                        <div class="registro-implementacion-check__top">
-                                                            <strong>{{ item.titulo }}</strong>
-                                                            <span class="registro-status{% if item.ok %} registro-status--complete{% endif %}">{% if item.ok %}Sí{% else %}No{% endif %}</span>
-                                                        </div>
-                                                        <p>{{ item.detalle }}</p>
-                                                        <small>{{ item.meta }}</small>
-                                                    </article>
                                                 {% endfor %}
                                             </div>
                                         {% endif %}
@@ -2939,34 +2898,6 @@
             });
 
             if (expedienteFlow) {
-                expedienteFlow.querySelectorAll("[data-open-expediente-modal]").forEach(function (button) {
-                    button.addEventListener("click", function () {
-                        var modalId = String(button.getAttribute("data-open-expediente-modal") || "");
-                        var modal = expedienteFlow.querySelector("[data-expediente-modal='" + modalId + "']");
-                        openDialogModal(modal);
-                    });
-                });
-
-                expedienteFlow.querySelectorAll("[data-close-expediente-modal]").forEach(function (button) {
-                    button.addEventListener("click", function () {
-                        var modalId = String(button.getAttribute("data-close-expediente-modal") || "");
-                        var modal = expedienteFlow.querySelector("[data-expediente-modal='" + modalId + "']");
-                        closeDialogModal(modal);
-                    });
-                });
-
-                expedienteFlow.querySelectorAll("[data-expediente-modal]").forEach(function (modal) {
-                    modal.addEventListener("cancel", function (event) {
-                        event.preventDefault();
-                        closeDialogModal(modal);
-                    });
-                    modal.addEventListener("click", function (event) {
-                        if (event.target === modal) {
-                            closeDialogModal(modal);
-                        }
-                    });
-                });
-
                 expedienteFlow.querySelectorAll("[data-expediente-prev]").forEach(function (button) {
                     button.addEventListener("click", function () {
                         setExpedienteStep(expedienteStep - 1);

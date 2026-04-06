@@ -1838,7 +1838,7 @@ h1 {
 
 .registro-expediente-roadmap {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.58rem;
 }
 
@@ -1918,6 +1918,42 @@ h1 {
 .registro-expediente-blocks {
     display: grid;
     gap: 0.74rem;
+}
+
+/* ── Inline blocks (reemplazan sub-modales del expediente) ── */
+.registro-expediente-inline-blocks {
+    display: grid;
+    gap: 1.2rem;
+}
+
+.registro-expediente-inline-block {
+    display: grid;
+    gap: 0.72rem;
+    padding: 1rem;
+    border: 1px solid #d7e3f0;
+    border-radius: 0.96rem;
+    background: linear-gradient(155deg, #ffffff 0%, #f5faff 100%);
+}
+
+.registro-expediente-inline-block__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.82rem;
+    align-items: flex-start;
+    padding-bottom: 0.62rem;
+    border-bottom: 1px solid #e8f0f8;
+}
+
+.registro-expediente-inline-block__head h4 {
+    margin: 0;
+    color: #1f4665;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+.registro-expediente-inline-block__head p {
+    margin: 0.18rem 0 0;
+    color: #60798f;
+    font-size: 0.84rem;
 }
 
 .registro-expediente-modules {

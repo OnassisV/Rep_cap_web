@@ -465,19 +465,23 @@ def _construir_timeline_registro(
             else []
         ),
         "diseno": [
-            "oferta-formativa",
-            "poblacion-objetivo",
-            "objetivos-resultados",
-            "estandares-alcance",
-            "diseno-formativo-base",
-            "contenido-preliminar",
-            "evaluacion-preliminar",
+            "mi-diseno-contenido",
+            "mi-criterios-evaluacion",
+            "pt-resumen",
+            "pt-sustento",
+            "pt-evaluacion",
         ],
         "implementacion": [
-            "implementacion-base",
-            "logistica-recursos",
-            "responsables",
-            "seguimiento-inicial",
+            "gr-guia-participante",
+            "gr-cuestionario-inicio",
+            "gr-cronograma",
+            "gr-plataforma",
+            "gr-indicadores",
+            "is-convocatoria",
+            "is-confirmacion",
+            "is-seguimiento",
+            "ed-reportes",
+            "ed-cierre",
         ],
     }
 
@@ -698,66 +702,6 @@ def _construir_flujo_matriz_sustento(
     }
 
 
-def _construir_resumen_implementacion(
-    secciones_render: list[dict[str, Any]],
-    valores_form: dict[str, str],
-) -> list[dict[str, Any]]:
-    """Genera un checklist de preparacion para la etapa final de implementacion."""
-    estado_por_slug = {
-        str(item.get("slug", "")).strip(): item
-        for item in secciones_render
-    }
-    seguimiento = estado_por_slug.get("seguimiento-inicial") or {}
-    implementacion = estado_por_slug.get("implementacion-base") or {}
-    responsables = estado_por_slug.get("responsables") or {}
-    logistica = estado_por_slug.get("logistica-recursos") or {}
-
-    return [
-        {
-            "titulo": "Convocatoria y puesta en marcha",
-            "detalle": "Se activa cuando ya existe un mecanismo de convocatoria, inscripcion y una fecha tentativa.",
-            "ok": bool(
-                str(valores_form.get("imp_convocatoria", "")).strip()
-                and str(valores_form.get("imp_inscripcion", "")).strip()
-                and str(valores_form.get("imp_fecha_ini", "")).strip()
-            ),
-            "meta": f"{implementacion.get('filled_count', 0)}/{implementacion.get('required_count', 0)} obligatorios",
-        },
-        {
-            "titulo": "Responsables definidos",
-            "detalle": "Consolidar unidad responsable, coordinacion y contacto operativo antes del seguimiento.",
-            "ok": bool(
-                str(valores_form.get("resp_unidad", "")).strip()
-                and (
-                    str(valores_form.get("resp_coord", "")).strip()
-                    or str(valores_form.get("imp_resp_impl", "")).strip()
-                )
-            ),
-            "meta": f"{responsables.get('filled_count', 0)} campo(s) completados",
-        },
-        {
-            "titulo": "Condiciones y recursos listos",
-            "detalle": "Resume si ya fueron consignados presupuesto, requerimientos tecnicos y componentes logisticos.",
-            "ok": bool(
-                str(valores_form.get("log_componentes", "")).strip()
-                or str(valores_form.get("log_req_tec", "")).strip()
-                or str(valores_form.get("log_req_op", "")).strip()
-            ),
-            "meta": f"{logistica.get('filled_count', 0)} insumo(s) registrados",
-        },
-        {
-            "titulo": "Seguimiento inicial configurado",
-            "detalle": "Esta base luego alimenta la implementacion y el monitoreo posterior de la capacitacion.",
-            "ok": bool(
-                str(valores_form.get("seg_tablero", "")).strip()
-                or str(valores_form.get("seg_ind_sec", "")).strip()
-                or str(valores_form.get("seg_riesgos", "")).strip()
-            ),
-            "meta": f"{seguimiento.get('filled_count', 0)} insumo(s) de seguimiento",
-        },
-    ]
-
-
 def _construir_flujo_expediente(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
@@ -772,41 +716,52 @@ def _construir_flujo_expediente(
         {
             "slug": "expediente-diseno-matriz",
             "titulo": "Diseno de la Matriz Instruccional (+ alcance)",
-            "descripcion": "Continua despues del sustento tecnico y organiza objetivos, desempenos, contenidos y criterios del diseno formativo.",
+            "descripcion": "Objetivo, competencias, desempenos, malla curricular y criterios de evaluacion del diseno formativo.",
             "block_slugs": [
-                "objetivos-resultados",
-                "estandares-alcance",
-                "contenido-preliminar",
-                "evaluacion-preliminar",
+                "mi-diseno-contenido",
+                "mi-criterios-evaluacion",
             ],
         },
         {
             "slug": "expediente-plan-trabajo",
             "titulo": "Plan de Trabajo",
-            "descripcion": "Consolida la ficha operativa, alcance, modalidad, responsables y programacion para la ejecucion.",
+            "descripcion": "Consolida la ficha operativa, sustento, evaluacion y programacion para la ejecucion.",
             "block_slugs": [
-                "identificacion-general",
-                "oferta-formativa",
-                "poblacion-objetivo",
-                "diseno-formativo-base",
-                "implementacion-base",
-                "responsables",
+                "pt-resumen",
+                "pt-sustento",
+                "pt-evaluacion",
             ],
         },
         {
             "slug": "expediente-generacion-recursos",
             "titulo": "Generacion de recursos",
-            "descripcion": "Deja registradas las condiciones logisticas y el monitoreo inicial que habilitan la produccion y despliegue.",
+            "descripcion": "Guia del participante, cuestionario de inicio, cronograma, plataforma e indicadores de calidad.",
             "block_slugs": [
-                "logistica-recursos",
-                "seguimiento-inicial",
+                "gr-guia-participante",
+                "gr-cuestionario-inicio",
+                "gr-cronograma",
+                "gr-plataforma",
+                "gr-indicadores",
             ],
         },
         {
             "slug": "expediente-implementacion",
             "titulo": "Implementacion y seguimiento",
-            "descripcion": "Ultimo chequeo previo al guardado. Esta etapa resume si la capacitacion ya tiene base suficiente para entrar al flujo de implementacion.",
-            "block_slugs": [],
+            "descripcion": "Oficios de convocatoria y confirmacion, seguimiento a los proyectos formativos.",
+            "block_slugs": [
+                "is-convocatoria",
+                "is-confirmacion",
+                "is-seguimiento",
+            ],
+        },
+        {
+            "slug": "expediente-evaluacion",
+            "titulo": "Evaluacion y documentacion",
+            "descripcion": "Reportes finales, certificados, oficios de resultados y cierre de la capacitacion.",
+            "block_slugs": [
+                "ed-reportes",
+                "ed-cierre",
+            ],
         },
     ]
 
@@ -855,16 +810,9 @@ def _construir_flujo_expediente(
                 },
                 {
                     "label": "Modalidad",
-                    "value": str(valores_form.get("dis_modalidad", "")).strip() or "Pendiente",
+                    "value": str(valores_form.get("pt_modalidad", "")).strip() or "Pendiente",
                 },
             ]
-
-        if definicion["slug"] == "expediente-implementacion":
-            paso["checks"] = _construir_resumen_implementacion(secciones_render, valores_form)
-            paso["is_started"] = any(bool(item.get("ok")) for item in paso["checks"])
-            paso["is_complete"] = all(bool(item.get("ok")) for item in paso["checks"])
-            paso["required_count"] = len(paso["checks"])
-            paso["required_done"] = sum(1 for item in paso["checks"] if bool(item.get("ok")))
 
         pasos.append(paso)
 
