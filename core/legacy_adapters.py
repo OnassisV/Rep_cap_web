@@ -132,85 +132,66 @@ def crear_registro_capacitacion(
     creado_por: str,
     creado_nombre: str,
 ) -> dict[str, Any]:
-    """Guarda un registro nuevo de capacitacion en MySQL local con columnas clave + JSON."""
-    # Extrae campos clave para indexacion/consulta rapida futura.
-    cap_nombre = str(payload.get("cap_nombre") or "").strip()
-    cap_codigo = str(payload.get("cap_codigo") or "").strip()
-    cap_tipo = str(payload.get("cap_tipo") or "").strip()
-    cap_direccion = str(payload.get("cap_direccion") or "").strip()
-    cap_estado = str(payload.get("cap_estado") or "Borrador").strip() or "Borrador"
+    """Crea un registro de capacitacion usando Django ORM (modelo Capacitacion)."""
+    from core.models import Capacitacion
 
-    # Normaliza anio como entero para facilitar filtros por vigencia.
-    cap_anio = payload.get("cap_anio")
-    try:
-        cap_anio_int = int(cap_anio) if cap_anio is not None else None
-    except Exception:
-        cap_anio_int = None
+    # Extrae y normaliza campos escalares del payload.
+    def _str(key: str, max_len: int = 0) -> str:
+        val = str(payload.get(key) or "").strip()
+        return val[:max_len] if max_len else val
 
-    # Serializa payload completo en JSON (sin perder tildes/caracteres).
-    data_json = json.dumps(payload, ensure_ascii=False)
+    def _date(key: str):
+        val = _str(key)
+        if not val:
+            return None
+        try:
+            from datetime import date as _date_cls
+            # Acepta YYYY-MM-DD
+            return _date_cls.fromisoformat(val)
+        except (ValueError, TypeError):
+            return None
 
-    # SQL de creacion de tabla local (solo una vez, idempotente).
-    sql_create = """
-        CREATE TABLE IF NOT EXISTS `capacitaciones_registro_web` (
-            `id` BIGINT NOT NULL AUTO_INCREMENT,
-            `cap_nombre` VARCHAR(255) NOT NULL,
-            `cap_codigo` VARCHAR(120) NULL,
-            `cap_tipo` VARCHAR(100) NOT NULL,
-            `cap_direccion` VARCHAR(120) NOT NULL,
-            `cap_anio` INT NOT NULL,
-            `cap_estado` VARCHAR(120) NOT NULL DEFAULT 'Borrador',
-            `creado_por` VARCHAR(150) NOT NULL,
-            `creado_nombre` VARCHAR(200) NULL,
-            `creado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            `data_json` LONGTEXT NOT NULL,
-            PRIMARY KEY (`id`),
-            KEY `idx_cap_anio` (`cap_anio`),
-            KEY `idx_cap_estado` (`cap_estado`),
-            KEY `idx_cap_codigo` (`cap_codigo`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    """
-
-    # SQL de insercion del nuevo registro.
-    sql_insert = """
-        INSERT INTO `capacitaciones_registro_web` (
-            cap_nombre,
-            cap_codigo,
-            cap_tipo,
-            cap_direccion,
-            cap_anio,
-            cap_estado,
-            creado_por,
-            creado_nombre,
-            data_json
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """
+    def _int(key: str):
+        val = _str(key)
+        if not val:
+            return None
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return None
 
     try:
-        # Ejecuta creacion + insercion en la misma conexion local.
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(sql_create)
-                cursor.execute(
-                    sql_insert,
-                    (
-                        cap_nombre,
-                        cap_codigo or None,
-                        cap_tipo,
-                        cap_direccion,
-                        cap_anio_int,
-                        cap_estado,
-                        str(creado_por or "").strip() or "sistema",
-                        str(creado_nombre or "").strip() or None,
-                        data_json,
-                    ),
-                )
-                new_id = int(cursor.lastrowid or 0)
-
-        # Retorna resultado exitoso con id generado.
-        return {"ok": True, "id": new_id}
+        cap = Capacitacion.objects.create(
+            # Solicitud (Paso 1)
+            sol_origen_institucional=_str("sol_origen_institucional", 60),
+            sol_numero_oficio=_str("sol_numero_oficio", 120),
+            sol_fecha_oficio=_date("sol_fecha_oficio"),
+            sol_archivo_oficio=_str("sol_archivo_oficio", 500),
+            sol_region_iged=_str("sol_region_iged", 120),
+            sol_iged_nombre=_str("sol_iged_nombre", 250),
+            sol_es_replica=_str("sol_es_replica", 10),
+            sol_tiene_matriz=_str("sol_tiene_matriz", 10),
+            sol_tiene_diagnostico=_str("sol_tiene_diagnostico", 10),
+            sol_responde_desempeno=_str("sol_responde_desempeno", 10),
+            # Identificacion
+            cap_nombre=_str("cap_nombre", 255),
+            cap_codigo=_str("cap_codigo", 120),
+            cap_tipo=_str("cap_tipo", 100),
+            cap_estrategia=_str("cap_estrategia", 255),
+            cap_prioridad=_str("cap_prioridad", 30),
+            cap_anio=_int("cap_anio") or datetime.now().year,
+            cap_direccion=_str("cap_direccion", 120),
+            pob_tipo=_str("pob_tipo", 120),
+            pob_ambito=_str("pob_ambito", 120),
+            # Estado
+            cap_estado=Capacitacion.Estado.BORRADOR,
+            paso_actual=1,
+            # Metadata
+            creado_por=str(creado_por or "").strip() or "sistema",
+            creado_nombre=str(creado_nombre or "").strip(),
+        )
+        return {"ok": True, "id": cap.pk}
     except Exception as error:
-        # En caso de error, retorna mensaje para mostrarse en UI.
         return {"ok": False, "error": str(error)}
 
 

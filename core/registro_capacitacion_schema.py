@@ -335,10 +335,19 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
 ]
 
 
-def iterar_campos_registro_capacitacion() -> list[dict[str, Any]]:
-    """Retorna lista plana de campos para validacion/procesamiento."""
+def iterar_campos_registro_capacitacion(
+    secciones_filtro: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Retorna lista plana de campos para validacion/procesamiento.
+
+    Si *secciones_filtro* se indica, solo incluye campos de esas secciones.
+    Cada campo incluye la clave ``seccion_slug`` con el slug de su seccion.
+    """
     campos: list[dict[str, Any]] = []
     for seccion in REGISTRO_CAPACITACION_SECCIONES:
+        slug = str(seccion.get("slug", ""))
+        if secciones_filtro is not None and slug not in secciones_filtro:
+            continue
         for campo in seccion.get("campos", []):
-            campos.append(campo)
+            campos.append({**campo, "seccion_slug": slug})
     return campos

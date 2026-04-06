@@ -901,10 +901,19 @@ def _construir_flujo_unificado(
     return pasos
 
 
+# Secciones que se validan al crear (solo paso 1 – solicitud).
+SECCIONES_PASO_1 = {"solicitud-inicial"}
+
+
 def _validar_registro_capacitacion(
     payload_raw: dict[str, str],
+    secciones_validas: set[str] | None = None,
  ) -> tuple[list[str], dict[str, Any]]:
-    """Valida campos del registro de capacitacion y retorna payload tipado."""
+    """Valida campos del registro de capacitacion y retorna payload tipado.
+
+    Si *secciones_validas* se indica, solo se verifican los campos obligatorios
+    de esas secciones (util para guardar solo el paso 1).
+    """
     errores: list[str] = []
     payload_tipado: dict[str, Any] = {}
     origen_solicitud = str(payload_raw.get("sol_origen_institucional", "")).strip()
@@ -913,7 +922,7 @@ def _validar_registro_capacitacion(
         "sol_iged_nombre",
     }
 
-    for campo in iterar_campos_registro_capacitacion():
+    for campo in iterar_campos_registro_capacitacion(secciones_filtro=secciones_validas):
         codigo = str(campo.get("codigo", "")).strip()
         etiqueta = str(campo.get("pregunta", codigo)).strip()
         tipo = str(campo.get("tipo", "text_short")).strip()
@@ -1241,14 +1250,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         redirect_url = _build_submenu_url(section_slug, submenu_slug, {})
 
         if action == "create_capacitacion":
-            # Lee todos los campos declarados en el esquema oficial.
+            # Lee solo los campos de la seccion de solicitud (Paso 1).
             payload_raw: dict[str, str] = {}
-            for campo in iterar_campos_registro_capacitacion():
+            for campo in iterar_campos_registro_capacitacion(secciones_filtro=SECCIONES_PASO_1):
                 codigo = str(campo.get("codigo", "")).strip()
                 payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
 
-            # Valida obligatoriedad inicial y formato de tipos.
-            errores, payload_tipado = _validar_registro_capacitacion(payload_raw)
+            # Valida solo campos obligatorios del paso 1.
+            errores, payload_tipado = _validar_registro_capacitacion(
+                payload_raw, secciones_validas=SECCIONES_PASO_1,
+            )
             payload_tipado["cap_estado"] = "Borrador"
 
             if errores:
@@ -1262,7 +1273,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         f"Se detectaron {len(errores)} observaciones. Corrige los campos marcados como obligatorios.",
                     )
             else:
-                # Guarda columnas clave + JSON completo del formulario.
+                # Crea la capacitacion en la BD (solo datos de solicitud).
                 resultado = crear_registro_capacitacion(
                     payload=payload_tipado,
                     creado_por=str(request.user.username),
@@ -1272,7 +1283,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     request.session.pop(draft_key, None)
                     messages.success(
                         request,
-                        f"Capacitacion registrada correctamente con ID {resultado.get('id', 0)}.",
+                        "Capacitacion registrada como borrador. "
+                        "Puedes continuar la edicion desde el modulo Editar capacitacion.",
                     )
                 else:
                     request.session[draft_key] = payload_raw
