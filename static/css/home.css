@@ -2259,6 +2259,11 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.diagnostico-item-card__grid--matrix-outline-dimension,
+.diagnostico-item-card__grid--matrix-outline-subdimension {
+    grid-template-columns: 1fr;
+}
+
 .diagnostico-item-card__grid--generation {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -2275,6 +2280,66 @@ h1 {
 .diagnostico-builder--mockup {
     border-color: #d9d7fb;
     background: linear-gradient(180deg, #ffffff 0%, #fbf9ff 100%);
+}
+
+.diagnostico-builder--nested {
+    padding: 0.9rem;
+    border: 1px solid #dbe7f5;
+    border-radius: 1rem;
+    background: #ffffff;
+}
+
+.diagnostico-builder--indicator {
+    border-style: dashed;
+}
+
+.diagnostico-builder__head--nested {
+    margin-bottom: 0.72rem;
+}
+
+.diagnostico-builder__head--nested h5 {
+    margin: 0;
+    color: #36516b;
+    font-size: 0.92rem;
+}
+
+.diagnostico-builder__head--nested p {
+    margin: 0.18rem 0 0;
+    color: #698097;
+    font-size: 0.82rem;
+}
+
+.diagnostico-builder__list--nested {
+    display: grid;
+    gap: 0.82rem;
+}
+
+.diagnostico-item-card--matrix-outline-group {
+    gap: 0.9rem;
+}
+
+.diagnostico-subcard {
+    display: grid;
+    gap: 0.82rem;
+    padding: 0.9rem;
+    border: 1px solid #d9e6f1;
+    border-radius: 0.95rem;
+    background: linear-gradient(180deg, #fcfdff 0%, #f7fbff 100%);
+}
+
+.diagnostico-indicator-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.72rem;
+    align-items: end;
+}
+
+.diagnostico-field-span-full {
+    grid-column: 1 / -1;
+}
+
+.diagnostico-item-card__actions--subdimension {
+    margin-top: 0;
 }
 
 .diagnostico-note-strip {
@@ -3957,6 +4022,10 @@ h1 {
     .diagnostico-action-grid--triple,
     .diagnostico-inline-form,
     .diagnostico-note-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .diagnostico-indicator-row {
         grid-template-columns: 1fr;
     }
 

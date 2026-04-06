@@ -547,13 +547,13 @@ def _construir_flujo_diagnostico(
             "slug": "diagnostico-modal-paso-2",
             "source_slug": "diagnostico-paso-2",
             "titulo": "Paso 2. Generar matriz de evaluacion",
-            "descripcion": "Organiza dimensiones y subdimensiones que serviran como base del instrumento.",
+            "descripcion": "Organiza dimensiones, subdimensiones e indicadores que serviran como base del instrumento.",
         },
         {
             "slug": "diagnostico-modal-paso-3",
             "source_slug": "diagnostico-paso-3",
             "titulo": "Paso 3. Elaborar instrumento(s) de evaluacion",
-            "descripcion": "Configura perfiles, indicadores, items e instrucciones del instrumento diagnostico.",
+            "descripcion": "Configura perfiles, selecciona indicadores registrados y redacta los items del instrumento diagnostico.",
         },
         {
             "slug": "diagnostico-modal-paso-4",

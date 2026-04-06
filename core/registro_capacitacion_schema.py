@@ -119,7 +119,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
     {
         "slug": "diagnostico-paso-2",
         "titulo": "Paso 2. Generar matriz de evaluacion",
-        "descripcion": "Define la dimension, subdimension e indicadores base de la matriz de evaluacion.",
+        "descripcion": "Define una o mas dimensiones, sus subdimensiones y los indicadores base de la matriz de evaluacion.",
         "campos": [
             _campo("diag_matriz_json", "Matriz de evaluacion", "hidden_json"),
         ],

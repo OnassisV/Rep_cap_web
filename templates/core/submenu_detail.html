@@ -541,16 +541,6 @@
                                                                 {% include "core/_registro_field.html" with field=campo %}
                                                             {% endif %}
                                                         {% endfor %}
-                                                        <div class="diagnostico-note-strip diagnostico-note-strip--warning">
-                                                            <article class="diagnostico-note-chip">
-                                                                <strong>Base normativa</strong>
-                                                                <small>Define el marco inicial del diagnostico antes de pasar a la matriz de evaluación.</small>
-                                                            </article>
-                                                            <article class="diagnostico-note-chip diagnostico-note-chip--soft">
-                                                                <strong>Validación territorial</strong>
-                                                                <small>Si la DRE/UGEL no está de acuerdo con el modelo, el proceso debe revisarse antes de continuar.</small>
-                                                            </article>
-                                                        </div>
                                                         <div class="registro-grid registro-grid--diagnostico-wide">
                                                             {% for campo in paso.campos %}
                                                                 {% if campo.tipo != 'hidden_json' %}
@@ -568,25 +558,63 @@
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
                                                                     <h4>Descripción de la dimensión y subdimensión</h4>
-                                                                    <p>Registra cada dimensión con su subdimensión asociada para construir la matriz de evaluación.</p>
+                                                                    <p>Registra una o más dimensiones; por cada dimensión, una o más subdimensiones y por cada subdimensión, uno o más indicadores.</p>
                                                                 </div>
                                                                 <button type="button" class="btn-secondary-soft" data-builder-add>Agregar dimensión</button>
                                                             </div>
                                                             <div class="diagnostico-builder__list" data-builder-list></div>
                                                             <template data-builder-template>
-                                                                <article class="diagnostico-item-card">
-                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline">
-                                                                        <label>
-                                                                            <span>Dimension</span>
-                                                                            <input type="text" data-field="dimension" placeholder="Ej.: Gestión institucional">
-                                                                        </label>
-                                                                        <label>
-                                                                            <span>Subdimension</span>
-                                                                            <textarea rows="3" data-field="subdimension" placeholder="Describe la subdimension vinculada"></textarea>
+                                                                <article class="diagnostico-item-card diagnostico-item-card--matrix-outline-group" data-matrix-dimension-card>
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline-dimension">
+                                                                        <label class="diagnostico-field-span-full">
+                                                                            <span>Dimensión</span>
+                                                                            <input type="text" data-dimension-field placeholder="Ej.: Gestión institucional">
                                                                         </label>
                                                                     </div>
+                                                                    <div class="diagnostico-builder diagnostico-builder--nested">
+                                                                        <div class="diagnostico-builder__head diagnostico-builder__head--nested">
+                                                                            <div>
+                                                                                <h5>Subdimensiones asociadas</h5>
+                                                                                <p>Agrega las subdimensiones de esta dimensión y sus indicadores asociados.</p>
+                                                                            </div>
+                                                                            <button type="button" class="btn-secondary-soft" data-add-subdimension>Agregar subdimensión</button>
+                                                                        </div>
+                                                                        <div class="diagnostico-builder__list diagnostico-builder__list--nested" data-subdimension-list></div>
+                                                                    </div>
+                                                                    <template data-subdimension-template>
+                                                                        <section class="diagnostico-subcard" data-matrix-subdimension-card>
+                                                                            <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline-subdimension">
+                                                                                <label class="diagnostico-field-span-full">
+                                                                                    <span>Subdimensión</span>
+                                                                                    <textarea rows="3" data-subdimension-field placeholder="Describe la subdimensión vinculada"></textarea>
+                                                                                </label>
+                                                                            </div>
+                                                                            <div class="diagnostico-builder diagnostico-builder--nested diagnostico-builder--indicator">
+                                                                                <div class="diagnostico-builder__head diagnostico-builder__head--nested">
+                                                                                    <div>
+                                                                                        <h5>Indicadores</h5>
+                                                                                        <p>Registra uno o más indicadores para esta subdimensión.</p>
+                                                                                    </div>
+                                                                                    <button type="button" class="btn-secondary-soft" data-add-indicator>Agregar indicador</button>
+                                                                                </div>
+                                                                                <div class="diagnostico-builder__list diagnostico-builder__list--nested" data-indicator-list></div>
+                                                                            </div>
+                                                                            <template data-indicator-template>
+                                                                                <div class="diagnostico-indicator-row" data-matrix-indicator-row>
+                                                                                    <label class="diagnostico-field-span-full">
+                                                                                        <span>Indicador</span>
+                                                                                        <textarea rows="2" data-indicator-field placeholder="Describe el indicador asociado a esta subdimensión"></textarea>
+                                                                                    </label>
+                                                                                    <button type="button" class="btn-secondary-soft" data-remove-indicator>Quitar indicador</button>
+                                                                                </div>
+                                                                            </template>
+                                                                            <div class="diagnostico-item-card__actions diagnostico-item-card__actions--subdimension">
+                                                                                <button type="button" class="btn-secondary-soft" data-remove-subdimension>Quitar subdimensión</button>
+                                                                            </div>
+                                                                        </section>
+                                                                    </template>
                                                                     <div class="diagnostico-item-card__actions">
-                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar dimensión</button>
                                                                     </div>
                                                                 </article>
                                                             </template>
@@ -594,7 +622,7 @@
                                                         <div class="diagnostico-note-strip">
                                                             <article class="diagnostico-note-chip diagnostico-note-chip--success">
                                                                 <strong>Siguiente paso</strong>
-                                                                <small>Las dimensiones registradas alimentan los selectores del instrumento de evaluación.</small>
+                                                                <small>Las dimensiones, subdimensiones e indicadores registrados alimentan los selectores del instrumento de evaluación.</small>
                                                             </article>
                                                         </div>
                                                     {% elif paso.slug == 'diagnostico-modal-paso-3' %}
@@ -642,8 +670,10 @@
                                                                             </select>
                                                                         </label>
                                                                         <label>
-                                                                            <span>Indicador de desempeño</span>
-                                                                            <textarea rows="3" data-field="indicador_desempenio" placeholder="Describe el indicador de desempeño"></textarea>
+                                                                            <span>Indicador</span>
+                                                                            <select data-field="indicador_desempenio" data-indicator-select>
+                                                                                <option value="">Selecciona un indicador</option>
+                                                                            </select>
                                                                         </label>
                                                                         <label>
                                                                             <span>Item</span>
@@ -2168,6 +2198,99 @@
                 return String(value || "").trim();
             };
 
+            var normalizeStringList = function (value) {
+                if (Array.isArray(value)) {
+                    return value
+                        .map(function (item) {
+                            return normalizeProblemLabel(item);
+                        })
+                        .filter(function (item) {
+                            return item.length > 0;
+                        });
+                }
+
+                var singleValue = normalizeProblemLabel(value);
+                return singleValue ? [singleValue] : [];
+            };
+
+            var normalizeMatrixRows = function (rows) {
+                var normalizedRows = [];
+                var dimensionIndex = {};
+
+                var ensureDimension = function (dimensionLabel) {
+                    if (!Object.prototype.hasOwnProperty.call(dimensionIndex, dimensionLabel)) {
+                        dimensionIndex[dimensionLabel] = normalizedRows.length;
+                        normalizedRows.push({
+                            dimension: dimensionLabel,
+                            subdimensiones: [],
+                        });
+                    }
+                    return normalizedRows[dimensionIndex[dimensionLabel]];
+                };
+
+                var ensureSubdimension = function (dimensionEntry, subdimensionLabel) {
+                    var existing = null;
+                    dimensionEntry.subdimensiones.forEach(function (item) {
+                        if (!existing && item.subdimension === subdimensionLabel) {
+                            existing = item;
+                        }
+                    });
+                    if (!existing) {
+                        existing = {
+                            subdimension: subdimensionLabel,
+                            indicadores: [],
+                        };
+                        dimensionEntry.subdimensiones.push(existing);
+                    }
+                    return existing;
+                };
+
+                rows.forEach(function (row) {
+                    if (!row || typeof row !== "object") {
+                        return;
+                    }
+
+                    var dimension = normalizeProblemLabel(row.dimension);
+                    if (!dimension) {
+                        return;
+                    }
+
+                    var dimensionEntry = ensureDimension(dimension);
+                    if (Array.isArray(row.subdimensiones)) {
+                        row.subdimensiones.forEach(function (subrow) {
+                            if (!subrow || typeof subrow !== "object") {
+                                return;
+                            }
+                            var subdimension = normalizeProblemLabel(subrow.subdimension);
+                            if (!subdimension) {
+                                return;
+                            }
+                            var subdimensionEntry = ensureSubdimension(dimensionEntry, subdimension);
+                            normalizeStringList(subrow.indicadores).forEach(function (indicador) {
+                                if (subdimensionEntry.indicadores.indexOf(indicador) === -1) {
+                                    subdimensionEntry.indicadores.push(indicador);
+                                }
+                            });
+                        });
+                        return;
+                    }
+
+                    var legacySubdimension = normalizeProblemLabel(row.subdimension);
+                    if (!legacySubdimension) {
+                        return;
+                    }
+
+                    var legacySubdimensionEntry = ensureSubdimension(dimensionEntry, legacySubdimension);
+                    normalizeStringList(row.indicadores || row.indicador || row.indicador_desempenio).forEach(function (indicador) {
+                        if (legacySubdimensionEntry.indicadores.indexOf(indicador) === -1) {
+                            legacySubdimensionEntry.indicadores.push(indicador);
+                        }
+                    });
+                });
+
+                return normalizedRows;
+            };
+
             var getDecisionEnabled = function (inputs) {
                 var enabled = false;
                 inputs.forEach(function (input) {
@@ -2213,13 +2336,13 @@
 
             var collectMatrixCatalog = function () {
                 var matrixField = form.querySelector("input[name='diag_matriz_json']");
+                var matrixRows = normalizeMatrixRows(parseJsonField(matrixField));
                 var dimensions = [];
                 var subdimensionsByDimension = {};
+                var indicatorsByDimensionSubdimension = {};
 
-                parseJsonField(matrixField).forEach(function (row) {
+                matrixRows.forEach(function (row) {
                     var dimension = normalizeProblemLabel(row.dimension);
-                    var subdimension = normalizeProblemLabel(row.subdimension);
-
                     if (dimension && dimensions.indexOf(dimension) === -1) {
                         dimensions.push(dimension);
                     }
@@ -2229,14 +2352,26 @@
                     if (!Object.prototype.hasOwnProperty.call(subdimensionsByDimension, dimension)) {
                         subdimensionsByDimension[dimension] = [];
                     }
-                    if (subdimension && subdimensionsByDimension[dimension].indexOf(subdimension) === -1) {
-                        subdimensionsByDimension[dimension].push(subdimension);
+                    if (!Object.prototype.hasOwnProperty.call(indicatorsByDimensionSubdimension, dimension)) {
+                        indicatorsByDimensionSubdimension[dimension] = {};
                     }
+
+                    (row.subdimensiones || []).forEach(function (subrow) {
+                        var subdimension = normalizeProblemLabel(subrow.subdimension);
+                        if (!subdimension) {
+                            return;
+                        }
+                        if (subdimensionsByDimension[dimension].indexOf(subdimension) === -1) {
+                            subdimensionsByDimension[dimension].push(subdimension);
+                        }
+                        indicatorsByDimensionSubdimension[dimension][subdimension] = normalizeStringList(subrow.indicadores);
+                    });
                 });
 
                 return {
                     dimensions: dimensions,
                     subdimensionsByDimension: subdimensionsByDimension,
+                    indicatorsByDimensionSubdimension: indicatorsByDimensionSubdimension,
                 };
             };
 
@@ -2284,6 +2419,30 @@
                         select,
                         options,
                         options.length ? "Selecciona una subdimensión" : "Primero elige una dimensión"
+                    );
+                });
+
+                form.querySelectorAll("[data-indicator-select]").forEach(function (select) {
+                    var card = select.closest(".diagnostico-item-card");
+                    var dimensionSelect = card ? card.querySelector("[data-dimension-select]") : null;
+                    var subdimensionSelect = card ? card.querySelector("[data-subdimension-select]") : null;
+                    var dimension = dimensionSelect ? String(dimensionSelect.value || "").trim() : "";
+                    var subdimension = subdimensionSelect ? String(subdimensionSelect.value || "").trim() : "";
+                    var options = [];
+
+                    if (
+                        dimension &&
+                        subdimension &&
+                        Object.prototype.hasOwnProperty.call(catalog.indicatorsByDimensionSubdimension, dimension) &&
+                        Object.prototype.hasOwnProperty.call(catalog.indicatorsByDimensionSubdimension[dimension], subdimension)
+                    ) {
+                        options = catalog.indicatorsByDimensionSubdimension[dimension][subdimension] || [];
+                    }
+
+                    fillSelectOptions(
+                        select,
+                        options,
+                        options.length ? "Selecciona un indicador" : "Primero elige una subdimensión"
                     );
                 });
             };
@@ -2448,10 +2607,199 @@
                     var listNode = builder.querySelector("[data-builder-list]");
                     var templateNode = builder.querySelector("[data-builder-template]");
                     var addBtn = builder.querySelector("[data-builder-add]");
+                    var builderType = String(builder.getAttribute("data-diagnostico-builder") || "");
                     var targetFieldName = String(builder.getAttribute("data-target-field") || "");
                     var input = form.querySelector("input[name='" + targetFieldName + "']");
 
                     if (!listNode || !templateNode || !addBtn || !input) {
+                        return;
+                    }
+
+                    if (builderType === "matrix-outline") {
+                        var buildMatrixOutlineData = function () {
+                            var rows = [];
+
+                            listNode.querySelectorAll("[data-matrix-dimension-card]").forEach(function (dimensionCard) {
+                                var dimension = normalizeProblemLabel(dimensionCard.querySelector("[data-dimension-field]") ? dimensionCard.querySelector("[data-dimension-field]").value : "");
+                                if (!dimension) {
+                                    return;
+                                }
+
+                                var subdimensiones = [];
+                                dimensionCard.querySelectorAll("[data-matrix-subdimension-card]").forEach(function (subdimensionCard) {
+                                    var subdimension = normalizeProblemLabel(subdimensionCard.querySelector("[data-subdimension-field]") ? subdimensionCard.querySelector("[data-subdimension-field]").value : "");
+                                    var indicadores = [];
+
+                                    subdimensionCard.querySelectorAll("[data-indicator-field]").forEach(function (indicatorField) {
+                                        var indicatorValue = normalizeProblemLabel(indicatorField.value);
+                                        if (indicatorValue) {
+                                            indicadores.push(indicatorValue);
+                                        }
+                                    });
+
+                                    if (!subdimension && !indicadores.length) {
+                                        return;
+                                    }
+
+                                    subdimensiones.push({
+                                        subdimension: subdimension,
+                                        indicadores: indicadores,
+                                    });
+                                });
+
+                                rows.push({
+                                    dimension: dimension,
+                                    subdimensiones: subdimensiones,
+                                });
+                            });
+
+                            return rows;
+                        };
+
+                        var syncMatrixOutlineField = function () {
+                            serializeJsonField(input, buildMatrixOutlineData());
+                            syncMatrixSelects();
+                        };
+
+                        var bindIndicatorRow = function (rowNode, value) {
+                            var indicatorField = rowNode.querySelector("[data-indicator-field]");
+                            if (indicatorField) {
+                                indicatorField.value = normalizeProblemLabel(value);
+                                indicatorField.addEventListener("input", syncMatrixOutlineField);
+                                indicatorField.addEventListener("change", syncMatrixOutlineField);
+                            }
+
+                            var removeButton = rowNode.querySelector("[data-remove-indicator]");
+                            if (removeButton) {
+                                removeButton.addEventListener("click", function () {
+                                    rowNode.remove();
+                                    syncMatrixOutlineField();
+                                });
+                            }
+                        };
+
+                        var bindSubdimensionCard = function (subdimensionCard, data) {
+                            var subdimensionField = subdimensionCard.querySelector("[data-subdimension-field]");
+                            if (subdimensionField) {
+                                subdimensionField.value = normalizeProblemLabel(data && data.subdimension);
+                                subdimensionField.addEventListener("input", syncMatrixOutlineField);
+                                subdimensionField.addEventListener("change", syncMatrixOutlineField);
+                            }
+
+                            var indicatorList = subdimensionCard.querySelector("[data-indicator-list]");
+                            var indicatorTemplate = subdimensionCard.querySelector("[data-indicator-template]");
+                            var addIndicatorButton = subdimensionCard.querySelector("[data-add-indicator]");
+
+                            var addIndicatorRow = function (value) {
+                                if (!indicatorList || !indicatorTemplate) {
+                                    return;
+                                }
+                                var indicatorFragment = indicatorTemplate.content.cloneNode(true);
+                                var indicatorRow = indicatorFragment.querySelector("[data-matrix-indicator-row]");
+                                if (!indicatorRow) {
+                                    return;
+                                }
+                                bindIndicatorRow(indicatorRow, value || "");
+                                indicatorList.appendChild(indicatorFragment);
+                                syncMatrixOutlineField();
+                            };
+
+                            if (addIndicatorButton) {
+                                addIndicatorButton.addEventListener("click", function () {
+                                    addIndicatorRow("");
+                                });
+                            }
+
+                            normalizeStringList(data && data.indicadores).forEach(function (indicatorValue) {
+                                addIndicatorRow(indicatorValue);
+                            });
+
+                            if (!indicatorList || !indicatorList.children.length) {
+                                addIndicatorRow("");
+                            }
+
+                            var removeSubdimensionButton = subdimensionCard.querySelector("[data-remove-subdimension]");
+                            if (removeSubdimensionButton) {
+                                removeSubdimensionButton.addEventListener("click", function () {
+                                    subdimensionCard.remove();
+                                    syncMatrixOutlineField();
+                                });
+                            }
+                        };
+
+                        var bindDimensionCard = function (dimensionCard, data) {
+                            var dimensionField = dimensionCard.querySelector("[data-dimension-field]");
+                            if (dimensionField) {
+                                dimensionField.value = normalizeProblemLabel(data && data.dimension);
+                                dimensionField.addEventListener("input", syncMatrixOutlineField);
+                                dimensionField.addEventListener("change", syncMatrixOutlineField);
+                            }
+
+                            var subdimensionList = dimensionCard.querySelector("[data-subdimension-list]");
+                            var subdimensionTemplate = dimensionCard.querySelector("[data-subdimension-template]");
+                            var addSubdimensionButton = dimensionCard.querySelector("[data-add-subdimension]");
+
+                            var addSubdimensionCard = function (subdimensionData) {
+                                if (!subdimensionList || !subdimensionTemplate) {
+                                    return;
+                                }
+                                var subdimensionFragment = subdimensionTemplate.content.cloneNode(true);
+                                var subdimensionCard = subdimensionFragment.querySelector("[data-matrix-subdimension-card]");
+                                if (!subdimensionCard) {
+                                    return;
+                                }
+                                bindSubdimensionCard(subdimensionCard, subdimensionData || {});
+                                subdimensionList.appendChild(subdimensionFragment);
+                                syncMatrixOutlineField();
+                            };
+
+                            if (addSubdimensionButton) {
+                                addSubdimensionButton.addEventListener("click", function () {
+                                    addSubdimensionCard({});
+                                });
+                            }
+
+                            var loadedSubdimensions = Array.isArray(data && data.subdimensiones) ? data.subdimensiones : [];
+                            loadedSubdimensions.forEach(function (subdimensionData) {
+                                addSubdimensionCard(subdimensionData);
+                            });
+
+                            if (!subdimensionList || !subdimensionList.children.length) {
+                                addSubdimensionCard({});
+                            }
+
+                            var removeBtn = dimensionCard.querySelector("[data-builder-remove]");
+                            if (removeBtn) {
+                                removeBtn.addEventListener("click", function () {
+                                    dimensionCard.remove();
+                                    syncMatrixOutlineField();
+                                });
+                            }
+                        };
+
+                        var addDimensionCard = function (data) {
+                            var fragment = templateNode.content.cloneNode(true);
+                            var card = fragment.querySelector("[data-matrix-dimension-card]");
+                            if (!card) {
+                                return;
+                            }
+                            bindDimensionCard(card, data || {});
+                            listNode.appendChild(fragment);
+                            syncMatrixOutlineField();
+                        };
+
+                        addBtn.addEventListener("click", function () {
+                            addDimensionCard({});
+                        });
+
+                        normalizeMatrixRows(parseJsonField(input)).forEach(function (row) {
+                            addDimensionCard(row);
+                        });
+
+                        if (!listNode.children.length) {
+                            addDimensionCard({});
+                        }
+
                         return;
                     }
 
@@ -2490,6 +2838,9 @@
                             field.addEventListener("input", syncField);
                             field.addEventListener("change", syncField);
                             if (field.hasAttribute("data-dimension-select")) {
+                                field.addEventListener("change", syncMatrixSelects);
+                            }
+                            if (field.hasAttribute("data-subdimension-select")) {
                                 field.addEventListener("change", syncMatrixSelects);
                             }
                         });
