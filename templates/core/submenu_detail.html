@@ -145,7 +145,7 @@
                     La solicitud de capacitación se abre primero como una etapa preliminar y luego continúa con la ficha técnica completa. Los campos con <strong>*</strong> son obligatorios en esta fase inicial.
                 </p>
 
-                <form method="post" class="editor-form registro-form" data-registro-form>
+                <form method="post" class="editor-form registro-form" data-registro-form novalidate>
                     {% csrf_token %}
                     <input type="hidden" name="action" value="create_capacitacion">
                     {{ registro_iged_catalogo|json_script:"registro-iged-catalogo" }}
