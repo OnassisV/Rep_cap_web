@@ -76,7 +76,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("pob_ambito", "Ambito territorial", "list", True, ["Nacional", "Macroregional", "Regional", "Provincial", "Local"], "Nivel geografico esperado para esta solicitud.", "left"),
             _campo("cap_nombre", "Nombre de la capacitacion", "text_short", True, None, "Titulo preliminar con el que se abrira el proceso.", "left"),
             _campo("cap_anio", "Año de la intervención", "integer", True, None, "Se propone automáticamente según el año vigente.", "left"),
-            _campo("cap_tipo", "Tipo de intervención formativa", "list", True, ["Curso", "Capacitación sincrónica", "Programa"], "Clasifica la modalidad del proceso formativo.", "left"),
+            _campo("cap_tipo", "Tipo de intervención formativa", "list", True, ["Capacitación sincrónica", "Curso", "Curso-taller", "Programa de formación", "Programa de mentoría"], "Clasifica la modalidad del proceso formativo.", "left"),
             _campo("sol_es_replica", "La capacitacion es una replica", "list", False, ["Si", "No"], "Si marcas Si, luego podras reutilizar informacion de una experiencia previa.", "right"),
             _campo("sol_tiene_matriz", "La capacitacion contara con matriz de sustento", "list", False, ["Si", "No"], "Esta decision prepara el siguiente paso de sustento tecnico.", "right"),
             _campo("sol_tiene_diagnostico", "La capacitacion contara con diagnostico", "list", False, ["Si", "No"], "Si marcas Si, el flujo posterior priorizara el bloque diagnostico.", "right"),
