@@ -1476,6 +1476,23 @@ h1 {
     border-radius: 0.35rem;
 }
 
+.btn--danger {
+    background: #dc3545;
+    color: #fff;
+    border: 1px solid #dc3545;
+}
+.btn--danger:hover {
+    background: #b02a37;
+    border-color: #b02a37;
+}
+
+.registro-status--cancelada {
+    background: #dc3545;
+    color: #fff;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.3rem;
+}
+
 .registro-summary {
     margin-top: 0.5rem;
     display: grid;

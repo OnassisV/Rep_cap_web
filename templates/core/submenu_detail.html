@@ -2090,6 +2090,7 @@
                                     <th>Fecha</th>
                                     <th></th>
                                     <th></th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2112,6 +2113,13 @@
                                         </td>
                                         <td>
                                             <a class="btn btn--small btn--primary" href="?id={{ item.id }}">Editar</a>
+                                        </td>
+                                        <td>
+                                            {% if item.cap_estado != "Cancelada" %}
+                                                <button type="button" class="btn btn--small btn--danger" data-open-cancelar="{{ item.id }}" data-cancelar-nombre="{{ item.cap_nombre }}">✕</button>
+                                            {% else %}
+                                                <span class="registro-status registro-status--cancelada" style="font-size:.75rem">Cancelada</span>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -2140,6 +2148,47 @@
                                     <div class="id-plataforma-modal__actions">
                                         <button type="button" class="btn btn--outline" data-close-id-plataforma>Cancelar</button>
                                         <button type="submit" class="btn btn--primary">Guardar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </dialog>
+
+                        {# ---- Modal: cancelar o eliminar capacitación ---- #}
+                        <dialog id="cancelar-cap-modal" class="id-plataforma-modal">
+                            <div class="id-plataforma-modal__panel">
+                                <header class="id-plataforma-modal__header">
+                                    <h3>Cancelar o eliminar capacitación</h3>
+                                    <button type="button" class="id-plataforma-modal__close" data-close-cancelar>&times;</button>
+                                </header>
+                                <p style="margin:0 0 .75rem;font-size:.9rem;color:#ccc;">
+                                    <strong data-cancelar-nombre-display></strong>
+                                </p>
+                                <form method="post" class="id-plataforma-modal__form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="cap_id" value="" data-cancelar-cap-id>
+                                    <input type="hidden" name="action" value="" data-cancelar-action>
+                                    <div class="id-plataforma-modal__field">
+                                        <label>Acción</label>
+                                        <div style="display:flex;gap:.75rem;margin-top:.25rem;">
+                                            <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;">
+                                                <input type="radio" name="accion_tipo" value="cancelar" checked data-cancelar-radio> Cancelar
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;">
+                                                <input type="radio" name="accion_tipo" value="eliminar" data-cancelar-radio> Eliminar permanentemente
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="id-plataforma-modal__field">
+                                        <label for="cancel-admin-user">Usuario administrador</label>
+                                        <input type="text" id="cancel-admin-user" name="admin_username" required autocomplete="off" placeholder="usuario admin">
+                                    </div>
+                                    <div class="id-plataforma-modal__field">
+                                        <label for="cancel-admin-pass">Contraseña</label>
+                                        <input type="password" id="cancel-admin-pass" name="admin_password" required autocomplete="off">
+                                    </div>
+                                    <div class="id-plataforma-modal__actions">
+                                        <button type="button" class="btn btn--outline" data-close-cancelar>Volver</button>
+                                        <button type="submit" class="btn btn--danger">Confirmar</button>
                                     </div>
                                 </form>
                             </div>
@@ -2184,6 +2233,42 @@
                 btn.addEventListener("click", function () {
                     modal.close();
                 });
+            });
+
+            modal.addEventListener("click", function (e) {
+                if (e.target === modal) modal.close();
+            });
+        })();
+
+        /* ── Modal Cancelar / Eliminar capacitación ── */
+        (function () {
+            var modal = document.getElementById("cancelar-cap-modal");
+            if (!modal) return;
+
+            var capIdInput = modal.querySelector("[data-cancelar-cap-id]");
+            var actionInput = modal.querySelector("[data-cancelar-action]");
+            var nombreDisplay = modal.querySelector("[data-cancelar-nombre-display]");
+
+            document.querySelectorAll("[data-open-cancelar]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    capIdInput.value = btn.getAttribute("data-open-cancelar");
+                    nombreDisplay.textContent = btn.getAttribute("data-cancelar-nombre") || "";
+                    actionInput.value = "cancelar_capacitacion";
+                    modal.querySelector("input[value='cancelar']").checked = true;
+                    modal.querySelector("#cancel-admin-user").value = "";
+                    modal.querySelector("#cancel-admin-pass").value = "";
+                    modal.showModal();
+                });
+            });
+
+            modal.querySelectorAll("[data-cancelar-radio]").forEach(function (radio) {
+                radio.addEventListener("change", function () {
+                    actionInput.value = radio.value === "eliminar" ? "eliminar_capacitacion" : "cancelar_capacitacion";
+                });
+            });
+
+            modal.querySelectorAll("[data-close-cancelar]").forEach(function (btn) {
+                btn.addEventListener("click", function () { modal.close(); });
             });
 
             modal.addEventListener("click", function (e) {

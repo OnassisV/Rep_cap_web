@@ -296,6 +296,43 @@ def _valor_por_defecto_registro_capacitacion() -> dict[str, str]:
     }
 
 
+def _auto_actualizar_estado(cap_obj) -> None:
+    """Actualiza cap_estado según reglas automáticas.
+
+    - Sin código ni ID curso → Borrador
+    - Con código o ID curso  → En proceso (mínimo)
+    - Paso 7 alcanzado y todos los campos obligatorios llenos → Finalizada
+    No degrada: si ya está Finalizada no baja a En proceso.
+    No toca registros Cancelados.
+    """
+    from core.models import Capacitacion
+
+    if cap_obj.cap_estado == Capacitacion.Estado.CANCELADA:
+        return
+
+    tiene_codigo = bool(cap_obj.cap_codigo and cap_obj.cap_codigo.strip())
+    tiene_id = bool(cap_obj.cap_id_curso and cap_obj.cap_id_curso.strip())
+
+    if not tiene_codigo and not tiene_id:
+        if cap_obj.cap_estado != Capacitacion.Estado.BORRADOR:
+            return  # no degradar
+        return  # ya es Borrador
+
+    # Tiene código o ID → al menos En proceso.
+    nuevo = Capacitacion.Estado.EN_PROCESO
+
+    # ¿Completó todo? paso_actual >= 7 indica que recorrió el flujo completo.
+    if cap_obj.paso_actual >= 7 and tiene_codigo:
+        nuevo = Capacitacion.Estado.FINALIZADA
+
+    if cap_obj.cap_estado == Capacitacion.Estado.FINALIZADA and nuevo != Capacitacion.Estado.FINALIZADA:
+        return  # no degradar de Finalizada
+
+    if cap_obj.cap_estado != nuevo:
+        cap_obj.cap_estado = nuevo
+        cap_obj.save(update_fields=["cap_estado", "actualizado_en"])
+
+
 def _coercer_valor_registro_capacitacion(tipo: str, valor_raw: str) -> Any:
     """Convierte valor de formulario a tipo base para serializacion JSON."""
     valor = str(valor_raw or "").strip()
@@ -1337,6 +1374,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 cap_obj.cap_codigo = str(request.POST.get("cap_codigo", "")).strip()
                 cap_obj.cap_id_curso = str(request.POST.get("cap_id_curso", "")).strip()
                 cap_obj.save(update_fields=["cap_codigo", "cap_id_curso", "actualizado_en"])
+                # Auto-estado: si ahora tiene código → al menos "En proceso".
+                _auto_actualizar_estado(cap_obj)
                 messages.success(request, "Identificadores de plataforma actualizados.")
             except Capacitacion.DoesNotExist:
                 messages.error(request, "No se encontró la capacitación o no tienes permisos.")
@@ -1386,11 +1425,46 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         pass
 
                 cap_obj.save()
+                # Auto-estado según código/ID y completitud.
+                _auto_actualizar_estado(cap_obj)
                 messages.success(request, "Capacitacion actualizada correctamente.")
             except Capacitacion.DoesNotExist:
                 messages.error(request, "No se encontro la capacitacion o no tienes permisos para editarla.")
             except Exception as exc:
                 messages.error(request, f"Error al guardar: {exc}")
+
+        # ── Cancelar o eliminar capacitación (requiere contraseña admin) ──
+        if action in ("cancelar_capacitacion", "eliminar_capacitacion") and cap_id:
+            admin_user_input = str(request.POST.get("admin_username", "")).strip()
+            admin_pass_input = str(request.POST.get("admin_password", "")).strip()
+
+            # Valida credenciales de un usuario administrador o superusuario.
+            auth_ok = False
+            if admin_user_input and admin_pass_input:
+                from django.contrib.auth import authenticate as _auth
+                auth_user = _auth(request, username=admin_user_input, password=admin_pass_input)
+                if auth_user is not None:
+                    from django.contrib.auth.models import User as AuthUser
+                    if auth_user.is_superuser or auth_user.is_staff:
+                        auth_ok = True
+
+            if not auth_ok:
+                messages.error(request, "Credenciales de administrador inválidas o el usuario no tiene permisos suficientes.")
+            else:
+                try:
+                    cap_target = Capacitacion.objects.get(pk=int(cap_id))
+                    if action == "cancelar_capacitacion":
+                        cap_target.cap_estado = Capacitacion.Estado.CANCELADA
+                        cap_target.save(update_fields=["cap_estado", "actualizado_en"])
+                        messages.success(request, f"Capacitación '{cap_target.cap_nombre}' cancelada.")
+                    else:
+                        nombre = cap_target.cap_nombre
+                        cap_target.delete()
+                        messages.success(request, f"Capacitación '{nombre}' eliminada permanentemente.")
+                except Capacitacion.DoesNotExist:
+                    messages.error(request, "No se encontró la capacitación.")
+                except Exception as exc:
+                    messages.error(request, f"Error: {exc}")
 
         return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
 
