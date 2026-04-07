@@ -636,65 +636,30 @@
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
                                                                     <h4>Descripción de la dimensión y subdimensión</h4>
-                                                                    <p>Registra una o más dimensiones; por cada dimensión, una o más subdimensiones y por cada subdimensión, uno o más indicadores.</p>
+                                                                    <p>Registra filas con dimensión, subdimensión e indicador. Las filas con la misma dimensión se agrupan automáticamente.</p>
                                                                 </div>
-                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar dimensión</button>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar fila</button>
                                                             </div>
-                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <div class="matrix-outline-table-wrap">
+                                                                <table class="matrix-outline-table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th class="matrix-outline-table__col--dim">Dimensión</th>
+                                                                            <th class="matrix-outline-table__col--sub">Subdimensión</th>
+                                                                            <th class="matrix-outline-table__col--ind">Indicador</th>
+                                                                            <th class="matrix-outline-table__col--act"></th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody data-builder-list></tbody>
+                                                                </table>
+                                                            </div>
                                                             <template data-builder-template>
-                                                                <article class="diagnostico-item-card diagnostico-item-card--matrix-outline-group" data-matrix-dimension-card>
-                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline-dimension">
-                                                                        <label class="diagnostico-field-span-full">
-                                                                            <span>Dimensión</span>
-                                                                            <input type="text" data-dimension-field placeholder="Ej.: Gestión institucional">
-                                                                        </label>
-                                                                    </div>
-                                                                    <div class="diagnostico-builder diagnostico-builder--nested">
-                                                                        <div class="diagnostico-builder__head diagnostico-builder__head--nested">
-                                                                            <div>
-                                                                                <h5>Subdimensiones asociadas</h5>
-                                                                                <p>Agrega las subdimensiones de esta dimensión y sus indicadores asociados.</p>
-                                                                            </div>
-                                                                            <button type="button" class="btn-secondary-soft" data-add-subdimension>Agregar subdimensión</button>
-                                                                        </div>
-                                                                        <div class="diagnostico-builder__list diagnostico-builder__list--nested" data-subdimension-list></div>
-                                                                    </div>
-                                                                    <template data-subdimension-template>
-                                                                        <section class="diagnostico-subcard" data-matrix-subdimension-card>
-                                                                            <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline-subdimension">
-                                                                                <label class="diagnostico-field-span-full">
-                                                                                    <span>Subdimensión</span>
-                                                                                    <textarea rows="3" data-subdimension-field placeholder="Describe la subdimensión vinculada"></textarea>
-                                                                                </label>
-                                                                            </div>
-                                                                            <div class="diagnostico-builder diagnostico-builder--nested diagnostico-builder--indicator">
-                                                                                <div class="diagnostico-builder__head diagnostico-builder__head--nested">
-                                                                                    <div>
-                                                                                        <h5>Indicadores</h5>
-                                                                                        <p>Registra uno o más indicadores para esta subdimensión.</p>
-                                                                                    </div>
-                                                                                    <button type="button" class="btn-secondary-soft" data-add-indicator>Agregar indicador</button>
-                                                                                </div>
-                                                                                <div class="diagnostico-builder__list diagnostico-builder__list--nested" data-indicator-list></div>
-                                                                            </div>
-                                                                            <template data-indicator-template>
-                                                                                <div class="diagnostico-indicator-row" data-matrix-indicator-row>
-                                                                                    <label class="diagnostico-field-span-full">
-                                                                                        <span>Indicador</span>
-                                                                                        <textarea rows="2" data-indicator-field placeholder="Describe el indicador asociado a esta subdimensión"></textarea>
-                                                                                    </label>
-                                                                                    <button type="button" class="btn-secondary-soft" data-remove-indicator>Quitar indicador</button>
-                                                                                </div>
-                                                                            </template>
-                                                                            <div class="diagnostico-item-card__actions diagnostico-item-card__actions--subdimension">
-                                                                                <button type="button" class="btn-secondary-soft" data-remove-subdimension>Quitar subdimensión</button>
-                                                                            </div>
-                                                                        </section>
-                                                                    </template>
-                                                                    <div class="diagnostico-item-card__actions">
-                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar dimensión</button>
-                                                                    </div>
-                                                                </article>
+                                                                <tr class="matrix-outline-table__row" data-matrix-flat-row>
+                                                                    <td><input type="text" data-dimension-field placeholder="Ej.: Gestión institucional"></td>
+                                                                    <td><input type="text" data-subdimension-field placeholder="Subdimensión vinculada"></td>
+                                                                    <td><input type="text" data-indicator-field placeholder="Indicador asociado"></td>
+                                                                    <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-builder-remove title="Quitar fila">&times;</button></td>
+                                                                </tr>
                                                             </template>
                                                         </div>
                                                         <div class="diagnostico-note-strip">
@@ -2292,48 +2257,30 @@
                                                         <div class="diagnostico-builder__head">
                                                             <div>
                                                                 <h4>Descripción de la dimensión y subdimensión</h4>
-                                                                <p>Registra una o más dimensiones; por cada dimensión, una o más subdimensiones y por cada subdimensión, uno o más indicadores.</p>
+                                                                <p>Registra filas con dimensión, subdimensión e indicador. Las filas con la misma dimensión se agrupan automáticamente.</p>
                                                             </div>
-                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar dimensión</button>
+                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar fila</button>
                                                         </div>
-                                                        <div class="diagnostico-builder__list" data-builder-list></div>
+                                                        <div class="matrix-outline-table-wrap">
+                                                            <table class="matrix-outline-table">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th class="matrix-outline-table__col--dim">Dimensión</th>
+                                                                        <th class="matrix-outline-table__col--sub">Subdimensión</th>
+                                                                        <th class="matrix-outline-table__col--ind">Indicador</th>
+                                                                        <th class="matrix-outline-table__col--act"></th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody data-builder-list></tbody>
+                                                            </table>
+                                                        </div>
                                                         <template data-builder-template>
-                                                            <article class="diagnostico-item-card diagnostico-item-card--matrix-outline-group" data-matrix-dimension-card>
-                                                                <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline-dimension">
-                                                                    <label class="diagnostico-field-span-full"><span>Dimensión</span><input type="text" data-dimension-field placeholder="Ej.: Gestión institucional"></label>
-                                                                </div>
-                                                                <div class="diagnostico-builder diagnostico-builder--nested">
-                                                                    <div class="diagnostico-builder__head diagnostico-builder__head--nested">
-                                                                        <div><h5>Subdimensiones asociadas</h5><p>Agrega las subdimensiones de esta dimensión y sus indicadores asociados.</p></div>
-                                                                        <button type="button" class="btn-secondary-soft" data-add-subdimension>Agregar subdimensión</button>
-                                                                    </div>
-                                                                    <div class="diagnostico-builder__list diagnostico-builder__list--nested" data-subdimension-list></div>
-                                                                </div>
-                                                                <template data-subdimension-template>
-                                                                    <section class="diagnostico-subcard" data-matrix-subdimension-card>
-                                                                        <div class="diagnostico-item-card__grid diagnostico-item-card__grid--matrix-outline-subdimension">
-                                                                            <label class="diagnostico-field-span-full"><span>Subdimensión</span><textarea rows="3" data-subdimension-field placeholder="Describe la subdimensión vinculada"></textarea></label>
-                                                                        </div>
-                                                                        <div class="diagnostico-builder diagnostico-builder--nested diagnostico-builder--indicator">
-                                                                            <div class="diagnostico-builder__head diagnostico-builder__head--nested">
-                                                                                <div><h5>Indicadores</h5><p>Registra uno o más indicadores para esta subdimensión.</p></div>
-                                                                                <button type="button" class="btn-secondary-soft" data-add-indicator>Agregar indicador</button>
-                                                                            </div>
-                                                                            <div class="diagnostico-builder__list diagnostico-builder__list--nested" data-indicator-list></div>
-                                                                        </div>
-                                                                        <template data-indicator-template>
-                                                                            <div class="diagnostico-indicator-row" data-matrix-indicator-row>
-                                                                                <label class="diagnostico-field-span-full"><span>Indicador</span><textarea rows="2" data-indicator-field placeholder="Describe el indicador asociado a esta subdimensión"></textarea></label>
-                                                                                <button type="button" class="btn-secondary-soft" data-remove-indicator>Quitar indicador</button>
-                                                                            </div>
-                                                                        </template>
-                                                                        <div class="diagnostico-item-card__actions diagnostico-item-card__actions--subdimension">
-                                                                            <button type="button" class="btn-secondary-soft" data-remove-subdimension>Quitar subdimensión</button>
-                                                                        </div>
-                                                                    </section>
-                                                                </template>
-                                                                <div class="diagnostico-item-card__actions"><button type="button" class="btn-secondary-soft" data-builder-remove>Quitar dimensión</button></div>
-                                                            </article>
+                                                            <tr class="matrix-outline-table__row" data-matrix-flat-row>
+                                                                <td><input type="text" data-dimension-field placeholder="Ej.: Gestión institucional"></td>
+                                                                <td><input type="text" data-subdimension-field placeholder="Subdimensión vinculada"></td>
+                                                                <td><input type="text" data-indicator-field placeholder="Indicador asociado"></td>
+                                                                <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-builder-remove title="Quitar fila">&times;</button></td>
+                                                            </tr>
                                                         </template>
                                                     </div>
                                                     <div class="diagnostico-note-strip">
@@ -3093,7 +3040,8 @@
             };
 
             var collectMatrixCatalog = function () {
-                var matrixField = form.querySelector("input[name='diag_matriz_json']");
+                var diagModal = form.querySelector("[data-sustento-modal='diagnostico']");
+                var matrixField = (diagModal || form).querySelector("input[name='diag_matriz_json']");
                 var matrixRows = normalizeMatrixRows(parseJsonField(matrixField));
                 var dimensions = [];
                 var subdimensionsByDimension = {};
@@ -3249,6 +3197,11 @@
                     var tagStep = Number(tag.getAttribute("data-step-index") || "0");
                     tag.classList.toggle("is-current", tagStep === flowState[flowName]);
                 });
+
+                // Re-sincroniza catálogos dependientes al cambiar de paso.
+                syncProblemSelects();
+                syncMatrixSelects();
+                syncProfileSelects();
             };
 
             var closeDialogModal = function (modal) {
@@ -3437,197 +3390,171 @@
                     var addBtn = builder.querySelector("[data-builder-add]");
                     var builderType = String(builder.getAttribute("data-diagnostico-builder") || "");
                     var targetFieldName = String(builder.getAttribute("data-target-field") || "");
-                    var input = form.querySelector("input[name='" + targetFieldName + "']");
+                    var parentScope = builder.closest("[data-sustento-modal]") || form;
+                    var input = parentScope.querySelector("input[name='" + targetFieldName + "']");
 
                     if (!listNode || !templateNode || !addBtn || !input) {
                         return;
                     }
 
                     if (builderType === "matrix-outline") {
+                        // ── Tabla plana: cada fila = dimensión + subdimensión + indicador ──
+                        // Se agrupan al serializar por el nombre de dimensión.
                         var buildMatrixOutlineData = function () {
-                            var rows = [];
+                            var dimIndex = {};
+                            var result = [];
 
-                            listNode.querySelectorAll("[data-matrix-dimension-card]").forEach(function (dimensionCard) {
-                                var dimension = normalizeProblemLabel(dimensionCard.querySelector("[data-dimension-field]") ? dimensionCard.querySelector("[data-dimension-field]").value : "");
-                                if (!dimension) {
-                                    return;
+                            listNode.querySelectorAll("[data-matrix-flat-row]").forEach(function (tr) {
+                                var dimField = tr.querySelector("[data-dimension-field]");
+                                var subField = tr.querySelector("[data-subdimension-field]");
+                                var indField = tr.querySelector("[data-indicator-field]");
+                                var dim = normalizeProblemLabel(dimField ? dimField.value : "");
+                                var sub = normalizeProblemLabel(subField ? subField.value : "");
+                                var ind = normalizeProblemLabel(indField ? indField.value : "");
+                                if (!dim) { return; }
+
+                                if (!Object.prototype.hasOwnProperty.call(dimIndex, dim)) {
+                                    dimIndex[dim] = result.length;
+                                    result.push({ dimension: dim, subdimensiones: [] });
                                 }
+                                var entry = result[dimIndex[dim]];
 
-                                var subdimensiones = [];
-                                dimensionCard.querySelectorAll("[data-matrix-subdimension-card]").forEach(function (subdimensionCard) {
-                                    var subdimension = normalizeProblemLabel(subdimensionCard.querySelector("[data-subdimension-field]") ? subdimensionCard.querySelector("[data-subdimension-field]").value : "");
-                                    var indicadores = [];
+                                if (!sub && !ind) { return; }
 
-                                    subdimensionCard.querySelectorAll("[data-indicator-field]").forEach(function (indicatorField) {
-                                        var indicatorValue = normalizeProblemLabel(indicatorField.value);
-                                        if (indicatorValue) {
-                                            indicadores.push(indicatorValue);
-                                        }
-                                    });
-
-                                    if (!subdimension && !indicadores.length) {
-                                        return;
-                                    }
-
-                                    subdimensiones.push({
-                                        subdimension: subdimension,
-                                        indicadores: indicadores,
-                                    });
+                                var existing = null;
+                                entry.subdimensiones.forEach(function (s) {
+                                    if (!existing && s.subdimension === sub) { existing = s; }
                                 });
-
-                                rows.push({
-                                    dimension: dimension,
-                                    subdimensiones: subdimensiones,
-                                });
+                                if (!existing) {
+                                    existing = { subdimension: sub, indicadores: [] };
+                                    entry.subdimensiones.push(existing);
+                                }
+                                if (ind && existing.indicadores.indexOf(ind) === -1) {
+                                    existing.indicadores.push(ind);
+                                }
                             });
 
-                            return rows;
+                            return result;
                         };
 
                         var syncMatrixOutlineField = function () {
                             serializeJsonField(input, buildMatrixOutlineData());
                             syncMatrixSelects();
+                            colorDimensionRows();
                         };
 
-                        var bindIndicatorRow = function (rowNode, value) {
-                            var indicatorField = rowNode.querySelector("[data-indicator-field]");
-                            if (indicatorField) {
-                                indicatorField.value = normalizeProblemLabel(value);
-                                indicatorField.addEventListener("input", syncMatrixOutlineField);
-                                indicatorField.addEventListener("change", syncMatrixOutlineField);
-                            }
+                        // Aplica color de fondo alternado por dimensión para agrupar visualmente.
+                        var dimensionColors = [
+                            "rgba(59,130,246,0.07)",
+                            "rgba(139,92,246,0.07)",
+                            "rgba(16,185,129,0.07)",
+                            "rgba(245,158,11,0.07)",
+                            "rgba(239,68,68,0.07)",
+                            "rgba(99,102,241,0.07)",
+                        ];
 
-                            var removeButton = rowNode.querySelector("[data-remove-indicator]");
-                            if (removeButton) {
-                                removeButton.addEventListener("click", function () {
-                                    rowNode.remove();
-                                    syncMatrixOutlineField();
-                                });
-                            }
-                        };
-
-                        var bindSubdimensionCard = function (subdimensionCard, data) {
-                            var subdimensionField = subdimensionCard.querySelector("[data-subdimension-field]");
-                            if (subdimensionField) {
-                                subdimensionField.value = normalizeProblemLabel(data && data.subdimension);
-                                subdimensionField.addEventListener("input", syncMatrixOutlineField);
-                                subdimensionField.addEventListener("change", syncMatrixOutlineField);
-                            }
-
-                            var indicatorList = subdimensionCard.querySelector("[data-indicator-list]");
-                            var indicatorTemplate = subdimensionCard.querySelector("[data-indicator-template]");
-                            var addIndicatorButton = subdimensionCard.querySelector("[data-add-indicator]");
-
-                            var addIndicatorRow = function (value) {
-                                if (!indicatorList || !indicatorTemplate) {
+                        var colorDimensionRows = function () {
+                            var dimMap = {};
+                            var colorIdx = 0;
+                            listNode.querySelectorAll("[data-matrix-flat-row]").forEach(function (tr) {
+                                var dimField = tr.querySelector("[data-dimension-field]");
+                                var dim = normalizeProblemLabel(dimField ? dimField.value : "");
+                                if (!dim) {
+                                    tr.style.backgroundColor = "";
                                     return;
                                 }
-                                var indicatorFragment = indicatorTemplate.content.cloneNode(true);
-                                var indicatorRow = indicatorFragment.querySelector("[data-matrix-indicator-row]");
-                                if (!indicatorRow) {
-                                    return;
+                                if (!Object.prototype.hasOwnProperty.call(dimMap, dim)) {
+                                    dimMap[dim] = dimensionColors[colorIdx % dimensionColors.length];
+                                    colorIdx++;
                                 }
-                                bindIndicatorRow(indicatorRow, value || "");
-                                indicatorList.appendChild(indicatorFragment);
-                                syncMatrixOutlineField();
-                            };
-
-                            if (addIndicatorButton) {
-                                addIndicatorButton.addEventListener("click", function () {
-                                    addIndicatorRow("");
-                                });
-                            }
-
-                            normalizeStringList(data && data.indicadores).forEach(function (indicatorValue) {
-                                addIndicatorRow(indicatorValue);
+                                tr.style.backgroundColor = dimMap[dim];
                             });
-
-                            if (!indicatorList || !indicatorList.children.length) {
-                                addIndicatorRow("");
-                            }
-
-                            var removeSubdimensionButton = subdimensionCard.querySelector("[data-remove-subdimension]");
-                            if (removeSubdimensionButton) {
-                                removeSubdimensionButton.addEventListener("click", function () {
-                                    subdimensionCard.remove();
-                                    syncMatrixOutlineField();
-                                });
-                            }
                         };
 
-                        var bindDimensionCard = function (dimensionCard, data) {
-                            var dimensionField = dimensionCard.querySelector("[data-dimension-field]");
-                            if (dimensionField) {
-                                dimensionField.value = normalizeProblemLabel(data && data.dimension);
-                                dimensionField.addEventListener("input", syncMatrixOutlineField);
-                                dimensionField.addEventListener("change", syncMatrixOutlineField);
+                        var addFlatRow = function (dim, sub, ind) {
+                            var fragment = templateNode.content.cloneNode(true);
+                            var tr = fragment.querySelector("[data-matrix-flat-row]");
+                            if (!tr) { return; }
+
+                            var dimField = tr.querySelector("[data-dimension-field]");
+                            var subField = tr.querySelector("[data-subdimension-field]");
+                            var indField = tr.querySelector("[data-indicator-field]");
+
+                            if (dimField) {
+                                dimField.value = dim || "";
+                                dimField.addEventListener("input", syncMatrixOutlineField);
+                                dimField.addEventListener("change", syncMatrixOutlineField);
+                            }
+                            if (subField) {
+                                subField.value = sub || "";
+                                subField.addEventListener("input", syncMatrixOutlineField);
+                                subField.addEventListener("change", syncMatrixOutlineField);
+                            }
+                            if (indField) {
+                                indField.value = ind || "";
+                                indField.addEventListener("input", syncMatrixOutlineField);
+                                indField.addEventListener("change", syncMatrixOutlineField);
                             }
 
-                            var subdimensionList = dimensionCard.querySelector("[data-subdimension-list]");
-                            var subdimensionTemplate = dimensionCard.querySelector("[data-subdimension-template]");
-                            var addSubdimensionButton = dimensionCard.querySelector("[data-add-subdimension]");
-
-                            var addSubdimensionCard = function (subdimensionData) {
-                                if (!subdimensionList || !subdimensionTemplate) {
-                                    return;
-                                }
-                                var subdimensionFragment = subdimensionTemplate.content.cloneNode(true);
-                                var subdimensionCard = subdimensionFragment.querySelector("[data-matrix-subdimension-card]");
-                                if (!subdimensionCard) {
-                                    return;
-                                }
-                                bindSubdimensionCard(subdimensionCard, subdimensionData || {});
-                                subdimensionList.appendChild(subdimensionFragment);
-                                syncMatrixOutlineField();
-                            };
-
-                            if (addSubdimensionButton) {
-                                addSubdimensionButton.addEventListener("click", function () {
-                                    addSubdimensionCard({});
-                                });
-                            }
-
-                            var loadedSubdimensions = Array.isArray(data && data.subdimensiones) ? data.subdimensiones : [];
-                            loadedSubdimensions.forEach(function (subdimensionData) {
-                                addSubdimensionCard(subdimensionData);
-                            });
-
-                            if (!subdimensionList || !subdimensionList.children.length) {
-                                addSubdimensionCard({});
-                            }
-
-                            var removeBtn = dimensionCard.querySelector("[data-builder-remove]");
+                            var removeBtn = tr.querySelector("[data-builder-remove]");
                             if (removeBtn) {
                                 removeBtn.addEventListener("click", function () {
-                                    dimensionCard.remove();
+                                    tr.remove();
                                     syncMatrixOutlineField();
                                 });
                             }
-                        };
 
-                        var addDimensionCard = function (data) {
-                            var fragment = templateNode.content.cloneNode(true);
-                            var card = fragment.querySelector("[data-matrix-dimension-card]");
-                            if (!card) {
-                                return;
-                            }
-                            bindDimensionCard(card, data || {});
                             listNode.appendChild(fragment);
-                            syncMatrixOutlineField();
                         };
 
                         addBtn.addEventListener("click", function () {
-                            addDimensionCard({});
+                            // Pre-llenar dimensión de la última fila para agilizar.
+                            var lastRow = listNode.querySelector("[data-matrix-flat-row]:last-child");
+                            var lastDim = "";
+                            var lastSub = "";
+                            if (lastRow) {
+                                var ld = lastRow.querySelector("[data-dimension-field]");
+                                var ls = lastRow.querySelector("[data-subdimension-field]");
+                                lastDim = ld ? ld.value : "";
+                                lastSub = ls ? ls.value : "";
+                            }
+                            addFlatRow(lastDim, lastSub, "");
+                            syncMatrixOutlineField();
+                            var newest = listNode.querySelector("[data-matrix-flat-row]:last-child");
+                            if (newest) {
+                                var focusField = newest.querySelector("[data-indicator-field]") || newest.querySelector("[data-dimension-field]");
+                                if (focusField) { focusField.focus(); }
+                            }
                         });
 
-                        normalizeMatrixRows(parseJsonField(input)).forEach(function (row) {
-                            addDimensionCard(row);
+                        // Carga datos existentes (formato anidado → filas planas).
+                        var loaded = normalizeMatrixRows(parseJsonField(input));
+                        loaded.forEach(function (row) {
+                            var dim = normalizeProblemLabel(row.dimension);
+                            if (!dim) { return; }
+                            var subs = Array.isArray(row.subdimensiones) ? row.subdimensiones : [];
+                            if (!subs.length) {
+                                addFlatRow(dim, "", "");
+                                return;
+                            }
+                            subs.forEach(function (subrow) {
+                                var sub = normalizeProblemLabel(subrow.subdimension);
+                                var indicadores = normalizeStringList(subrow.indicadores);
+                                if (!indicadores.length) {
+                                    addFlatRow(dim, sub, "");
+                                    return;
+                                }
+                                indicadores.forEach(function (ind) {
+                                    addFlatRow(dim, sub, ind);
+                                });
+                            });
                         });
 
                         if (!listNode.children.length) {
-                            addDimensionCard({});
+                            addFlatRow("", "", "");
                         }
 
+                        colorDimensionRows();
                         return;
                     }
 
@@ -3854,6 +3781,34 @@
             syncExternalFields();
             syncSustentoAccess();
             syncReplicaState();
+
+            // ── Pre-submit: elimina inputs duplicados del modal inactivo ──
+            // Ambos modales (Matriz y Diagnóstico) comparten pasos de origen,
+            // generando inputs duplicados con el mismo name. Django lee el último,
+            // así que se desactivan los inputs del modal que NO está habilitado
+            // para que el formulario solo envíe la copia correcta.
+            form.addEventListener("submit", function () {
+                var tieneMatriz = form.querySelector("[name='sol_tiene_matriz']");
+                var tieneDiag  = form.querySelector("[name='sol_tiene_diagnostico']");
+                var esMatriz = tieneMatriz && tieneMatriz.value === "Sí";
+                var esDiag   = tieneDiag  && tieneDiag.value  === "Sí";
+
+                // Si ambos están activos se respeta el último (diagnóstico).
+                var flowInactivo = esMatriz && !esDiag ? "diagnostico" : (!esMatriz && esDiag ? "matriz" : null);
+                if (!flowInactivo) {
+                    return;
+                }
+
+                var modalInactivo = form.querySelector("[data-sustento-modal='" + flowInactivo + "']");
+                if (modalInactivo) {
+                    modalInactivo.querySelectorAll("input, textarea, select").forEach(function (el) {
+                        if (el.name) {
+                            el.setAttribute("data-removed-name", el.name);
+                            el.removeAttribute("name");
+                        }
+                    });
+                }
+            });
         })();
 
         (function () {
