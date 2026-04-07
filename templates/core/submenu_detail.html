@@ -178,21 +178,6 @@
                     </fieldset>
                     {% endif %}
 
-                    <div class="registro-summary registro-summary--solicitud">
-                        <article class="mini-metric">
-                            <h3>{{ registro_timeline|length }}</h3>
-                            <p>Etapas del proceso</p>
-                        </article>
-                        <article class="mini-metric">
-                            <h3>{{ registro_campos_obligatorios|default:0 }}</h3>
-                            <p>Campos obligatorios</p>
-                        </article>
-                        <article class="mini-metric">
-                            <h3>{{ registro_campos_total|default:0 }}</h3>
-                            <p>Campos del expediente</p>
-                        </article>
-                    </div>
-
                     {% if registro_flujo_unificado %}
                         <section class="registro-unified-flow" data-unified-flow>
                             <div class="registro-unified-roadmap" aria-label="Pasos del registro">
