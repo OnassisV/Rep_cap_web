@@ -69,7 +69,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("sol_origen_institucional", "Origen de la solicitud", "list", True, ["DIFOCA", "IGED", "Unidad orgánica"], "Define si la capacitacion nace internamente o llega desde una IGED/UO.", "left"),
             _campo("sol_numero_oficio", "Numero de oficio", "text_short", False, None, "Obligatorio cuando la solicitud proviene de IGED o Unidad organica.", "left"),
             _campo("sol_fecha_oficio", "Fecha de oficio", "date", False, None, "Se usa para solicitudes externas formalizadas por oficio.", "left"),
-            _campo("sol_archivo_oficio", "Archivo de oficio", "file", False, None, "Adjunta el oficio en PDF, DOC o DOCX para conservar el sustento dentro del registro.", "left"),
+            _campo("sol_archivo_oficio", "Link de oficio", "text_short", False, None, "Pega el enlace al oficio digitalizado para conservar el sustento dentro del registro.", "left"),
             _campo("sol_region_iged", "Region", "list", False, None, "Primero elige la region para filtrar las IGED disponibles.", "left"),
             _campo("sol_iged_nombre", "IGED", "list", False, None, "La lista se actualiza segun la region seleccionada.", "left"),
             _campo("pob_tipo", "Publico objetivo", "list", True, ["Docente", "Directivo", "Especialista DRE", "Especialista UGEL", "Acompañante pedagogico", "Formador", "Otro"], "Perfil principal al que estara dirigida la intervencion.", "left"),
