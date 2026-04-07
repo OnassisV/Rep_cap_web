@@ -1367,7 +1367,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if not hasattr(cap_obj, codigo):
                         continue
                     coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
-                    setattr(cap_obj, codigo, coerced if coerced is not None else "")
+                    # Los campos de fecha/entero/decimal aceptan null; usar None en vez de "".
+                    if coerced is None:
+                        field_obj = cap_obj._meta.get_field(codigo)
+                        if field_obj.null:
+                            setattr(cap_obj, codigo, None)
+                        else:
+                            setattr(cap_obj, codigo, "")
+                    else:
+                        setattr(cap_obj, codigo, coerced)
 
                 # Actualiza paso_actual si se envio.
                 paso_post = request.POST.get("paso_actual", "")
