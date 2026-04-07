@@ -77,10 +77,10 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("cap_nombre", "Nombre de la capacitacion", "text_short", True, None, "Titulo preliminar con el que se abrira el proceso.", "left"),
             _campo("cap_anio", "Año de la intervención", "integer", True, None, "Se propone automáticamente según el año vigente.", "left"),
             _campo("cap_tipo", "Tipo de intervención formativa", "list", True, ["Capacitación sincrónica", "Curso", "Curso-taller", "Programa de formación", "Programa de mentoría"], "Clasifica la modalidad del proceso formativo.", "left"),
+            _campo("sol_responde_desempeno", "La solicitud responde a un problema de desempeno", "list", False, ["Si", "No"], "Ayuda a perfilar mejor la brecha que se atendera.", "left"),
             _campo("sol_es_replica", "La capacitacion es una replica", "list", False, ["Si", "No"], "Si marcas Si, luego podras reutilizar informacion de una experiencia previa.", "right"),
-            _campo("sol_tiene_matriz", "La capacitacion contara con matriz de sustento", "list", False, ["Si", "No"], "Esta decision prepara el siguiente paso de sustento tecnico.", "right"),
-            _campo("sol_tiene_diagnostico", "La capacitacion contara con diagnostico", "list", False, ["Si", "No"], "Si marcas Si, el flujo posterior priorizara el bloque diagnostico.", "right"),
-            _campo("sol_responde_desempeno", "La solicitud responde a un problema de desempeno", "list", False, ["Si", "No"], "Ayuda a perfilar mejor la brecha que se atendera.", "right"),
+            _campo("sol_tiene_matriz", "La capacitacion contara con matriz de sustento", "list", False, ["Si", "No"], "La matriz de sustento se usa cuando se cuenta con evidencia del (de los) problema(s) de desempeño que se quiere atender en la capacitación.", "right"),
+            _campo("sol_tiene_diagnostico", "La capacitacion contara con diagnostico", "list", False, ["Si", "No"], "El diagnóstico se usa cuando no existe evidencia del (de los) problema(s) de desempeño a atender y debe ser levantada mediante un instrumento.", "right"),
         ],
     },
     {

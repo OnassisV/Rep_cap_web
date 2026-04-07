@@ -413,7 +413,6 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
         "sol_es_replica",
         "sol_tiene_matriz",
         "sol_tiene_diagnostico",
-        "sol_responde_desempeno",
     }
 
     # Determina obligatoriedad condicional segun origen de la solicitud.
