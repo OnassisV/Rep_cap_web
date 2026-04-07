@@ -2539,27 +2539,31 @@
                         </dialog>
 
                         {# ---- Modal: cancelar o eliminar capacitación ---- #}
-                        <dialog id="cancelar-cap-modal" class="id-plataforma-modal">
+                        <dialog id="cancelar-cap-modal" class="id-plataforma-modal cancelar-modal">
                             <div class="id-plataforma-modal__panel">
                                 <header class="id-plataforma-modal__header">
                                     <h3>Cancelar o eliminar capacitación</h3>
                                     <button type="button" class="id-plataforma-modal__close" data-close-cancelar>&times;</button>
                                 </header>
-                                <p style="margin:0 0 .75rem;font-size:.9rem;color:#ccc;">
-                                    <strong data-cancelar-nombre-display></strong>
-                                </p>
+                                <div class="cancelar-modal__nombre">
+                                    <span data-cancelar-nombre-display></span>
+                                </div>
                                 <form method="post" class="id-plataforma-modal__form">
                                     {% csrf_token %}
                                     <input type="hidden" name="cap_id" value="" data-cancelar-cap-id>
                                     <input type="hidden" name="action" value="" data-cancelar-action>
                                     <div class="id-plataforma-modal__field">
                                         <label>Acción</label>
-                                        <div style="display:flex;gap:.75rem;margin-top:.25rem;">
-                                            <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;">
-                                                <input type="radio" name="accion_tipo" value="cancelar" checked data-cancelar-radio> Cancelar
+                                        <div class="cancelar-modal__radios">
+                                            <label class="cancelar-modal__radio-label">
+                                                <input type="radio" name="accion_tipo" value="cancelar" checked data-cancelar-radio>
+                                                <span>Capacitación cancelada</span>
+                                                <small>Marca como cancelada. El registro se conserva.</small>
                                             </label>
-                                            <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer;">
-                                                <input type="radio" name="accion_tipo" value="eliminar" data-cancelar-radio> Eliminar permanentemente
+                                            <label class="cancelar-modal__radio-label cancelar-modal__radio-label--danger">
+                                                <input type="radio" name="accion_tipo" value="eliminar" data-cancelar-radio>
+                                                <span>Eliminar permanentemente</span>
+                                                <small>Borra el registro. Esta acción no se puede deshacer.</small>
                                             </label>
                                         </div>
                                     </div>

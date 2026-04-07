@@ -1493,6 +1493,64 @@ h1 {
     border-radius: 0.3rem;
 }
 
+/* ── Modal cancelar/eliminar capacitación ── */
+.cancelar-modal {
+    max-width: 460px;
+}
+.cancelar-modal__nombre {
+    background: #f1f5f9;
+    border-radius: 0.45rem;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 1.1rem;
+    font-size: 0.88rem;
+    color: #334155;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.cancelar-modal__radios {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-top: 0.35rem;
+}
+.cancelar-modal__radio-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.45rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+.cancelar-modal__radio-label:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+.cancelar-modal__radio-label input[type="radio"] {
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+}
+.cancelar-modal__radio-label span {
+    display: block;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #1e293b;
+}
+.cancelar-modal__radio-label small {
+    display: block;
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 0.1rem;
+}
+.cancelar-modal__radio-label--danger {
+    border-color: #fecaca;
+}
+.cancelar-modal__radio-label--danger:hover {
+    background: #fef2f2;
+    border-color: #f87171;
+}
+
 .registro-summary {
     margin-top: 0.5rem;
     display: grid;
