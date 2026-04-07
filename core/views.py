@@ -1959,7 +1959,53 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         # Adaptacion del submenu "Seguimiento de capacitaciones" (plantillas.py).
         if submenu_slug == "seguimiento-capacitaciones":
-            # Define pestanas funcionales heredadas del modulo legacy.
+            from core.models import Capacitacion as CapModel
+
+            # ── Construye lista de capacitaciones desde ORM (cap_capacitaciones) ──
+            seg_username = str(request.user.username)
+            seg_role = str(user_context.get("role_effective", ""))
+            seg_display = str(user_context.get("display_name", ""))
+            seg_is_admin = _normalizar_texto(seg_role) not in {"usuario estandar"}
+
+            seg_qs_base = CapModel.objects.filter(cap_codigo__gt="").order_by("cap_codigo")
+            if not seg_is_admin:
+                seg_qs_base = seg_qs_base.filter(creado_por__in=[seg_username, seg_display])
+
+            # Calcula años disponibles desde ORM y sobreescribe contexto global.
+            seg_anios = sorted(
+                seg_qs_base.values_list("cap_anio", flat=True).distinct(),
+                reverse=True,
+            )
+            seg_anios = [a for a in seg_anios if a]  # descarta vacíos
+            seg_anio_sel = anio_param if anio_param in seg_anios else (seg_anios[0] if seg_anios else "")
+            context["anios_disponibles"] = seg_anios
+            context["anio_seleccionado"] = seg_anio_sel
+
+            # Aplica filtro de año.
+            seg_qs = seg_qs_base
+            if seg_anio_sel:
+                seg_qs = seg_qs.filter(cap_anio=seg_anio_sel)
+
+            # Construye lista compatible con el formato que espera el template.
+            seg_filas: list[dict[str, Any]] = []
+            for cap in seg_qs:
+                # Reconstruye codigo completo: "XXXX-YYY" o solo "XXXX" si no hay id_curso.
+                codigo_completo = cap.cap_codigo
+                if cap.cap_id_curso:
+                    codigo_completo = f"{cap.cap_codigo}-{cap.cap_id_curso}"
+                seg_filas.append({
+                    "codigo": codigo_completo,
+                    "cap_codigo": cap.cap_codigo,
+                    "cap_id_curso": cap.cap_id_curso,
+                    "anio": cap.cap_anio,
+                    "condicion": cap.cap_estado,
+                    "tipo_proceso_formativo": cap.cap_tipo,
+                    "denominacion_proceso_formativo": cap.cap_nombre,
+                    "especialista_cargo": cap.creado_nombre or cap.creado_por,
+                    "cap_id": cap.pk,
+                })
+
+            # Define pestañas funcionales heredadas del módulo legacy.
             seguimiento_tabs = [
                 {"slug": "alertas", "titulo": "Alertas"},
                 {"slug": "estructura", "titulo": "Gestión de estructura"},
@@ -1972,9 +2018,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             ]
             tabs_validos = {item["slug"] for item in seguimiento_tabs}
 
-            # Lee codigo seleccionado desde query y lo valida contra oferta del anio.
+            # Lee codigo seleccionado desde query y lo valida contra capacitaciones ORM.
             codigo_param = str(request.GET.get("codigo", "")).strip()
-            codigos_visibles = [str(fila.get("codigo", "")).strip() for fila in oferta_anio]
+            codigos_visibles = [str(fila.get("codigo", "")).strip() for fila in seg_filas]
             codigo_sel = codigo_param if codigo_param in codigos_visibles else (codigos_visibles[0] if codigos_visibles else "")
 
             # Resuelve tab activo de trabajo.
@@ -2083,7 +2129,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             # Busca detalle de la capacitacion actualmente seleccionada.
             cap_sel = next(
-                (fila for fila in oferta_anio if str(fila.get("codigo", "")).strip() == codigo_sel),
+                (fila for fila in seg_filas if str(fila.get("codigo", "")).strip() == codigo_sel),
                 {},
             )
             tipo_proceso_sel = str(cap_sel.get("tipo_proceso_formativo", "")).strip().lower()
@@ -2270,7 +2316,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             # Construye links de cada card de capacitacion para navegacion rapida.
             cards: list[dict[str, Any]] = []
             actividades_por_codigo: dict[str, int] = {}
-            for fila in oferta_anio:
+            for fila in seg_filas:
                 codigo_card = str(fila.get("codigo", "")).strip()
                 if codigo_card not in actividades_por_codigo:
                     actividades_por_codigo[codigo_card] = len(obtener_estructura_por_codigo(codigo_card))
