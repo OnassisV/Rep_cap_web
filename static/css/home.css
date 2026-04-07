@@ -1328,35 +1328,6 @@ h1 {
     grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
-/* Resumen rapido de magnitud del formulario de registro inicial. */
-/* Pre-llenado desde oferta formativa. */
-.registro-prefill-oferta {
-    margin-bottom: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid #c6daec;
-    border-radius: 0.6rem;
-    background: linear-gradient(165deg, #fffdf5 0%, #f5f9ff 100%);
-}
-.registro-prefill-oferta legend {
-    font-weight: 600;
-    font-size: 0.92rem;
-    color: #1e3a5f;
-}
-.registro-prefill-oferta label {
-    display: block;
-    font-size: 0.82rem;
-    color: #555;
-    margin: 0.25rem 0 0.4rem;
-}
-.registro-prefill-oferta select {
-    width: 100%;
-    padding: 0.45rem 0.6rem;
-    border: 1px solid #b0c4de;
-    border-radius: 0.4rem;
-    font-size: 0.88rem;
-    background: #fff;
-}
-
 /* Modulo Editar capacitacion */
 .editar-cap-header {
     display: flex;

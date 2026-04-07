@@ -1315,12 +1315,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     codigo = str(campo.get("codigo", "")).strip()
                     payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
 
-            # Campos extra que pueden venir pre-llenados desde oferta_formativa.
-            for extra in ("cap_codigo", "cap_tipo"):
-                val = str(request.POST.get(extra, "")).strip()
-                if val:
-                    payload_raw[extra] = val
-
             # Valida solo campos obligatorios del paso 1.
             errores, payload_tipado = _validar_registro_capacitacion(
                 payload_raw, secciones_validas=SECCIONES_PASO_1,
@@ -1921,16 +1915,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_origen_externo": origen_externo,
                     "registro_campos_total": campos_totales,
                     "registro_campos_obligatorios": campos_obligatorios,
-                    "registro_oferta_catalogo": [
-                        {
-                            "codigo": str(f.get("codigo", "")).strip(),
-                            "denominacion": str(f.get("denominacion_proceso_formativo", "")).strip(),
-                            "tipo": str(f.get("tipo_proceso_formativo", "")).strip(),
-                            "anio": str(f.get("anio", "")).strip(),
-                        }
-                        for f in oferta_anio
-                        if str(f.get("codigo", "")).strip()
-                    ],
                 }
             )
 
