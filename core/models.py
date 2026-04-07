@@ -56,6 +56,11 @@ class Capacitacion(models.Model):
     diag_base_normativa = models.TextField(blank=True, default="")
     diag_servicio_territorial = models.TextField(blank=True, default="")
     diag_dre_modelo = models.CharField(max_length=10, blank=True, default="")
+    diag_problemas_json = models.TextField(blank=True, default="")
+    diag_instrumento_json = models.TextField(blank=True, default="")
+    diag_generacion_json = models.TextField(blank=True, default="")
+    diag_resultados_json = models.TextField(blank=True, default="")
+    diag_matriz_json = models.TextField(blank=True, default="")
     diag_instr_instrucciones = models.TextField(blank=True, default="")
     diag_instr_presentacion = models.CharField(max_length=255, blank=True, default="")
     diag_instr_periodo = models.CharField(max_length=120, blank=True, default="")
@@ -87,7 +92,11 @@ class Capacitacion(models.Model):
 
     # -- Diseno instruccional (Paso 3) ---------------------------------------
     mi_objetivo_capacitacion = models.TextField(blank=True, default="")
+    mi_competencias_json = models.TextField(blank=True, default="")
+    mi_desempenos_json = models.TextField(blank=True, default="")
+    mi_malla_json = models.TextField(blank=True, default="")
     mi_criterios_formula = models.TextField(blank=True, default="")
+    mi_formula_json = models.TextField(blank=True, default="")
     mi_ind3_obj_consistente = models.CharField(max_length=10, blank=True, default="")
     mi_ec4_desempenos_consistentes = models.CharField(max_length=10, blank=True, default="")
 
@@ -106,6 +115,7 @@ class Capacitacion(models.Model):
     pt_requisitos = models.TextField(blank=True, default="")
     pt_calculo_calificacion = models.TextField(blank=True, default="")
     pt_actores_responsables = models.TextField(blank=True, default="")
+    pt_productos_indicadores_json = models.TextField(blank=True, default="")
 
     # -- Generacion de recursos (Paso 5) ------------------------------------
     gr_guia_link = models.CharField(max_length=500, blank=True, default="")
@@ -113,6 +123,7 @@ class Capacitacion(models.Model):
     gr_cuestionario_link = models.CharField(max_length=500, blank=True, default="")
     gr_cuestionario_validado = models.CharField(max_length=10, blank=True, default="")
     gr_cronograma_link = models.CharField(max_length=500, blank=True, default="")
+    gr_cronograma_campos_json = models.TextField(blank=True, default="")
     gr_fecha_prematricula = models.DateField(null=True, blank=True)
     gr_linea_grafica = models.CharField(max_length=10, blank=True, default="")
     gr_plataforma_habilitada = models.CharField(max_length=10, blank=True, default="")

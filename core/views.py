@@ -1421,8 +1421,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     codigo = str(campo.get("codigo", "")).strip()
                     tipo = str(campo.get("tipo", "")).strip()
                     if tipo == "hidden_json":
-                        continue
-                    raw_val = str(request.POST.get(codigo, "")).strip()
+                        raw_val = str(request.POST.get(codigo, ""))
+                    else:
+                        raw_val = str(request.POST.get(codigo, "")).strip()
                     if not hasattr(cap_obj, codigo):
                         continue
                     coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
@@ -1950,7 +1951,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             # ── Filtro de año ──
             editar_anios = sorted(
-                qs.values_list("cap_anio", flat=True).distinct(),
+                set(qs.values_list("cap_anio", flat=True)),
                 reverse=True,
             )
             editar_anios = [a for a in editar_anios if a]
