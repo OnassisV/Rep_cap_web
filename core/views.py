@@ -646,6 +646,10 @@ def _construir_flujo_diagnostico(
         paso["step_index"] = index + 1
         paso["is_current_step"] = index == current_index
 
+    _codigo = str(valores_form.get("cap_codigo", "")).strip()
+    _id_curso = str(valores_form.get("cap_id_curso", "")).strip()
+    _codigo_interno = f"{_codigo}-{_id_curso}" if _codigo and _id_curso else (_codigo or _id_curso)
+
     return {
         "slug": "diagnostico-modal",
         "titulo": "Diagnostico",
@@ -653,7 +657,8 @@ def _construir_flujo_diagnostico(
         "is_enabled": diagnostico_activo,
         "steps": pasos,
         "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
-        "cap_codigo": str(valores_form.get("cap_codigo", "")).strip(),
+        "cap_codigo": _codigo,
+        "codigo_interno": _codigo_interno,
         "cap_anio": str(valores_form.get("cap_anio", "")).strip(),
     }
 
@@ -728,6 +733,10 @@ def _construir_flujo_matriz_sustento(
         paso["step_index"] = index + 1
         paso["is_current_step"] = index == current_index
 
+    _codigo = str(valores_form.get("cap_codigo", "")).strip()
+    _id_curso = str(valores_form.get("cap_id_curso", "")).strip()
+    _codigo_interno = f"{_codigo}-{_id_curso}" if _codigo and _id_curso else (_codigo or _id_curso)
+
     return {
         "slug": "matriz-sustento-modal",
         "titulo": "Matriz de sustento",
@@ -735,7 +744,8 @@ def _construir_flujo_matriz_sustento(
         "is_enabled": matriz_activa,
         "steps": pasos,
         "cap_nombre": str(valores_form.get("cap_nombre", "")).strip(),
-        "cap_codigo": str(valores_form.get("cap_codigo", "")).strip(),
+        "cap_codigo": _codigo,
+        "codigo_interno": _codigo_interno,
         "cap_anio": str(valores_form.get("cap_anio", "")).strip(),
     }
 
