@@ -1945,7 +1945,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             }
 
             # Obtiene lista de capacitaciones del usuario (o todas si admin).
-            qs = Capacitacion.objects.all().order_by("-creado_en")
+            qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
             if not is_admin:
                 qs = qs.filter(creado_por=username)
 
