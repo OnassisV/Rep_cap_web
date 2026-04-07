@@ -1977,7 +1977,17 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 reverse=True,
             )
             seg_anios = [a for a in seg_anios if a]  # descarta vacíos
-            seg_anio_sel = anio_param if anio_param in seg_anios else (seg_anios[0] if seg_anios else "")
+
+            # Resuelve año seleccionado (anio_param es string, seg_anios son ints).
+            try:
+                _anio_solicitado = int(anio_param) if anio_param else None
+            except (ValueError, TypeError):
+                _anio_solicitado = None
+            if _anio_solicitado not in seg_anios:
+                from datetime import datetime as _dt
+                _anio_actual = _dt.now().year
+                _anio_solicitado = _anio_actual if _anio_actual in seg_anios else (seg_anios[0] if seg_anios else None)
+            seg_anio_sel = _anio_solicitado
             context["anios_disponibles"] = seg_anios
             context["anio_seleccionado"] = seg_anio_sel
 
