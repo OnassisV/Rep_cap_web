@@ -1289,7 +1289,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         "section_submenus": section.get("submenus", []) if len(section.get("submenus", [])) > 1 else [],
         "adapter_kind": submenu.get("adapter", "placeholder"),
         # Permite ocultar filtro de año en submenus donde no aporta al flujo.
-        "mostrar_filtro_anio": submenu_slug not in {"registrar-nueva-capacitacion", "editar-capacitacion"},
+        "mostrar_filtro_anio": submenu_slug not in {"registrar-nueva-capacitacion"},
         "anios_disponibles": [],
         "anio_seleccionado": None,
         "capacitaciones": [],
@@ -1948,8 +1948,26 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             if not is_admin:
                 qs = qs.filter(creado_por=username)
 
+            # ── Filtro de año ──
+            editar_anios = sorted(
+                qs.values_list("cap_anio", flat=True).distinct(),
+                reverse=True,
+            )
+            editar_anios = [a for a in editar_anios if a]
+            anio_param = str(request.GET.get("anio", "")).strip()
+            try:
+                _ed_anio = int(anio_param)
+            except (ValueError, TypeError):
+                _ed_anio = None
+            if _ed_anio not in editar_anios:
+                _ed_actual = _date_type.today().year
+                _ed_anio = _ed_actual if _ed_actual in editar_anios else (editar_anios[0] if editar_anios else None)
+            context["anios_disponibles"] = editar_anios
+            context["anio_seleccionado"] = _ed_anio
+
+            qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
             editar_lista = list(
-                qs.values(
+                qs_filtrado.values(
                     "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
                     "cap_estado", "paso_actual", "creado_nombre", "creado_en",
                 )[:200]
