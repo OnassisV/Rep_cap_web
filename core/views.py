@@ -1967,7 +1967,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             seg_display = str(user_context.get("display_name", ""))
             seg_is_admin = _normalizar_texto(seg_role) not in {"usuario estandar"}
 
-            seg_qs_base = CapModel.objects.filter(cap_codigo__gt="").order_by("cap_codigo")
+            seg_qs_base = CapModel.objects.filter(cap_codigo__gt="").order_by("-cap_anio", "cap_estado", "cap_codigo")
             if not seg_is_admin:
                 seg_qs_base = seg_qs_base.filter(creado_por__in=[seg_username, seg_display])
 
