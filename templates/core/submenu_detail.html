@@ -3519,15 +3519,12 @@
                             rows.push(buildRowData(card));
                         });
                         serializeJsonField(input, rows);
-                        if (targetFieldName === "diag_problemas_json") {
-                            syncProblemSelects();
-                        }
-                        if (targetFieldName === "diag_matriz_json") {
-                            syncMatrixSelects();
-                        }
-                        if (targetFieldName === "diag_instrumento_json") {
-                            syncProfileSelects();
-                        }
+                        // Siempre re-sincroniza todos los catálogos dependientes
+                        // porque un builder puede contener selects de otro catálogo
+                        // (ej.: paso 2 contiene [data-problem-select]).
+                        syncProblemSelects();
+                        syncMatrixSelects();
+                        syncProfileSelects();
                     };
 
                     var bindCard = function (card, data) {
