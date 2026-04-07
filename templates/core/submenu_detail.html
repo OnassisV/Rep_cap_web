@@ -2851,7 +2851,18 @@
 
                     wrapper.querySelectorAll("input, select, textarea").forEach(function (control) {
                         control.disabled = !showExternal;
+                        if (showExternal) { control.setAttribute("required", ""); } else { control.removeAttribute("required"); }
                     });
+
+                    var labelEl = wrapper.querySelector(".registro-field__label");
+                    if (labelEl) {
+                        var star = labelEl.querySelector("strong");
+                        if (showExternal && !star) {
+                            var s = document.createElement("strong"); s.textContent = " *"; labelEl.appendChild(s);
+                        } else if (!showExternal && star) {
+                            star.remove();
+                        }
+                    }
                 });
 
                 igedFields.forEach(function (wrapper) {
@@ -2860,7 +2871,18 @@
 
                     wrapper.querySelectorAll("input, select, textarea").forEach(function (control) {
                         control.disabled = !showIged;
+                        if (showIged) { control.setAttribute("required", ""); } else { control.removeAttribute("required"); }
                     });
+
+                    var labelEl = wrapper.querySelector(".registro-field__label");
+                    if (labelEl) {
+                        var star = labelEl.querySelector("strong");
+                        if (showIged && !star) {
+                            var s = document.createElement("strong"); s.textContent = " *"; labelEl.appendChild(s);
+                        } else if (!showIged && star) {
+                            star.remove();
+                        }
+                    }
                 });
 
                 fillIgedOptions();

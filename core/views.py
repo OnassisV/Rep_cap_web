@@ -416,9 +416,19 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
         "sol_responde_desempeno",
     }
 
+    # Determina obligatoriedad condicional segun origen de la solicitud.
+    origen_actual = str(valores_form.get("sol_origen_institucional", "")).strip()
+    es_obligatorio = bool(campo.get("obligatorio"))
+    if not es_obligatorio:
+        if codigo in campos_externos and origen_actual in {"IGED", "Unidad orgánica"}:
+            es_obligatorio = True
+        elif codigo in campos_iged and origen_actual == "IGED":
+            es_obligatorio = True
+
     return {
         **campo,
         "valor": str(valores_form.get(codigo, "")).strip(),
+        "obligatorio": es_obligatorio,
         "is_origin_selector": codigo == "sol_origen_institucional",
         "is_decision": codigo in campos_decision,
         "is_external_only": codigo in campos_externos,
@@ -1007,6 +1017,7 @@ def _validar_registro_capacitacion(
         campos_condicionales = [
             ("sol_numero_oficio", "Numero de oficio"),
             ("sol_fecha_oficio", "Fecha de oficio"),
+            ("sol_archivo_oficio", "Archivo de oficio"),
         ]
         for codigo, etiqueta in campos_condicionales:
             if not str(payload_raw.get(codigo, "")).strip():
