@@ -155,9 +155,6 @@
 
             <!-- Flujo de registro inicial de nuevas capacitaciones (solo creacion). -->
             {% if adapter_kind == "registro_capacitacion" %}
-                <p class="module-panel__note">
-                    La solicitud de capacitación se abre primero como una etapa preliminar y luego continúa con la ficha técnica completa. Los campos con <strong>*</strong> son obligatorios en esta fase inicial.
-                </p>
 
                 <form method="post" class="editor-form registro-form" data-registro-form novalidate>
                     {% csrf_token %}
