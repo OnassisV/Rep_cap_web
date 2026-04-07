@@ -1967,19 +1967,19 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             context["anio_seleccionado"] = _ed_anio
 
             qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
-            from django.db.models import Case, When, Value, IntegerField as _IF
-            qs_filtrado = qs_filtrado.annotate(
-                _estado_orden=Case(
-                    When(cap_estado="Borrador", then=Value(1)),
-                    When(cap_estado="En proceso", then=Value(2)),
-                    When(cap_estado="Finalizada", then=Value(3)),
-                    When(cap_estado="Cancelada", then=Value(4)),
-                    default=Value(5),
-                    output_field=_IF(),
-                ),
-            ).order_by("_estado_orden", "cap_id_curso")
+            from django.db.models import Case, When, Value, IntegerField as _IntF
+            _estado_orden = Case(
+                When(cap_estado="Borrador", then=Value(1)),
+                When(cap_estado="En proceso", then=Value(2)),
+                When(cap_estado="Finalizada", then=Value(3)),
+                When(cap_estado="Cancelada", then=Value(4)),
+                default=Value(5),
+                output_field=_IntF(),
+            )
             editar_lista = list(
-                qs_filtrado.values(
+                qs_filtrado.annotate(_est_ord=_estado_orden)
+                .order_by("_est_ord", "cap_codigo", "cap_id_curso")
+                .values(
                     "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
                     "cap_estado", "paso_actual", "creado_nombre", "creado_en",
                 )[:200]
