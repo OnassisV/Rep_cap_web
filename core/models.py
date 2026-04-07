@@ -33,7 +33,7 @@ class Capacitacion(models.Model):
     sol_responde_desempeno = models.CharField(max_length=10, blank=True, default="")
 
     # -- Identificacion general ----------------------------------------------
-    cap_nombre = models.CharField(max_length=255)
+    cap_nombre = models.CharField(max_length=512)
     cap_codigo = models.CharField(max_length=120, blank=True, default="")
     cap_id_curso = models.CharField(max_length=120, blank=True, default="")
     cap_tipo = models.CharField(max_length=100, blank=True, default="")
@@ -41,7 +41,7 @@ class Capacitacion(models.Model):
     cap_prioridad = models.CharField(max_length=30, blank=True, default="")
     cap_anio = models.IntegerField()
     cap_direccion = models.CharField(max_length=120, blank=True, default="")
-    pob_tipo = models.CharField(max_length=120, blank=True, default="")
+    pob_tipo = models.CharField(max_length=500, blank=True, default="")
     pob_ambito = models.CharField(max_length=120, blank=True, default="")
 
     # -- Estado y control del flujo ------------------------------------------
