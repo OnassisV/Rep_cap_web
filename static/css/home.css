@@ -1400,6 +1400,76 @@ h1 {
 .editar-cap-table tr:hover {
     background: #f1f5f9;
 }
+
+/* ── Modal ID plataforma ── */
+.id-plataforma-modal {
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0;
+    max-width: 420px;
+    width: 92%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.id-plataforma-modal::backdrop {
+    background: rgba(15, 23, 42, .45);
+}
+.id-plataforma-modal__panel {
+    padding: 1.5rem;
+}
+.id-plataforma-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+.id-plataforma-modal__header h3 {
+    font-size: 1.1rem;
+    margin: 0;
+    color: #1e293b;
+}
+.id-plataforma-modal__close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.25rem;
+}
+.id-plataforma-modal__close:hover {
+    color: #334155;
+}
+.id-plataforma-modal__field {
+    margin-bottom: 1rem;
+}
+.id-plataforma-modal__field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.3rem;
+}
+.id-plataforma-modal__field input {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.4rem;
+    font-size: 0.92rem;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+.id-plataforma-modal__field input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+.id-plataforma-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+}
+
 .btn--small {
     padding: 0.28rem 0.65rem;
     font-size: 0.78rem;

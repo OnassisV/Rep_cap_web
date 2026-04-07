@@ -35,6 +35,7 @@ class Capacitacion(models.Model):
     # -- Identificacion general ----------------------------------------------
     cap_nombre = models.CharField(max_length=255)
     cap_codigo = models.CharField(max_length=120, blank=True, default="")
+    cap_id_curso = models.CharField(max_length=120, blank=True, default="")
     cap_tipo = models.CharField(max_length=100, blank=True, default="")
     cap_estrategia = models.CharField(max_length=255, blank=True, default="")
     cap_prioridad = models.CharField(max_length=30, blank=True, default="")

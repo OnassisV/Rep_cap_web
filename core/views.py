@@ -1323,6 +1323,27 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         if cap_id:
             redirect_params["id"] = cap_id
 
+        if action == "save_id_plataforma" and cap_id:
+            username = str(request.user.username)
+            role_eff = str(user_context.get("role_effective", ""))
+            is_admin = _normalizar_texto(role_eff) in {
+                "administrador", "admin", "superusuario",
+            }
+            try:
+                qs = Capacitacion.objects.all()
+                if not is_admin:
+                    qs = qs.filter(creado_por=username)
+                cap_obj = qs.get(pk=int(cap_id))
+                cap_obj.cap_codigo = str(request.POST.get("cap_codigo", "")).strip()
+                cap_obj.cap_id_curso = str(request.POST.get("cap_id_curso", "")).strip()
+                cap_obj.save(update_fields=["cap_codigo", "cap_id_curso", "actualizado_en"])
+                messages.success(request, "Identificadores de plataforma actualizados.")
+            except Capacitacion.DoesNotExist:
+                messages.error(request, "No se encontró la capacitación o no tienes permisos.")
+            except Exception as exc:
+                messages.error(request, f"Error al guardar identificadores: {exc}")
+            return redirect(_build_submenu_url(section_slug, submenu_slug, {}))
+
         if action == "save_capacitacion" and cap_id:
             username = str(request.user.username)
             role_eff = str(user_context.get("role_effective", ""))
@@ -1827,7 +1848,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             editar_lista = list(
                 qs.values(
-                    "id", "cap_nombre", "cap_codigo", "cap_anio",
+                    "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
                     "cap_estado", "paso_actual", "creado_nombre", "creado_en",
                 )[:200]
             )
@@ -1920,6 +1941,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "editar_secciones_render": editar_secciones_render,
                     "editar_flujo_unificado": editar_flujo_unificado,
                     "editar_solicitud": solicitud_ed,
+                    "editar_matriz_flujo": flujo_matriz_ed,
+                    "editar_diagnostico_flujo": flujo_diag_ed,
+                    "editar_sustento_etapa": etapa_sustento_ed,
                     "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
                 })
 

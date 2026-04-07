@@ -1898,7 +1898,7 @@
                         </span>
                     </div>
 
-                    <form method="post" class="editor-form registro-form" data-registro-form data-editar-form>
+                    <form method="post" class="editor-form registro-form" data-registro-form data-editar-form novalidate>
                         {% csrf_token %}
                         <input type="hidden" name="action" value="save_capacitacion">
                         <input type="hidden" name="cap_id" value="{{ editar_cap.id }}">
@@ -1939,6 +1939,9 @@
                                                         <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
                                                         <h3 class="subsection-title">Solicitud de la capacitación</h3>
                                                     </div>
+                                                    <p class="module-panel__note">
+                                                        Primero definimos el origen del requerimiento y las decisiones de entrada. Con eso la capacitación queda lista para pasar al desarrollo técnico.
+                                                    </p>
                                                 </header>
 
                                                 <div class="registro-solicitud">
@@ -1949,49 +1952,129 @@
                                                             {% endfor %}
                                                         </div>
                                                     </section>
-                                                    <aside class="registro-solicitud__aside">
-                                                        {% for campo in editar_solicitud.campos_right %}
-                                                            {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
-                                                        {% endfor %}
+
+                                                    <aside class="registro-solicitud__decisions">
+                                                        <div class="registro-solicitud__decisions-head">
+                                                            <p class="registro-block__eyebrow">Decisiones diferenciadas</p>
+                                                            <h4>Respuestas que orientan el flujo</h4>
+                                                            <p>Estas definiciones nos ayudan a ordenar si habrá réplica, matriz de sustento o diagnóstico antes de entrar al diseño de la capacitación.</p>
+                                                        </div>
+                                                        <div class="registro-solicitud__decision-list">
+                                                            {% for campo in editar_solicitud.campos_right %}
+                                                                {% include "core/_registro_field.html" with field=campo solicitud_mode=True %}
+                                                            {% endfor %}
+                                                        </div>
                                                     </aside>
                                                 </div>
 
                                             {% elif paso.panel_type == 'sustento' %}
-                                                <header class="registro-block__header">
+                                                <div data-sustento-hub>
+                                                <header class="registro-block__header registro-block__header--split">
                                                     <div>
                                                         <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
-                                                        <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                        <h3 class="subsection-title">Sustento técnico previo</h3>
+                                                        <p class="module-panel__note">Desde aquí puedes desarrollar la matriz de sustento y el diagnóstico en paralelo, cada uno desde su propio modal guiado.</p>
                                                     </div>
                                                 </header>
-                                                <p class="module-panel__note">{{ paso.descripcion }}</p>
+
+                                                {% if editar_sustento_etapa %}
+                                                    <div class="registro-diagnostico-banner{% if editar_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>
+                                                        <strong>Activa al menos una decision de sustento en la fase preliminar.</strong>
+                                                        <p>Cuando marques matriz de sustento o diagnostico, se habilitara el acceso directo a su modal correspondiente.</p>
+                                                    </div>
+
+                                                    <div class="registro-sustento-actions">
+                                                        {% if editar_matriz_flujo %}
+                                                            <article class="registro-sustento-card{% if not editar_matriz_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="matriz" aria-hidden="{% if editar_matriz_flujo.is_enabled %}false{% else %}true{% endif %}">
+                                                                <p class="registro-block__eyebrow">Ruta 1</p>
+                                                                <h4>Matriz de sustento</h4>
+                                                                <p>Abre un modal de 3 pasos para registrar datos del proceso, indicadores de gestion y proyeccion de resultados.</p>
+                                                                <div class="registro-sustento-card__meta">
+                                                                    <small>{{ editar_matriz_flujo.steps|length }} pasos guiados</small>
+                                                                    <button type="button" class="btn-primary-soft" data-open-sustento-modal="matriz" {% if not editar_matriz_flujo.is_enabled %}disabled{% endif %}>Abrir matriz</button>
+                                                                </div>
+                                                            </article>
+                                                        {% endif %}
+                                                        {% if editar_diagnostico_flujo %}
+                                                            <article class="registro-sustento-card{% if not editar_diagnostico_flujo.is_enabled %} is-disabled is-hidden{% endif %}" data-sustento-card="diagnostico" aria-hidden="{% if editar_diagnostico_flujo.is_enabled %}false{% else %}true{% endif %}">
+                                                                <p class="registro-block__eyebrow">Ruta 2</p>
+                                                                <h4>Diagnostico</h4>
+                                                                <p>Abre un modal técnico de 5 pasos para registrar el proceso, estructurar la evaluación y consolidar el informe de diagnostico.</p>
+                                                                <div class="registro-sustento-card__meta">
+                                                                    <small>{{ editar_diagnostico_flujo.steps|length }} pasos guiados</small>
+                                                                    <button type="button" class="btn-primary-soft" data-open-sustento-modal="diagnostico" {% if not editar_diagnostico_flujo.is_enabled %}disabled{% endif %}>Abrir diagnostico</button>
+                                                                </div>
+                                                            </article>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                                </div>{# /data-sustento-hub #}
 
                                             {% elif paso.panel_type == 'expediente' %}
-                                                <header class="registro-block__header">
+                                                <header class="registro-block__header registro-block__header--split">
                                                     <div>
                                                         <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
                                                         <h3 class="subsection-title">{{ paso.titulo }}</h3>
+                                                        <p class="module-panel__note">{{ paso.descripcion }}</p>
+                                                    </div>
+                                                    <div class="registro-block__meta">
+                                                        {% if paso.is_complete %}
+                                                            <span class="registro-status registro-status--complete">Completo</span>
+                                                        {% elif paso.is_started %}
+                                                            <span class="registro-status registro-status--current">En progreso</span>
+                                                        {% else %}
+                                                            <span class="registro-status">Pendiente</span>
+                                                        {% endif %}
+                                                        <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
                                                     </div>
                                                 </header>
-                                                {% for seccion in paso.secciones %}
-                                                    <fieldset class="registro-subsection">
-                                                        <legend>{{ seccion.titulo }}</legend>
-                                                        <div class="registro-grid">
-                                                            {% for campo in seccion.campos %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
-                                                            {% endfor %}
-                                                        </div>
-                                                    </fieldset>
-                                                {% endfor %}
+
+                                                {% if paso.summary_cards %}
+                                                    <div class="registro-expediente-summary">
+                                                        {% for item in paso.summary_cards %}
+                                                            <article class="registro-expediente-summary__card">
+                                                                <span>{{ item.label }}</span>
+                                                                <strong>{{ item.value }}</strong>
+                                                            </article>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+
+                                                {% if paso.blocks %}
+                                                    <div class="registro-expediente-inline-blocks">
+                                                        {% for bloque in paso.blocks %}
+                                                            <div class="registro-expediente-inline-block" id="registro-{{ bloque.slug }}">
+                                                                <div class="registro-expediente-inline-block__head">
+                                                                    <div>
+                                                                        <h4>{{ bloque.titulo }}</h4>
+                                                                        <p>{{ bloque.descripcion }}</p>
+                                                                    </div>
+                                                                    <div class="registro-block__meta">
+                                                                        {% if bloque.is_complete %}
+                                                                            <span class="registro-status registro-status--complete">Completo</span>
+                                                                        {% elif bloque.is_started %}
+                                                                            <span class="registro-status registro-status--current">En progreso</span>
+                                                                        {% else %}
+                                                                            <span class="registro-status">Pendiente</span>
+                                                                        {% endif %}
+                                                                        <small>{{ bloque.required_done }}/{{ bloque.required_count }} obligatorios</small>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="registro-grid">
+                                                                    {% for campo in bloque.campos %}
+                                                                        {% include "core/_registro_field.html" with field=campo %}
+                                                                    {% endfor %}
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
                                             {% endif %}
 
-                                            <nav class="registro-unified-nav">
-                                                {% if not forloop.first %}
-                                                    <button type="button" class="btn btn--outline" data-unified-prev>&larr; Anterior</button>
-                                                {% endif %}
-                                                {% if not forloop.last %}
-                                                    <button type="button" class="btn btn--primary" data-unified-next>Siguiente &rarr;</button>
-                                                {% endif %}
-                                            </nav>
+                                            <div class="registro-unified-nav">
+                                                <button type="button" class="btn-secondary-soft" data-unified-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
+                                                <button type="button" class="btn-primary-soft" data-unified-next>{% if forloop.last %}Ir al guardado{% else %}Siguiente paso{% endif %}</button>
+                                            </div>
                                         </section>
                                     {% endfor %}
                                 </div>
@@ -2017,11 +2100,13 @@
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Código</th>
+                                    <th>ID Curso</th>
                                     <th>Año</th>
                                     <th>Estado</th>
                                     <th>Paso</th>
                                     <th>Creado por</th>
                                     <th>Fecha</th>
+                                    <th></th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -2030,6 +2115,7 @@
                                     <tr>
                                         <td>{{ item.cap_nombre }}</td>
                                         <td>{{ item.cap_codigo|default:"-" }}</td>
+                                        <td>{{ item.cap_id_curso|default:"-" }}</td>
                                         <td>{{ item.cap_anio }}</td>
                                         <td>
                                             <span class="registro-status registro-status--{{ item.cap_estado|lower|cut:" " }}">
@@ -2040,12 +2126,42 @@
                                         <td>{{ item.creado_nombre|default:"-" }}</td>
                                         <td>{{ item.creado_en|date:"d/m/Y H:i" }}</td>
                                         <td>
+                                            <button type="button" class="btn btn--small btn--outline" data-open-id-plataforma="{{ item.id }}" data-plat-codigo="{{ item.cap_codigo }}" data-plat-id-curso="{{ item.cap_id_curso }}">ID plataforma</button>
+                                        </td>
+                                        <td>
                                             <a class="btn btn--small btn--primary" href="?id={{ item.id }}">Editar</a>
                                         </td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
+
+                        {# ---- Modal: asignar ID plataforma (código + ID curso) ---- #}
+                        <dialog id="id-plataforma-modal" class="id-plataforma-modal">
+                            <div class="id-plataforma-modal__panel">
+                                <header class="id-plataforma-modal__header">
+                                    <h3>Identificadores de plataforma</h3>
+                                    <button type="button" class="id-plataforma-modal__close" data-close-id-plataforma>&times;</button>
+                                </header>
+                                <form method="post" class="id-plataforma-modal__form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="save_id_plataforma">
+                                    <input type="hidden" name="cap_id" value="" data-plat-modal-cap-id>
+                                    <div class="id-plataforma-modal__field">
+                                        <label for="plat-codigo">Código</label>
+                                        <input type="text" id="plat-codigo" name="cap_codigo" placeholder="Ej: 26001I" data-plat-modal-codigo>
+                                    </div>
+                                    <div class="id-plataforma-modal__field">
+                                        <label for="plat-id-curso">ID Curso</label>
+                                        <input type="text" id="plat-id-curso" name="cap_id_curso" placeholder="Ej: 315" data-plat-modal-id-curso>
+                                    </div>
+                                    <div class="id-plataforma-modal__actions">
+                                        <button type="button" class="btn btn--outline" data-close-id-plataforma>Cancelar</button>
+                                        <button type="submit" class="btn btn--primary">Guardar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </dialog>
                     {% else %}
                         <p class="module-panel__note" style="margin-top: 1rem;">
                             No tienes capacitaciones registradas aún. Puedes crear una desde
@@ -2064,6 +2180,35 @@
         </section>
     </main>
     <script>
+        /* ── Modal ID plataforma (código + ID curso) ── */
+        (function () {
+            var modal = document.getElementById("id-plataforma-modal");
+            if (!modal) return;
+
+            var capIdInput = modal.querySelector("[data-plat-modal-cap-id]");
+            var codigoInput = modal.querySelector("[data-plat-modal-codigo]");
+            var idCursoInput = modal.querySelector("[data-plat-modal-id-curso]");
+
+            document.querySelectorAll("[data-open-id-plataforma]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    capIdInput.value = btn.getAttribute("data-open-id-plataforma");
+                    codigoInput.value = btn.getAttribute("data-plat-codigo") || "";
+                    idCursoInput.value = btn.getAttribute("data-plat-id-curso") || "";
+                    modal.showModal();
+                });
+            });
+
+            modal.querySelectorAll("[data-close-id-plataforma]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    modal.close();
+                });
+            });
+
+            modal.addEventListener("click", function (e) {
+                if (e.target === modal) modal.close();
+            });
+        })();
+
         document.querySelectorAll("[data-seguimiento-layout]").forEach(function (layout) {
             var collapse = layout.querySelector("[data-seguimiento-collapse]");
             if (!collapse) {
