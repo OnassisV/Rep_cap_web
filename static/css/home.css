@@ -1877,6 +1877,10 @@ h1 {
     display: none !important;
 }
 
+.is-replica-hidden {
+    display: none !important;
+}
+
 /* Tarjeta para decisiones Si/No en la columna lateral. */
 .decision-card {
     border: 1px solid #d8ddf1;

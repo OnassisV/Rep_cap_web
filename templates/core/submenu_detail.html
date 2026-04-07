@@ -2409,6 +2409,7 @@
                 matriz: form.querySelectorAll("input[name='sol_tiene_matriz']"),
                 diagnostico: form.querySelectorAll("input[name='sol_tiene_diagnostico']"),
             };
+            var replicaInputs = form.querySelectorAll("input[name='sol_es_replica']");
             var flowState = {
                 matriz: 1,
                 diagnostico: 1,
@@ -2855,6 +2856,48 @@
                 });
             };
 
+            var isReplicaActive = function () {
+                var active = false;
+                replicaInputs.forEach(function (input) {
+                    if (input.checked) {
+                        var v = String(input.value || "").toLowerCase();
+                        if (v === "si" || v === "sí") active = true;
+                    }
+                });
+                return active;
+            };
+
+            var syncReplicaState = function () {
+                var replica = isReplicaActive();
+                // Hide/show the decision cards for matriz and diagnostico
+                ["sol_tiene_matriz", "sol_tiene_diagnostico"].forEach(function (fieldName) {
+                    var inputs = form.querySelectorAll("input[name='" + fieldName + "']");
+                    var card = inputs.length ? inputs[0].closest("[data-question-item]") : null;
+                    if (card) {
+                        card.classList.toggle("is-hidden", replica);
+                    }
+                    if (replica) {
+                        // Force "No" when replica is active
+                        inputs.forEach(function (inp) {
+                            inp.checked = (inp.value === "No");
+                        });
+                    }
+                });
+                // Hide/show unified step 2 (sustento)
+                if (unifiedFlow) {
+                    var step2Panel = unifiedFlow.querySelector("[data-unified-panel][data-step-index='2']");
+                    var step2Tag = unifiedFlow.querySelector("[data-unified-step-tag][data-step-index='2']");
+                    if (step2Panel) {
+                        step2Panel.classList.toggle("is-replica-hidden", replica);
+                    }
+                    if (step2Tag) {
+                        step2Tag.classList.toggle("is-replica-hidden", replica);
+                    }
+                }
+                renumberQuestions();
+                syncSustentoAccess();
+            };
+
             var syncSustentoAccess = function () {
                 if (!sustentoHub) {
                     return;
@@ -3259,7 +3302,9 @@
             if (unifiedFlow) {
                 unifiedFlow.querySelectorAll("[data-unified-prev]").forEach(function (button) {
                     button.addEventListener("click", function () {
-                        setUnifiedStep(unifiedStep - 1);
+                        var target = unifiedStep - 1;
+                        if (target === 2 && isReplicaActive()) target = 1;
+                        setUnifiedStep(target);
                     });
                 });
 
@@ -3274,7 +3319,9 @@
                             }
                             return;
                         }
-                        setUnifiedStep(unifiedStep + 1);
+                        var target = unifiedStep + 1;
+                        if (target === 2 && isReplicaActive()) target = 3;
+                        setUnifiedStep(target);
                     });
                 });
 
@@ -3293,6 +3340,12 @@
                 });
             });
 
+            replicaInputs.forEach(function (input) {
+                input.addEventListener("change", function () {
+                    syncReplicaState();
+                });
+            });
+
             initDiagnosticoBuilders();
             syncProblemSelects();
             syncMatrixSelects();
@@ -3304,6 +3357,7 @@
 
             syncExternalFields();
             syncSustentoAccess();
+            syncReplicaState();
         })();
 
         (function () {
