@@ -445,53 +445,6 @@
                                                         </div>
                                                     {% elif paso.slug == 'matriz-modal-paso-2' %}
                                                         {% for campo in paso.campos %}
-                                                            {% if campo.tipo != 'hidden_json' %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
-                                                            {% else %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
-                                                            {% endif %}
-                                                        {% endfor %}
-                                                        <div class="diagnostico-builder" data-diagnostico-builder="prioritization" data-target-field="diag_priorizacion_json">
-                                                            <div class="diagnostico-builder__head">
-                                                                <div>
-                                                                    <h4>Priorizacion de problemas</h4>
-                                                                    <p>Ordena los problemas identificados, vincula desempeños y justifica la prioridad asignada.</p>
-                                                                </div>
-                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema priorizado</button>
-                                                            </div>
-                                                            <p class="priorizacion-note"><strong>Nota:</strong> El problema N°1 seria el que se trabaje para la capacitacion.</p>
-                                                            <div class="diagnostico-builder__list" data-builder-list></div>
-                                                            <template data-builder-template>
-                                                                <article class="diagnostico-item-card">
-                                                                    <div class="diagnostico-item-card__badge" data-priority-badge>Problema N°<span data-priority-number>1</span></div>
-                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--prioritization">
-                                                                        <label>
-                                                                            <span>Problema identificado</span>
-                                                                            <select data-field="problema" data-problem-select>
-                                                                                <option value="">Selecciona un problema</option>
-                                                                            </select>
-                                                                        </label>
-                                                                        <label>
-                                                                            <span>N° de prioridad</span>
-                                                                            <input type="number" data-field="prioridad" min="1" max="10" placeholder="1">
-                                                                        </label>
-                                                                        <label class="diagnostico-item-card__full-width">
-                                                                            <span>Desempeños relacionados con el problema</span>
-                                                                            <textarea rows="3" data-field="desempenos" placeholder="Describe los desempeños vinculados al problema"></textarea>
-                                                                        </label>
-                                                                        <label class="diagnostico-item-card__full-width">
-                                                                            <span>Justificacion de la prioridad</span>
-                                                                            <textarea rows="3" data-field="justificacion" placeholder="Porque se prioriza este problema"></textarea>
-                                                                        </label>
-                                                                    </div>
-                                                                    <div class="diagnostico-item-card__actions">
-                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
-                                                                    </div>
-                                                                </article>
-                                                            </template>
-                                                        </div>
-                                                    {% elif paso.slug == 'matriz-modal-paso-3' %}
-                                                        {% for campo in paso.campos %}
                                                             {% include "core/_registro_field.html" with field=campo %}
                                                         {% endfor %}
                                                         <div class="diagnostico-builder" data-diagnostico-builder="matrix" data-target-field="diag_matriz_json">
@@ -535,7 +488,7 @@
                                                                 </article>
                                                             </template>
                                                         </div>
-                                                    {% elif paso.slug == 'matriz-modal-paso-4' %}
+                                                    {% elif paso.slug == 'matriz-modal-paso-3' %}
                                                         {% for campo in paso.campos %}
                                                             {% include "core/_registro_field.html" with field=campo %}
                                                         {% endfor %}
@@ -661,94 +614,39 @@
                                                         </div>
                                                     {% elif paso.slug == 'diagnostico-modal-paso-2' %}
                                                         {% for campo in paso.campos %}
-                                                            {% if campo.tipo == 'hidden_json' %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
-                                                            {% endif %}
+                                                            {% include "core/_registro_field.html" with field=campo %}
                                                         {% endfor %}
-                                                        <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="matrix-outline" data-target-field="diag_matriz_json">
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="prioritization" data-target-field="diag_priorizacion_json">
                                                             <div class="diagnostico-builder__head">
                                                                 <div>
-                                                                    <h4>Descripción de la dimensión y subdimensión</h4>
-                                                                    <p>Registra filas con dimensión, subdimensión e indicador. Las filas con la misma dimensión se agrupan automáticamente.</p>
+                                                                    <h4>Priorizacion de problemas</h4>
+                                                                    <p>Ordena los problemas identificados, vincula desempeños y justifica la prioridad asignada.</p>
                                                                 </div>
-                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar fila</button>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema priorizado</button>
                                                             </div>
-                                                            <div class="matrix-outline-table-wrap">
-                                                                <table class="matrix-outline-table">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th class="matrix-outline-table__col--dim">Dimensión</th>
-                                                                            <th class="matrix-outline-table__col--sub">Subdimensión</th>
-                                                                            <th class="matrix-outline-table__col--ind">Indicador</th>
-                                                                            <th class="matrix-outline-table__col--act"></th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody data-builder-list></tbody>
-                                                                </table>
-                                                            </div>
-                                                            <template data-builder-template>
-                                                                <tr class="matrix-outline-table__row" data-matrix-flat-row>
-                                                                    <td><input type="text" data-dimension-field placeholder="Ej.: Gestión institucional"></td>
-                                                                    <td><input type="text" data-subdimension-field placeholder="Subdimensión vinculada"></td>
-                                                                    <td><input type="text" data-indicator-field placeholder="Indicador asociado"></td>
-                                                                    <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-builder-remove title="Quitar fila">&times;</button></td>
-                                                                </tr>
-                                                            </template>
-                                                        </div>
-                                                        <div class="diagnostico-note-strip">
-                                                            <article class="diagnostico-note-chip diagnostico-note-chip--success">
-                                                                <strong>Siguiente paso</strong>
-                                                                <small>Las dimensiones, subdimensiones e indicadores registrados alimentan los selectores del instrumento de evaluación.</small>
-                                                            </article>
-                                                        </div>
-                                                    {% elif paso.slug == 'diagnostico-modal-paso-3' %}
-                                                        {% for campo in paso.campos %}
-                                                            {% if campo.tipo == 'hidden_json' %}
-                                                                {% include "core/_registro_field.html" with field=campo %}
-                                                            {% endif %}
-                                                        {% endfor %}
-
-                                                        <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="instrument-sheet" data-target-field="diag_instrumento_json">
-                                                            <div class="diagnostico-builder__head">
-                                                                <div>
-                                                                    <h4>Generar un instrumento de evaluación</h4>
-                                                                    <p>Registra el perfil, la dimensión, la subdimensión y cada ítem del instrumento.</p>
-                                                                </div>
-                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar perfil</button>
-                                                            </div>
+                                                            <p class="priorizacion-note"><strong>Nota:</strong> El problema N°1 seria el que se trabaje para la capacitacion.</p>
                                                             <div class="diagnostico-builder__list" data-builder-list></div>
                                                             <template data-builder-template>
-                                                                <article class="diagnostico-item-card diagnostico-item-card--instrument-sheet">
-                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--instrument-sheet">
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__badge" data-priority-badge>Problema N°<span data-priority-number>1</span></div>
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--prioritization">
                                                                         <label>
-                                                                            <span>Perfil</span>
-                                                                            <input type="text" data-field="perfil" placeholder="Perfil al que se aplicará la encuesta">
-                                                                        </label>
-                                                                        <label>
-                                                                            <span>Dimension</span>
-                                                                            <select data-field="dimension" data-dimension-select>
-                                                                                <option value="">Selecciona una dimensión</option>
+                                                                            <span>Problema identificado</span>
+                                                                            <select data-field="problema" data-problem-select>
+                                                                                <option value="">Selecciona un problema</option>
                                                                             </select>
                                                                         </label>
                                                                         <label>
-                                                                            <span>Subdimension</span>
-                                                                            <select data-field="subdimension" data-subdimension-select>
-                                                                                <option value="">Selecciona una subdimensión</option>
-                                                                            </select>
+                                                                            <span>N° de prioridad</span>
+                                                                            <input type="number" data-field="prioridad" min="1" max="10" placeholder="1">
                                                                         </label>
-                                                                        <label>
-                                                                            <span>Indicador</span>
-                                                                            <select data-field="indicador_desempenio" data-indicator-select>
-                                                                                <option value="">Selecciona un indicador</option>
-                                                                            </select>
+                                                                        <label class="diagnostico-item-card__full-width">
+                                                                            <span>Desempeños relacionados con el problema</span>
+                                                                            <textarea rows="3" data-field="desempenos" placeholder="Describe los desempeños vinculados al problema"></textarea>
                                                                         </label>
-                                                                        <label>
-                                                                            <span>Item</span>
-                                                                            <textarea rows="3" data-field="item" placeholder="Describe el item o pregunta"></textarea>
-                                                                        </label>
-                                                                        <label>
-                                                                            <span>Preguntas adicionales</span>
-                                                                            <textarea rows="3" data-field="preguntas_extra" placeholder="Otras preguntas que deban considerarse"></textarea>
+                                                                        <label class="diagnostico-item-card__full-width">
+                                                                            <span>Justificacion de la prioridad</span>
+                                                                            <textarea rows="3" data-field="justificacion" placeholder="Porque se prioriza este problema"></textarea>
                                                                         </label>
                                                                     </div>
                                                                     <div class="diagnostico-item-card__actions">
@@ -757,6 +655,71 @@
                                                                 </article>
                                                             </template>
                                                         </div>
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-3' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="profile-tabs" data-target-field="diag_instrumento_json" data-matrix-field="diag_matriz_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Descripción de la dimensión y subdimensión</h4>
+                                                                    <p>Registra dimensiones, subdimensiones, indicadores, ítems y alternativas agrupados por perfil.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-add-profile-tab>Agregar perfil</button>
+                                                            </div>
+                                                            <div class="profile-tab-bar" data-profile-tab-bar></div>
+                                                            <div class="profile-tab-panels" data-profile-tab-panels></div>
+                                                            <template data-profile-panel-template>
+                                                                <div class="profile-tab-panel" data-profile-panel>
+                                                                    <div class="profile-tab-panel__head">
+                                                                        <label class="profile-tab-panel__name-label">
+                                                                            <span>Nombre del perfil</span>
+                                                                            <input type="text" data-profile-name placeholder="Ej.: Directivos, Docentes...">
+                                                                        </label>
+                                                                        <button type="button" class="btn-secondary-soft" data-add-profile-row>Agregar fila</button>
+                                                                    </div>
+                                                                    <div class="matrix-outline-table-wrap">
+                                                                        <table class="matrix-outline-table matrix-outline-table--wide">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    <th class="matrix-outline-table__col--dim">Dimensión</th>
+                                                                                    <th class="matrix-outline-table__col--sub">Subdimensión</th>
+                                                                                    <th class="matrix-outline-table__col--ind">Indicador</th>
+                                                                                    <th class="matrix-outline-table__col--items">Ítems</th>
+                                                                                    <th class="matrix-outline-table__col--alt">Alternativas</th>
+                                                                                    <th class="matrix-outline-table__col--act"></th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody data-profile-rows></tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+                                                            <template data-profile-row-template>
+                                                                <tr class="matrix-outline-table__row" data-matrix-flat-row>
+                                                                    <td><input type="text" data-field="dimension" placeholder="Ej.: Gestión institucional"></td>
+                                                                    <td><input type="text" data-field="subdimension" placeholder="Subdimensión vinculada"></td>
+                                                                    <td><input type="text" data-field="indicador" placeholder="Indicador asociado"></td>
+                                                                    <td><input type="text" data-field="items" placeholder="Ítem o pregunta"></td>
+                                                                    <td><input type="text" data-field="alternativas" placeholder="Siempre, A veces, Nunca"></td>
+                                                                    <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-remove-profile-row title="Quitar fila">&times;</button></td>
+                                                                </tr>
+                                                            </template>
+                                                        </div>
+                                                        <div class="diagnostico-note-strip">
+                                                            <article class="diagnostico-note-chip diagnostico-note-chip--success">
+                                                                <strong>Siguiente paso</strong>
+                                                                <small>Configure las instrucciones y escala del instrumento de evaluación.</small>
+                                                            </article>
+                                                        </div>
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-4' %}
+                                                        {% for campo in paso.campos %}
+                                                            {% if campo.tipo == 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
                                                         <div class="registro-grid registro-grid--diagnostico-wide">
                                                             {% for campo in paso.campos %}
                                                                 {% if campo.tipo != 'hidden_json' %}
@@ -764,7 +727,7 @@
                                                                 {% endif %}
                                                             {% endfor %}
                                                         </div>
-                                                    {% elif paso.slug == 'diagnostico-modal-paso-4' %}
+                                                    {% elif paso.slug == 'diagnostico-modal-paso-5' %}
                                                         {% for campo in paso.campos %}
                                                             {% if campo.tipo == 'hidden_json' %}
                                                                 {% include "core/_registro_field.html" with field=campo %}
@@ -2152,37 +2115,6 @@
                                                     </div>
                                                 {% elif paso.slug == 'matriz-modal-paso-2' %}
                                                     {% for campo in paso.campos %}
-                                                        {% if campo.tipo != 'hidden_json' %}
-                                                            {% include "core/_registro_field.html" with field=campo %}
-                                                        {% else %}
-                                                            {% include "core/_registro_field.html" with field=campo %}
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                    <div class="diagnostico-builder" data-diagnostico-builder="prioritization" data-target-field="diag_priorizacion_json">
-                                                        <div class="diagnostico-builder__head">
-                                                            <div>
-                                                                <h4>Priorizacion de problemas</h4>
-                                                                <p>Ordena los problemas identificados, vincula desempeños y justifica la prioridad asignada.</p>
-                                                            </div>
-                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema priorizado</button>
-                                                        </div>
-                                                        <p class="priorizacion-note"><strong>Nota:</strong> El problema N°1 seria el que se trabaje para la capacitacion.</p>
-                                                        <div class="diagnostico-builder__list" data-builder-list></div>
-                                                        <template data-builder-template>
-                                                            <article class="diagnostico-item-card">
-                                                                <div class="diagnostico-item-card__badge" data-priority-badge>Problema N°<span data-priority-number>1</span></div>
-                                                                <div class="diagnostico-item-card__grid diagnostico-item-card__grid--prioritization">
-                                                                    <label><span>Problema identificado</span><select data-field="problema" data-problem-select><option value="">Selecciona un problema</option></select></label>
-                                                                    <label><span>N° de prioridad</span><input type="number" data-field="prioridad" min="1" max="10" placeholder="1"></label>
-                                                                    <label class="diagnostico-item-card__full-width"><span>Desempeños relacionados con el problema</span><textarea rows="3" data-field="desempenos" placeholder="Describe los desempeños vinculados al problema"></textarea></label>
-                                                                    <label class="diagnostico-item-card__full-width"><span>Justificacion de la prioridad</span><textarea rows="3" data-field="justificacion" placeholder="Porque se prioriza este problema"></textarea></label>
-                                                                </div>
-                                                                <div class="diagnostico-item-card__actions"><button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button></div>
-                                                            </article>
-                                                        </template>
-                                                    </div>
-                                                {% elif paso.slug == 'matriz-modal-paso-3' %}
-                                                    {% for campo in paso.campos %}
                                                         {% include "core/_registro_field.html" with field=campo %}
                                                     {% endfor %}
                                                     <div class="diagnostico-builder" data-diagnostico-builder="matrix" data-target-field="diag_matriz_json">
@@ -2207,7 +2139,7 @@
                                                             </article>
                                                         </template>
                                                     </div>
-                                                {% elif paso.slug == 'matriz-modal-paso-4' %}
+                                                {% elif paso.slug == 'matriz-modal-paso-3' %}
                                                     {% for campo in paso.campos %}
                                                         {% include "core/_registro_field.html" with field=campo %}
                                                     {% endfor %}
@@ -2313,45 +2245,30 @@
                                                     </div>
                                                 {% elif paso.slug == 'diagnostico-modal-paso-2' %}
                                                     {% for campo in paso.campos %}
-                                                        {% if campo.tipo == 'hidden_json' %}
-                                                            {% include "core/_registro_field.html" with field=campo %}
-                                                        {% endif %}
+                                                        {% include "core/_registro_field.html" with field=campo %}
                                                     {% endfor %}
-                                                    <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="matrix-outline" data-target-field="diag_matriz_json">
+                                                    <div class="diagnostico-builder" data-diagnostico-builder="prioritization" data-target-field="diag_priorizacion_json">
                                                         <div class="diagnostico-builder__head">
                                                             <div>
-                                                                <h4>Descripción de la dimensión y subdimensión</h4>
-                                                                <p>Registra filas con dimensión, subdimensión e indicador. Las filas con la misma dimensión se agrupan automáticamente.</p>
+                                                                <h4>Priorizacion de problemas</h4>
+                                                                <p>Ordena los problemas identificados, vincula desempeños y justifica la prioridad asignada.</p>
                                                             </div>
-                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar fila</button>
+                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema priorizado</button>
                                                         </div>
-                                                        <div class="matrix-outline-table-wrap">
-                                                            <table class="matrix-outline-table">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th class="matrix-outline-table__col--dim">Dimensión</th>
-                                                                        <th class="matrix-outline-table__col--sub">Subdimensión</th>
-                                                                        <th class="matrix-outline-table__col--ind">Indicador</th>
-                                                                        <th class="matrix-outline-table__col--act"></th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody data-builder-list></tbody>
-                                                            </table>
-                                                        </div>
+                                                        <p class="priorizacion-note"><strong>Nota:</strong> El problema N°1 seria el que se trabaje para la capacitacion.</p>
+                                                        <div class="diagnostico-builder__list" data-builder-list></div>
                                                         <template data-builder-template>
-                                                            <tr class="matrix-outline-table__row" data-matrix-flat-row>
-                                                                <td><input type="text" data-dimension-field placeholder="Ej.: Gestión institucional"></td>
-                                                                <td><input type="text" data-subdimension-field placeholder="Subdimensión vinculada"></td>
-                                                                <td><input type="text" data-indicator-field placeholder="Indicador asociado"></td>
-                                                                <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-builder-remove title="Quitar fila">&times;</button></td>
-                                                            </tr>
+                                                            <article class="diagnostico-item-card">
+                                                                <div class="diagnostico-item-card__badge" data-priority-badge>Problema N°<span data-priority-number>1</span></div>
+                                                                <div class="diagnostico-item-card__grid diagnostico-item-card__grid--prioritization">
+                                                                    <label><span>Problema identificado</span><select data-field="problema" data-problem-select><option value="">Selecciona un problema</option></select></label>
+                                                                    <label><span>N° de prioridad</span><input type="number" data-field="prioridad" min="1" max="10" placeholder="1"></label>
+                                                                    <label class="diagnostico-item-card__full-width"><span>Desempeños relacionados con el problema</span><textarea rows="3" data-field="desempenos" placeholder="Describe los desempeños vinculados al problema"></textarea></label>
+                                                                    <label class="diagnostico-item-card__full-width"><span>Justificacion de la prioridad</span><textarea rows="3" data-field="justificacion" placeholder="Porque se prioriza este problema"></textarea></label>
+                                                                </div>
+                                                                <div class="diagnostico-item-card__actions"><button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button></div>
+                                                            </article>
                                                         </template>
-                                                    </div>
-                                                    <div class="diagnostico-note-strip">
-                                                        <article class="diagnostico-note-chip diagnostico-note-chip--success">
-                                                            <strong>Siguiente paso</strong>
-                                                            <small>Las dimensiones, subdimensiones e indicadores registrados alimentan los selectores del instrumento de evaluación.</small>
-                                                        </article>
                                                     </div>
                                                 {% elif paso.slug == 'diagnostico-modal-paso-3' %}
                                                     {% for campo in paso.campos %}
@@ -2359,29 +2276,65 @@
                                                             {% include "core/_registro_field.html" with field=campo %}
                                                         {% endif %}
                                                     {% endfor %}
-                                                    <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="instrument-sheet" data-target-field="diag_instrumento_json">
+                                                    <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="profile-tabs" data-target-field="diag_instrumento_json" data-matrix-field="diag_matriz_json">
                                                         <div class="diagnostico-builder__head">
                                                             <div>
-                                                                <h4>Generar un instrumento de evaluación</h4>
-                                                                <p>Registra el perfil, la dimensión, la subdimensión y cada ítem del instrumento.</p>
+                                                                <h4>Descripción de la dimensión y subdimensión</h4>
+                                                                <p>Registra dimensiones, subdimensiones, indicadores, ítems y alternativas agrupados por perfil.</p>
                                                             </div>
-                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar perfil</button>
+                                                            <button type="button" class="btn-secondary-soft" data-add-profile-tab>Agregar perfil</button>
                                                         </div>
-                                                        <div class="diagnostico-builder__list" data-builder-list></div>
-                                                        <template data-builder-template>
-                                                            <article class="diagnostico-item-card diagnostico-item-card--instrument-sheet">
-                                                                <div class="diagnostico-item-card__grid diagnostico-item-card__grid--instrument-sheet">
-                                                                    <label><span>Perfil</span><input type="text" data-field="perfil" placeholder="Perfil al que se aplicará la encuesta"></label>
-                                                                    <label><span>Dimension</span><select data-field="dimension" data-dimension-select><option value="">Selecciona una dimensión</option></select></label>
-                                                                    <label><span>Subdimension</span><select data-field="subdimension" data-subdimension-select><option value="">Selecciona una subdimensión</option></select></label>
-                                                                    <label><span>Indicador</span><select data-field="indicador_desempenio" data-indicator-select><option value="">Selecciona un indicador</option></select></label>
-                                                                    <label><span>Item</span><textarea rows="3" data-field="item" placeholder="Describe el item o pregunta"></textarea></label>
-                                                                    <label><span>Preguntas adicionales</span><textarea rows="3" data-field="preguntas_extra" placeholder="Otras preguntas que deban considerarse"></textarea></label>
+                                                        <div class="profile-tab-bar" data-profile-tab-bar></div>
+                                                        <div class="profile-tab-panels" data-profile-tab-panels></div>
+                                                        <template data-profile-panel-template>
+                                                            <div class="profile-tab-panel" data-profile-panel>
+                                                                <div class="profile-tab-panel__head">
+                                                                    <label class="profile-tab-panel__name-label">
+                                                                        <span>Nombre del perfil</span>
+                                                                        <input type="text" data-profile-name placeholder="Ej.: Directivos, Docentes...">
+                                                                    </label>
+                                                                    <button type="button" class="btn-secondary-soft" data-add-profile-row>Agregar fila</button>
                                                                 </div>
-                                                                <div class="diagnostico-item-card__actions"><button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button></div>
-                                                            </article>
+                                                                <div class="matrix-outline-table-wrap">
+                                                                    <table class="matrix-outline-table matrix-outline-table--wide">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th class="matrix-outline-table__col--dim">Dimensión</th>
+                                                                                <th class="matrix-outline-table__col--sub">Subdimensión</th>
+                                                                                <th class="matrix-outline-table__col--ind">Indicador</th>
+                                                                                <th class="matrix-outline-table__col--items">Ítems</th>
+                                                                                <th class="matrix-outline-table__col--alt">Alternativas</th>
+                                                                                <th class="matrix-outline-table__col--act"></th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody data-profile-rows></tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                        <template data-profile-row-template>
+                                                            <tr class="matrix-outline-table__row" data-matrix-flat-row>
+                                                                <td><input type="text" data-field="dimension" placeholder="Ej.: Gestión institucional"></td>
+                                                                <td><input type="text" data-field="subdimension" placeholder="Subdimensión vinculada"></td>
+                                                                <td><input type="text" data-field="indicador" placeholder="Indicador asociado"></td>
+                                                                <td><input type="text" data-field="items" placeholder="Ítem o pregunta"></td>
+                                                                <td><input type="text" data-field="alternativas" placeholder="Siempre, A veces, Nunca"></td>
+                                                                <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-remove-profile-row title="Quitar fila">&times;</button></td>
+                                                            </tr>
                                                         </template>
                                                     </div>
+                                                    <div class="diagnostico-note-strip">
+                                                        <article class="diagnostico-note-chip diagnostico-note-chip--success">
+                                                            <strong>Siguiente paso</strong>
+                                                            <small>Configure las instrucciones y escala del instrumento de evaluación.</small>
+                                                        </article>
+                                                    </div>
+                                                {% elif paso.slug == 'diagnostico-modal-paso-4' %}
+                                                    {% for campo in paso.campos %}
+                                                        {% if campo.tipo == 'hidden_json' %}
+                                                            {% include "core/_registro_field.html" with field=campo %}
+                                                        {% endif %}
+                                                    {% endfor %}
                                                     <div class="registro-grid registro-grid--diagnostico-wide">
                                                         {% for campo in paso.campos %}
                                                             {% if campo.tipo != 'hidden_json' %}
@@ -2389,7 +2342,7 @@
                                                             {% endif %}
                                                         {% endfor %}
                                                     </div>
-                                                {% elif paso.slug == 'diagnostico-modal-paso-4' %}
+                                                {% elif paso.slug == 'diagnostico-modal-paso-5' %}
                                                     {% for campo in paso.campos %}
                                                         {% if campo.tipo == 'hidden_json' %}
                                                             {% include "core/_registro_field.html" with field=campo %}
@@ -3578,6 +3531,195 @@
                         }
 
                         colorDimensionRows();
+                        return;
+                    }
+
+                    // ── Builder de pestañas por perfil (Dimensión + Subdimensión + Indicador + Items + Alternativas) ──
+                    if (builderType === "profile-tabs") {
+                        var tabBar = builder.querySelector("[data-profile-tab-bar]");
+                        var tabPanelsContainer = builder.querySelector("[data-profile-tab-panels]");
+                        var panelTemplate = builder.querySelector("[data-profile-panel-template]");
+                        var rowTemplate = builder.querySelector("[data-profile-row-template]");
+                        var addProfileBtn = builder.querySelector("[data-add-profile-tab]");
+                        var matrixFieldName = String(builder.getAttribute("data-matrix-field") || "");
+                        var matrixInput = matrixFieldName ? parentScope.querySelector("input[name='" + matrixFieldName + "']") : null;
+                        var profiles = []; // [{name, rows: [{dimension, subdimension, indicador, items, alternativas}], panel, tab}]
+                        var activeTabIndex = 0;
+
+                        var syncProfileTabData = function () {
+                            var data = profiles.map(function (p) {
+                                var filas = [];
+                                p.panel.querySelectorAll("[data-matrix-flat-row]").forEach(function (tr) {
+                                    var row = {};
+                                    tr.querySelectorAll("[data-field]").forEach(function (f) {
+                                        row[String(f.getAttribute("data-field") || "")] = String(f.value || "").trim();
+                                    });
+                                    if (row.dimension || row.subdimension || row.indicador || row.items || row.alternativas) {
+                                        filas.push(row);
+                                    }
+                                });
+                                return { perfil: String(p.nameInput.value || "").trim(), filas: filas };
+                            });
+                            serializeJsonField(input, data);
+
+                            // Auto-sincronizar diag_matriz_json (formato anidado) para los selects
+                            if (matrixInput) {
+                                var dimIndex = {};
+                                var result = [];
+                                data.forEach(function (prof) {
+                                    (prof.filas || []).forEach(function (row) {
+                                        var dim = normalizeProblemLabel(row.dimension || "");
+                                        var sub = normalizeProblemLabel(row.subdimension || "");
+                                        var ind = normalizeProblemLabel(row.indicador || "");
+                                        if (!dim) { return; }
+                                        if (!Object.prototype.hasOwnProperty.call(dimIndex, dim)) {
+                                            dimIndex[dim] = result.length;
+                                            result.push({ dimension: dim, subdimensiones: [] });
+                                        }
+                                        var entry = result[dimIndex[dim]];
+                                        if (!sub && !ind) { return; }
+                                        var existing = null;
+                                        entry.subdimensiones.forEach(function (s) {
+                                            if (!existing && s.subdimension === sub) { existing = s; }
+                                        });
+                                        if (!existing) {
+                                            existing = { subdimension: sub, indicadores: [] };
+                                            entry.subdimensiones.push(existing);
+                                        }
+                                        if (ind && existing.indicadores.indexOf(ind) === -1) {
+                                            existing.indicadores.push(ind);
+                                        }
+                                    });
+                                });
+                                serializeJsonField(matrixInput, result);
+                            }
+                            syncMatrixSelects();
+                            syncProfileSelects();
+                        };
+
+                        var addProfileRow = function (panel, data) {
+                            var tbody = panel.querySelector("[data-profile-rows]");
+                            if (!tbody || !rowTemplate) { return; }
+                            var fragment = rowTemplate.content.cloneNode(true);
+                            var tr = fragment.querySelector("[data-matrix-flat-row]");
+                            if (!tr) { return; }
+                            tr.querySelectorAll("[data-field]").forEach(function (f) {
+                                var key = String(f.getAttribute("data-field") || "");
+                                f.value = (data && data[key]) || "";
+                                f.addEventListener("input", syncProfileTabData);
+                                f.addEventListener("change", syncProfileTabData);
+                            });
+                            var removeBtn = tr.querySelector("[data-remove-profile-row]");
+                            if (removeBtn) {
+                                removeBtn.addEventListener("click", function () {
+                                    tr.remove();
+                                    syncProfileTabData();
+                                });
+                            }
+                            tbody.appendChild(fragment);
+                        };
+
+                        var switchProfileTab = function (index) {
+                            activeTabIndex = index;
+                            profiles.forEach(function (p, i) {
+                                var isActive = i === index;
+                                p.tab.classList.toggle("is-active", isActive);
+                                p.panel.classList.toggle("is-hidden", !isActive);
+                                p.panel.setAttribute("aria-hidden", isActive ? "false" : "true");
+                            });
+                        };
+
+                        var renderTabLabels = function () {
+                            tabBar.innerHTML = "";
+                            profiles.forEach(function (p, i) {
+                                var btn = document.createElement("button");
+                                btn.type = "button";
+                                btn.className = "profile-tab-btn" + (i === activeTabIndex ? " is-active" : "");
+                                btn.textContent = String(p.nameInput.value || "").trim() || ("Perfil " + (i + 1));
+                                btn.addEventListener("click", function () { switchProfileTab(i); });
+                                p.tab = btn;
+                                tabBar.appendChild(btn);
+                            });
+                            // Botón para quitar perfil si hay más de uno
+                            if (profiles.length > 1) {
+                                var removeTabBtn = document.createElement("button");
+                                removeTabBtn.type = "button";
+                                removeTabBtn.className = "profile-tab-btn profile-tab-btn--remove";
+                                removeTabBtn.textContent = "×";
+                                removeTabBtn.title = "Quitar perfil activo";
+                                removeTabBtn.addEventListener("click", function () {
+                                    var idx = activeTabIndex;
+                                    profiles[idx].panel.remove();
+                                    profiles.splice(idx, 1);
+                                    activeTabIndex = Math.min(idx, profiles.length - 1);
+                                    renderTabLabels();
+                                    switchProfileTab(activeTabIndex);
+                                    syncProfileTabData();
+                                });
+                                tabBar.appendChild(removeTabBtn);
+                            }
+                        };
+
+                        var addProfile = function (name, rows) {
+                            if (!panelTemplate || !tabPanelsContainer) { return; }
+                            var fragment = panelTemplate.content.cloneNode(true);
+                            var panel = fragment.querySelector("[data-profile-panel]");
+                            if (!panel) { return; }
+                            var nameInput = panel.querySelector("[data-profile-name]");
+                            if (nameInput) {
+                                nameInput.value = name || "";
+                                nameInput.addEventListener("input", function () {
+                                    renderTabLabels();
+                                    syncProfileTabData();
+                                });
+                            }
+                            var addRowBtn = panel.querySelector("[data-add-profile-row]");
+                            if (addRowBtn) {
+                                addRowBtn.addEventListener("click", function () {
+                                    // Pre-llenar dimensión de la última fila
+                                    var lastRow = panel.querySelector("[data-matrix-flat-row]:last-child");
+                                    var lastData = {};
+                                    if (lastRow) {
+                                        var ld = lastRow.querySelector("[data-field='dimension']");
+                                        var ls = lastRow.querySelector("[data-field='subdimension']");
+                                        lastData.dimension = ld ? ld.value : "";
+                                        lastData.subdimension = ls ? ls.value : "";
+                                    }
+                                    addProfileRow(panel, lastData);
+                                    syncProfileTabData();
+                                });
+                            }
+                            tabPanelsContainer.appendChild(panel);
+                            var prof = { nameInput: nameInput, panel: panel, tab: null };
+                            profiles.push(prof);
+                            // Agregar filas
+                            if (rows && rows.length) {
+                                rows.forEach(function (row) { addProfileRow(panel, row); });
+                            } else {
+                                addProfileRow(panel, {});
+                            }
+                            renderTabLabels();
+                            switchProfileTab(profiles.length - 1);
+                        };
+
+                        if (addProfileBtn) {
+                            addProfileBtn.addEventListener("click", function () {
+                                addProfile("", []);
+                                syncProfileTabData();
+                            });
+                        }
+
+                        // Cargar datos existentes
+                        var loadedProfiles = parseJsonField(input);
+                        if (loadedProfiles.length) {
+                            loadedProfiles.forEach(function (p) {
+                                addProfile(p.perfil || "", p.filas || []);
+                            });
+                        } else {
+                            addProfile("", []);
+                        }
+                        switchProfileTab(0);
+                        syncProfileTabData();
                         return;
                     }
 

@@ -119,6 +119,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "descripcion": "Define una o mas dimensiones, sus subdimensiones y los indicadores base de la matriz de evaluacion.",
         "campos": [
             _campo("diag_matriz_json", "Matriz de evaluacion", "hidden_json"),
+            _campo("diag_instrumento_json", "Configuracion estructural del instrumento", "hidden_json"),
         ],
     },
     {
@@ -126,7 +127,6 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "titulo": "Paso 3. Elaborar instrumento(s) de evaluacion",
         "descripcion": "Configura perfil, indicador, items e instrucciones del instrumento de diagnostico.",
         "campos": [
-            _campo("diag_instrumento_json", "Configuracion estructural del instrumento", "hidden_json"),
             _campo("diag_instr_instrucciones", "Detalle de instrucciones para el instrumento", "text_long"),
             _campo("diag_instr_presentacion", "Presentacion", "text_short"),
             _campo("diag_instr_periodo", "Periodo de aplicacion", "text_short"),
