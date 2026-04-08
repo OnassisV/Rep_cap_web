@@ -2950,12 +2950,6 @@ h1 {
     width: min(1240px, calc(100vw - 2rem));
 }
 
-/* Modal de diagnóstico más ancho para la tabla de 5 columnas */
-.sustento-modal[data-sustento-modal="diagnostico"].is-fallback-open .sustento-modal__panel,
-.sustento-modal[data-sustento-modal="diagnostico"] .sustento-modal__panel {
-    width: min(1400px, calc(100vw - 2rem));
-}
-
 /* ── Pestañas de perfil ── */
 .profile-tab-bar {
     display: flex;
@@ -3197,6 +3191,11 @@ h1 {
 
 .actividad-modal.is-fallback-open .actividad-modal__panel {
     width: min(880px, calc(100vw - 2rem));
+}
+
+/* Modal de diagnóstico más ancho para la tabla de 5 columnas */
+.sustento-modal[data-sustento-modal="diagnostico"].is-fallback-open .actividad-modal__panel {
+    width: min(1400px, calc(100vw - 2rem));
 }
 
 /* Fondo oscurecido cuando la ventana flotante esta abierta. */
