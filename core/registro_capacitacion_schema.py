@@ -105,6 +105,15 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         ],
     },
     {
+        "slug": "diagnostico-paso-1b",
+        "titulo": "Establecimiento del problema priorizado",
+        "descripcion": "Prioriza los problemas registrados, vincula desempenos y justifica cada priorizacion.",
+        "campos": [
+            _campo("diag_priorizacion_json", "Priorizacion de problemas", "hidden_json"),
+            _campo("diag_ec2_relacion_logica", "Se identifico que el problema de gestion tiene relacion razonable y logica con causas vinculadas al desempeno de los equipos tecnicos o servidores competentes", "list", False, ["Si", "No"], "Estandar de calidad 2"),
+        ],
+    },
+    {
         "slug": "diagnostico-paso-2",
         "titulo": "Paso 2. Generar matriz de evaluacion",
         "descripcion": "Define una o mas dimensiones, sus subdimensiones y los indicadores base de la matriz de evaluacion.",

@@ -445,6 +445,53 @@
                                                         </div>
                                                     {% elif paso.slug == 'matriz-modal-paso-2' %}
                                                         {% for campo in paso.campos %}
+                                                            {% if campo.tipo != 'hidden_json' %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% else %}
+                                                                {% include "core/_registro_field.html" with field=campo %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <div class="diagnostico-builder" data-diagnostico-builder="prioritization" data-target-field="diag_priorizacion_json">
+                                                            <div class="diagnostico-builder__head">
+                                                                <div>
+                                                                    <h4>Priorizacion de problemas</h4>
+                                                                    <p>Ordena los problemas identificados, vincula desempeños y justifica la prioridad asignada.</p>
+                                                                </div>
+                                                                <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema priorizado</button>
+                                                            </div>
+                                                            <p class="priorizacion-note"><strong>Nota:</strong> El problema N°1 seria el que se trabaje para la capacitacion.</p>
+                                                            <div class="diagnostico-builder__list" data-builder-list></div>
+                                                            <template data-builder-template>
+                                                                <article class="diagnostico-item-card">
+                                                                    <div class="diagnostico-item-card__badge" data-priority-badge>Problema N°<span data-priority-number>1</span></div>
+                                                                    <div class="diagnostico-item-card__grid diagnostico-item-card__grid--prioritization">
+                                                                        <label>
+                                                                            <span>Problema identificado</span>
+                                                                            <select data-field="problema" data-problem-select>
+                                                                                <option value="">Selecciona un problema</option>
+                                                                            </select>
+                                                                        </label>
+                                                                        <label>
+                                                                            <span>N° de prioridad</span>
+                                                                            <input type="number" data-field="prioridad" min="1" max="10" placeholder="1">
+                                                                        </label>
+                                                                        <label class="diagnostico-item-card__full-width">
+                                                                            <span>Desempeños relacionados con el problema</span>
+                                                                            <textarea rows="3" data-field="desempenos" placeholder="Describe los desempeños vinculados al problema"></textarea>
+                                                                        </label>
+                                                                        <label class="diagnostico-item-card__full-width">
+                                                                            <span>Justificacion de la prioridad</span>
+                                                                            <textarea rows="3" data-field="justificacion" placeholder="Porque se prioriza este problema"></textarea>
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="diagnostico-item-card__actions">
+                                                                        <button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button>
+                                                                    </div>
+                                                                </article>
+                                                            </template>
+                                                        </div>
+                                                    {% elif paso.slug == 'matriz-modal-paso-3' %}
+                                                        {% for campo in paso.campos %}
                                                             {% include "core/_registro_field.html" with field=campo %}
                                                         {% endfor %}
                                                         <div class="diagnostico-builder" data-diagnostico-builder="matrix" data-target-field="diag_matriz_json">
@@ -488,7 +535,7 @@
                                                                 </article>
                                                             </template>
                                                         </div>
-                                                    {% elif paso.slug == 'matriz-modal-paso-3' %}
+                                                    {% elif paso.slug == 'matriz-modal-paso-4' %}
                                                         {% for campo in paso.campos %}
                                                             {% include "core/_registro_field.html" with field=campo %}
                                                         {% endfor %}
@@ -2105,6 +2152,37 @@
                                                     </div>
                                                 {% elif paso.slug == 'matriz-modal-paso-2' %}
                                                     {% for campo in paso.campos %}
+                                                        {% if campo.tipo != 'hidden_json' %}
+                                                            {% include "core/_registro_field.html" with field=campo %}
+                                                        {% else %}
+                                                            {% include "core/_registro_field.html" with field=campo %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <div class="diagnostico-builder" data-diagnostico-builder="prioritization" data-target-field="diag_priorizacion_json">
+                                                        <div class="diagnostico-builder__head">
+                                                            <div>
+                                                                <h4>Priorizacion de problemas</h4>
+                                                                <p>Ordena los problemas identificados, vincula desempeños y justifica la prioridad asignada.</p>
+                                                            </div>
+                                                            <button type="button" class="btn-secondary-soft" data-builder-add>Agregar problema priorizado</button>
+                                                        </div>
+                                                        <p class="priorizacion-note"><strong>Nota:</strong> El problema N°1 seria el que se trabaje para la capacitacion.</p>
+                                                        <div class="diagnostico-builder__list" data-builder-list></div>
+                                                        <template data-builder-template>
+                                                            <article class="diagnostico-item-card">
+                                                                <div class="diagnostico-item-card__badge" data-priority-badge>Problema N°<span data-priority-number>1</span></div>
+                                                                <div class="diagnostico-item-card__grid diagnostico-item-card__grid--prioritization">
+                                                                    <label><span>Problema identificado</span><select data-field="problema" data-problem-select><option value="">Selecciona un problema</option></select></label>
+                                                                    <label><span>N° de prioridad</span><input type="number" data-field="prioridad" min="1" max="10" placeholder="1"></label>
+                                                                    <label class="diagnostico-item-card__full-width"><span>Desempeños relacionados con el problema</span><textarea rows="3" data-field="desempenos" placeholder="Describe los desempeños vinculados al problema"></textarea></label>
+                                                                    <label class="diagnostico-item-card__full-width"><span>Justificacion de la prioridad</span><textarea rows="3" data-field="justificacion" placeholder="Porque se prioriza este problema"></textarea></label>
+                                                                </div>
+                                                                <div class="diagnostico-item-card__actions"><button type="button" class="btn-secondary-soft" data-builder-remove>Quitar</button></div>
+                                                            </article>
+                                                        </template>
+                                                    </div>
+                                                {% elif paso.slug == 'matriz-modal-paso-3' %}
+                                                    {% for campo in paso.campos %}
                                                         {% include "core/_registro_field.html" with field=campo %}
                                                     {% endfor %}
                                                     <div class="diagnostico-builder" data-diagnostico-builder="matrix" data-target-field="diag_matriz_json">
@@ -2129,7 +2207,7 @@
                                                             </article>
                                                         </template>
                                                     </div>
-                                                {% elif paso.slug == 'matriz-modal-paso-3' %}
+                                                {% elif paso.slug == 'matriz-modal-paso-4' %}
                                                     {% for campo in paso.campos %}
                                                         {% include "core/_registro_field.html" with field=campo %}
                                                     {% endfor %}
@@ -3525,6 +3603,13 @@
                         syncProblemSelects();
                         syncMatrixSelects();
                         syncProfileSelects();
+                        // Renumera las etiquetas "Problema N°X" en el builder de priorización
+                        if (builderType === "prioritization") {
+                            listNode.querySelectorAll(".diagnostico-item-card").forEach(function (card, idx) {
+                                var badge = card.querySelector("[data-priority-number]");
+                                if (badge) { badge.textContent = String(idx + 1); }
+                            });
+                        }
                     };
 
                     var bindCard = function (card, data) {

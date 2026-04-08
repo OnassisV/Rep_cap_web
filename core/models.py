@@ -57,6 +57,8 @@ class Capacitacion(models.Model):
     diag_servicio_territorial = models.TextField(blank=True, default="")
     diag_dre_modelo = models.CharField(max_length=10, blank=True, default="")
     diag_problemas_json = models.TextField(blank=True, default="")
+    diag_priorizacion_json = models.TextField(blank=True, default="")
+    diag_ec2_relacion_logica = models.CharField(max_length=10, blank=True, default="")
     diag_instrumento_json = models.TextField(blank=True, default="")
     diag_generacion_json = models.TextField(blank=True, default="")
     diag_resultados_json = models.TextField(blank=True, default="")
