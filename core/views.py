@@ -938,7 +938,7 @@ def _construir_flujo_unificado(
     pasos.append({
         "slug": "paso-sustento",
         "titulo": "Sustento tecnico",
-        "descripcion": "Desarrolla diagnostico, brechas y alineamiento tecnico.",
+        "descripcion": "",
         "panel_type": "sustento",
         "required_count": 0,
         "required_done": 0,

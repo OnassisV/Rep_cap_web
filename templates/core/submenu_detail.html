@@ -225,13 +225,6 @@
 
                                         {% elif paso.panel_type == 'sustento' %}
                                             <div data-sustento-hub>
-                                            <header class="registro-block__header registro-block__header--split">
-                                                <div>
-                                                    <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
-                                                    <h3 class="subsection-title">Sustento técnico previo</h3>
-                                                    <p class="module-panel__note">Desde aquí puedes desarrollar la matriz de sustento y el diagnóstico en paralelo, cada uno desde su propio modal guiado.</p>
-                                                </div>
-                                            </header>
 
                                             {% if registro_sustento_etapa %}
                                                 <div class="registro-diagnostico-banner{% if registro_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>
@@ -1916,13 +1909,6 @@
 
                                             {% elif paso.panel_type == 'sustento' %}
                                                 <div data-sustento-hub>
-                                                <header class="registro-block__header registro-block__header--split">
-                                                    <div>
-                                                        <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
-                                                        <h3 class="subsection-title">Sustento técnico previo</h3>
-                                                        <p class="module-panel__note">Desde aquí puedes desarrollar la matriz de sustento y el diagnóstico en paralelo, cada uno desde su propio modal guiado.</p>
-                                                    </div>
-                                                </header>
 
                                                 {% if editar_sustento_etapa %}
                                                     <div class="registro-diagnostico-banner{% if editar_sustento_etapa.is_enabled %} is-hidden{% endif %}" data-sustento-banner>

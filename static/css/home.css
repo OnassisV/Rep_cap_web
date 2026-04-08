@@ -2498,9 +2498,13 @@ h1 {
 }
 
 .sustento-priorizacion-section {
-    margin-top: 1.2rem;
-    padding-top: 1rem;
+    margin-top: 1.6rem;
+    padding-top: 1.2rem;
     border-top: 1px dashed #c9d9eb;
+}
+
+.sustento-priorizacion-section .diagnostico-builder {
+    margin-top: 1rem;
 }
 
 .registro-diagnostico-step {
