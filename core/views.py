@@ -475,10 +475,20 @@ def _filtrar_campos_registro(
 def _construir_pasarela_sustento(
     matriz_flujo: dict[str, Any] | None,
     diagnostico_flujo: dict[str, Any] | None,
+    secciones_render: list[dict[str, Any]] | None = None,
+    valores_form: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     """Construye la etapa intermedia con dos accesos paralelos via modales."""
     if not matriz_flujo and not diagnostico_flujo:
         return None
+
+    # Extraer campos de priorizacion (diagnostico-paso-1b) para mostrarlos en el panel sustento.
+    priorizacion_campos: list[dict[str, Any]] = []
+    if secciones_render:
+        for sec in secciones_render:
+            if str(sec.get("slug", "")) == "diagnostico-paso-1b":
+                priorizacion_campos = list(sec.get("campos", []))
+                break
 
     return {
         "slug": "etapa-sustento",
@@ -487,6 +497,7 @@ def _construir_pasarela_sustento(
         "is_enabled": bool((matriz_flujo and matriz_flujo.get("is_enabled")) or (diagnostico_flujo and diagnostico_flujo.get("is_enabled"))),
         "matriz": matriz_flujo,
         "diagnostico": diagnostico_flujo,
+        "priorizacion_campos": priorizacion_campos,
     }
 
 
@@ -596,32 +607,26 @@ def _construir_flujo_diagnostico(
         },
         {
             "slug": "diagnostico-modal-paso-2",
-            "source_slug": "diagnostico-paso-1b",
-            "titulo": "Paso 2. Priorizar problemas",
-            "descripcion": "Ordena los problemas por prioridad, vincula desempenos y justifica la seleccion.",
-        },
-        {
-            "slug": "diagnostico-modal-paso-3",
             "source_slug": "diagnostico-paso-2",
-            "titulo": "Paso 3. Generar matriz de evaluacion",
+            "titulo": "Paso 2. Generar matriz de evaluacion",
             "descripcion": "Organiza dimensiones, subdimensiones e indicadores con items y alternativas, agrupados por perfil.",
         },
         {
-            "slug": "diagnostico-modal-paso-4",
+            "slug": "diagnostico-modal-paso-3",
             "source_slug": "diagnostico-paso-3",
-            "titulo": "Paso 4. Configurar instrumento de evaluacion",
+            "titulo": "Paso 3. Configurar instrumento de evaluacion",
             "descripcion": "Define instrucciones, escala de evaluacion y parametros del instrumento diagnostico.",
         },
         {
-            "slug": "diagnostico-modal-paso-5",
+            "slug": "diagnostico-modal-paso-4",
             "source_slug": "diagnostico-paso-4",
-            "titulo": "Paso 5. Generar instrumento(s) de evaluacion",
+            "titulo": "Paso 4. Generar instrumento(s) de evaluacion",
             "descripcion": "Deja preparada la salida operativa del instrumento para su uso.",
         },
         {
-            "slug": "diagnostico-modal-paso-6",
+            "slug": "diagnostico-modal-paso-5",
             "source_slug": "diagnostico-paso-5",
-            "titulo": "Paso 6. Resultados e informe",
+            "titulo": "Paso 5. Resultados e informe",
             "descripcion": "Consolida analisis, evidencias, linea base y justificaciones finales.",
         },
     ]
@@ -1870,7 +1875,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             timeline_registro = _construir_timeline_registro(secciones_render, valores_form)
             flujo_matriz = _construir_flujo_matriz_sustento(secciones_render, valores_form)
             flujo_diagnostico = _construir_flujo_diagnostico(secciones_render, valores_form)
-            etapa_sustento = _construir_pasarela_sustento(flujo_matriz, flujo_diagnostico)
+            etapa_sustento = _construir_pasarela_sustento(flujo_matriz, flujo_diagnostico, secciones_render, valores_form)
             flujo_expediente = _construir_flujo_expediente(secciones_render, valores_form)
             solicitud_inicial = next(
                 (
@@ -1885,6 +1890,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             )
             slugs_diagnostico = {
                 "diagnostico-paso-1",
+                "diagnostico-paso-1b",
                 "diagnostico-paso-2",
                 "diagnostico-paso-3",
                 "diagnostico-paso-4",
@@ -2046,7 +2052,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 )
                 flujo_matriz_ed = _construir_flujo_matriz_sustento(editar_secciones_render, editar_valores)
                 flujo_diag_ed = _construir_flujo_diagnostico(editar_secciones_render, editar_valores)
-                etapa_sustento_ed = _construir_pasarela_sustento(flujo_matriz_ed, flujo_diag_ed)
+                etapa_sustento_ed = _construir_pasarela_sustento(flujo_matriz_ed, flujo_diag_ed, editar_secciones_render, editar_valores)
                 flujo_exp_ed = _construir_flujo_expediente(editar_secciones_render, editar_valores)
                 editar_flujo_unificado = _construir_flujo_unificado(
                     editar_secciones_render, editar_valores, solicitud_ed, etapa_sustento_ed, flujo_exp_ed,
