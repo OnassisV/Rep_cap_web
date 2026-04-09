@@ -582,7 +582,7 @@ def generar_reporte_analisis(anio: int | None = None) -> bytes | None:
                        of2.capacitacion_presencialidad
                 FROM estandares_calidad ec
                 LEFT JOIN oferta_formativa_difoca of2 ON ec.codigo = of2.codigo
-                WHERE of2.anio = %s AND of2.condicion IN ('Cerrado', 'En implementacion')
+                WHERE of2.anio = %s AND of2.condicion = 'Cerrado'
                 ORDER BY ec.codigo, ec.pregunta
                 """,
                 conn,
