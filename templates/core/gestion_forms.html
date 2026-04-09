@@ -93,13 +93,13 @@
     {% if gf_tab == "limpieza" %}
         <div class="gf-panel">
             <h2 class="gf-panel__title">Limpieza de formularios</h2>
-            <p class="gf-panel__desc">Sube un archivo Excel (.xlsx) exportado de Microsoft Forms. Se limpiarán prefijos, se formatearán DNIs, se eliminarán duplicados y columnas vacías.</p>
+            <p class="gf-panel__desc">Sube uno o varios archivos Excel (.xlsx) exportados de Microsoft Forms. Se limpiarán prefijos, se formatearán DNIs, se eliminarán duplicados y columnas vacías. Si subes varios, se descargará un ZIP.</p>
             <form method="post" enctype="multipart/form-data" class="gf-form">
                 {% csrf_token %}
                 <input type="hidden" name="gf_tab" value="limpieza">
                 <div class="gf-form__row">
-                    <label class="gf-label">Archivo Excel:</label>
-                    <input type="file" name="gf_file" accept=".xlsx" required class="gf-file-input">
+                    <label class="gf-label">Archivos Excel:</label>
+                    <input type="file" name="gf_files" accept=".xlsx" multiple required class="gf-file-input">
                 </div>
                 <button type="submit" class="gf-btn gf-btn--primary">Limpiar y descargar</button>
             </form>

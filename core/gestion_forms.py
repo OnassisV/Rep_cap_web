@@ -153,6 +153,26 @@ def limpiar_y_exportar(file_bytes: bytes, filename: str) -> tuple[bytes, str]:
     return buf.getvalue(), f"{stem}_limpio.xlsx"
 
 
+def limpiar_multiples_y_exportar(archivos: list[tuple[bytes, str]]) -> tuple[bytes, str, str]:
+    """Limpia multiples archivos. Si es 1, devuelve Excel directo. Si son varios, devuelve ZIP."""
+    resultados = []
+    for raw, name in archivos:
+        data, fname = limpiar_y_exportar(raw, name)
+        resultados.append((data, fname))
+
+    if len(resultados) == 1:
+        data, fname = resultados[0]
+        return data, fname, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    import zipfile
+    zip_buf = BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for data, fname in resultados:
+            zf.writestr(fname, data)
+    zip_buf.seek(0)
+    return zip_buf.getvalue(), "formularios_limpios.zip", "application/zip"
+
+
 # ---------------------------------------------------------------------------
 # 2. Transposicion de datos
 # ---------------------------------------------------------------------------

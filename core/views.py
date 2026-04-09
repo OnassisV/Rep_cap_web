@@ -2703,15 +2703,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         gf_step = str(request.GET.get("gf_step", request.POST.get("gf_step", ""))).strip()
 
         # ---- Limpieza de formularios ----
-        if gf_tab == "limpieza" and request.method == "POST" and request.FILES.get("gf_file"):
-            up = request.FILES["gf_file"]
+        if gf_tab == "limpieza" and request.method == "POST" and request.FILES.getlist("gf_files"):
+            uploads = request.FILES.getlist("gf_files")
             try:
-                data, fname = gf_mod.limpiar_y_exportar(up.read(), up.name)
-                resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                archivos = [(up.read(), up.name) for up in uploads]
+                data, fname, ctype = gf_mod.limpiar_multiples_y_exportar(archivos)
+                resp = HttpResponse(data, content_type=ctype)
                 resp["Content-Disposition"] = f'attachment; filename="{fname}"'
                 return resp
             except Exception as exc:
-                messages.error(request, f"Error al limpiar archivo: {exc}")
+                messages.error(request, f"Error al limpiar archivo(s): {exc}")
 
         # ---- Transposicion: paso 1 = subir, paso 2 = configurar y descargar ----
         if gf_tab == "transposicion" and request.method == "POST":
