@@ -4794,6 +4794,12 @@ h1 {
     background: #fff;
 }
 
+.ec-select--anio {
+    flex: 0 0 auto;
+    min-width: 90px;
+    max-width: 110px;
+}
+
 .ec-chapter-tabs {
     display: flex;
     gap: .35rem;

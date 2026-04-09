@@ -2597,7 +2597,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             ec_action = str(request.POST.get("ec_action", "")).strip()
             ec_codigo = str(request.POST.get("ec_codigo", "")).strip()
             ec_capitulo = str(request.POST.get("ec_capitulo", "")).strip()
-            redirect_url = _build_submenu_url(section_slug, submenu_slug, {"codigo": ec_codigo, "capitulo": ec_capitulo})
+            ec_anio_post = str(request.POST.get("anio", "")).strip()
+            redirect_params = {"codigo": ec_codigo, "capitulo": ec_capitulo}
+            if ec_anio_post:
+                redirect_params["anio"] = ec_anio_post
+            redirect_url = _build_submenu_url(section_slug, submenu_slug, redirect_params)
 
             if ec_action == "guardar" and ec_codigo and ec_capitulo:
                 preguntas_cap = ec_mod.PREGUNTAS_CAPITULOS.get(ec_capitulo, [])
@@ -2630,7 +2634,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 return redirect(redirect_url)
 
         # GET: preparar contexto para el template.
-        ec_anio = int(anio_param) if anio_param.isdigit() else ec_mod.ANIO_VIGENTE
+        ec_anios_disponibles = ec_mod.obtener_anios_disponibles()
+        ec_anio = int(anio_param) if anio_param.isdigit() else (ec_anios_disponibles[0] if ec_anios_disponibles else ec_mod.ANIO_VIGENTE)
         procesos = ec_mod.obtener_procesos_formativos(nombre_especialista, ec_anio)
         ec_codigo_sel = str(request.GET.get("codigo", "")).strip()
         ec_capitulo_sel = str(request.GET.get("capitulo", "")).strip() or (ec_mod.CAPITULOS[0] if ec_mod.CAPITULOS else "")
@@ -2677,6 +2682,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             "ec_capitulos_existentes": capitulos_existentes,
             "ec_tiene_respuestas": bool(ec_respuestas_existentes),
             "ec_anio": ec_anio,
+            "ec_anios_disponibles": ec_anios_disponibles,
             "mostrar_filtro_anio": False,
         })
         return render(request, "core/estandares_calidad.html", context)

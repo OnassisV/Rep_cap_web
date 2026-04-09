@@ -163,6 +163,24 @@ _EXTRAER_ITEM_RE = re.compile(r"^([ABC]\.\d+)")
 # CRUD
 # ---------------------------------------------------------------------------
 
+def obtener_anios_disponibles() -> list[int]:
+    """Retorna lista de anios con capacitaciones cerradas o en implementacion."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT anio
+                    FROM oferta_formativa_difoca
+                    WHERE anio IS NOT NULL AND condicion IN ('Cerrado', 'En implementacion')
+                    ORDER BY anio DESC
+                    """
+                )
+                return [int(f["anio"]) for f in cur.fetchall() if f.get("anio")]
+    except Exception:
+        return [ANIO_VIGENTE]
+
+
 def obtener_procesos_formativos(
     nombre_especialista: str | None,
     anio: int | None = None,
@@ -179,7 +197,7 @@ def obtener_procesos_formativos(
                            publico_objetivo, objetivo_capacitacion,
                            horas_certificacion, implementacion_inicio, implementacion_final
                     FROM oferta_formativa_difoca
-                    WHERE anio >= %s AND condicion IN ('Cerrado', 'En implementacion')
+                    WHERE anio = %s AND condicion IN ('Cerrado', 'En implementacion')
                     ORDER BY codigo
                     """,
                     (anio_filtro,),
@@ -564,7 +582,7 @@ def generar_reporte_analisis(anio: int | None = None) -> bytes | None:
                        of2.capacitacion_presencialidad
                 FROM estandares_calidad ec
                 LEFT JOIN oferta_formativa_difoca of2 ON ec.codigo = of2.codigo
-                WHERE of2.anio >= %s AND of2.condicion = 'Cerrado'
+                WHERE of2.anio = %s AND of2.condicion = 'Cerrado'
                 ORDER BY ec.codigo, ec.pregunta
                 """,
                 conn,
