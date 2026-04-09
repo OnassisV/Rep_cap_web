@@ -1,0 +1,189 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estándares de calidad | Laboratorio de Datos | CAP DIFOCA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+</head>
+<body>
+<div class="scene-grid"></div>
+
+<main class="detail-shell">
+    <header class="detail-hero">
+        <a href="{% url 'core:section_detail' section.slug %}" class="detail-back-arrow" aria-label="Volver a la sección">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M10.75 5.75 4.5 12m0 0 6.25 6.25M4.5 12h15"></path>
+            </svg>
+        </a>
+        <img class="detail-hero__image" src="{% static section.imagen %}?v=20260313a" alt="Imagen de {{ section.titulo }}">
+        <div class="detail-hero__body">
+            <h1>{{ submenu.titulo }}</h1>
+            <p class="subtitle">{{ submenu.descripcion }}</p>
+            <div class="detail-hero__actions">
+                {% if can_switch_role %}
+                    <details class="role-switcher">
+                        <summary class="role-pill" aria-label="Cambiar rol de trabajo">Rol: {{ role_effective }}</summary>
+                        <div class="role-switcher__menu" role="menu">
+                            {% for role_option in role_options %}
+                                <form method="post" action="{% url 'core:switch_role' %}" class="role-switcher__form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="role" value="{{ role_option }}">
+                                    <input type="hidden" name="next" value="{{ current_path }}">
+                                    <button type="submit" class="role-switcher__item{% if role_option == role_effective %} is-active{% endif %}" {% if role_option == role_effective %}disabled{% endif %}>{{ role_option }}</button>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% else %}
+                    <p class="role-pill">Rol: {{ role_effective }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {% include "core/_sync_status_bar.html" %}
+
+    <nav class="section-tabs" aria-label="Navegacion entre menus">
+        {% for nav_section in menu_sections %}
+            <div class="section-tab-wrap">
+                <a href="{% url 'core:section_detail' nav_section.slug %}" class="section-tab{% if nav_section.slug == section.slug %} is-active{% endif %}">{{ nav_section.titulo }}</a>
+                {% if nav_section.submenus %}
+                    <div class="section-tab-dropdown" role="menu">
+                        {% for nav_submenu in nav_section.submenus %}
+                            <a class="section-tab-dropdown__item{% if nav_section.slug == section.slug and nav_submenu.slug == submenu.slug %} is-active{% endif %}" href="{% url 'core:submenu_detail' nav_section.slug nav_submenu.slug %}">{{ nav_submenu.titulo }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </nav>
+
+    <section class="module-panel">
+        <h2>Estándares de Calidad DIFOCA</h2>
+
+        {% if messages %}
+            <div class="flash-stack" data-flash-toast>
+                {% for message in messages %}
+                    <p class="flash-item flash-item--{{ message.tags }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+            <script>
+                (function() {
+                    var toast = document.querySelector("[data-flash-toast]");
+                    if (!toast) return;
+                    setTimeout(function() { toast.classList.add("is-dismissing"); }, 6000);
+                    toast.addEventListener("click", function() { toast.classList.add("is-dismissing"); });
+                })();
+            </script>
+        {% endif %}
+
+        {# ── Barra de descargas Excel ── #}
+        <div class="ec-download-bar">
+            <a class="ec-download-btn" href="?download=analisis&anio={{ ec_anio }}">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Reporte de Análisis (Excel)
+            </a>
+            {% if ec_codigo_sel %}
+                <a class="ec-download-btn ec-download-btn--secondary" href="?download=individual&codigo={{ ec_codigo_sel }}">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Reporte Individual ({{ ec_codigo_sel }})
+                </a>
+            {% endif %}
+        </div>
+
+        {# ── Selector de capacitación ── #}
+        <div class="ec-selector-bar">
+            <form method="get" class="ec-selector-form">
+                <label class="ec-label" for="ec-select-codigo">Capacitación:</label>
+                <select id="ec-select-codigo" name="codigo" class="ec-select" onchange="this.form.submit()">
+                    <option value="">— Seleccionar capacitación —</option>
+                    {% for proc in ec_procesos %}
+                        <option value="{{ proc.codigo }}" {% if proc.codigo == ec_codigo_sel %}selected{% endif %}>
+                            {{ proc.codigo }} — {{ proc.proceso_combinado }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        {% if ec_codigo_sel %}
+            {# ── Tabs de capítulos ── #}
+            <nav class="ec-chapter-tabs">
+                {% for cap in ec_capitulos %}
+                    <a href="?codigo={{ ec_codigo_sel }}&capitulo={{ cap|urlencode }}"
+                       class="ec-chapter-tab {% if cap == ec_capitulo_sel %}is-active{% endif %}">
+                        {{ cap }}
+                        {% if cap in ec_capitulos_existentes %}
+                            <span class="ec-badge ec-badge--ok" title="Tiene respuestas">✓</span>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </nav>
+
+            {# ── Formulario de preguntas ── #}
+            {% if ec_preguntas %}
+                <form method="post" class="ec-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="ec_action" value="guardar">
+                    <input type="hidden" name="ec_codigo" value="{{ ec_codigo_sel }}">
+                    <input type="hidden" name="ec_capitulo" value="{{ ec_capitulo_sel }}">
+
+                    <div class="ec-questions">
+                        {% for q in ec_preguntas %}
+                            <div class="ec-question-row">
+                                <label class="ec-question-label" for="ec_resp_{{ q.idx }}">
+                                    {{ q.pregunta|linebreaksbr }}
+                                </label>
+
+                                {% if q.tipo == "autollenado" %}
+                                    <input type="text" id="ec_resp_{{ q.idx }}" name="ec_resp_{{ q.idx }}"
+                                           value="{{ q.valor }}" class="ec-input ec-input--auto" readonly
+                                           title="Campo autollenado ({{ q.source }})">
+                                {% elif q.tipo == "seleccion" %}
+                                    <select id="ec_resp_{{ q.idx }}" name="ec_resp_{{ q.idx }}" class="ec-input ec-input--select">
+                                        <option value="">— Seleccionar —</option>
+                                        {% for opt in q.opciones %}
+                                            <option value="{{ opt }}" {% if opt == q.valor %}selected{% endif %}>{{ opt }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% elif q.tipo == "fecha" %}
+                                    <input type="date" id="ec_resp_{{ q.idx }}" name="ec_resp_{{ q.idx }}"
+                                           value="{{ q.valor }}" class="ec-input ec-input--date">
+                                {% else %}
+                                    <textarea id="ec_resp_{{ q.idx }}" name="ec_resp_{{ q.idx }}"
+                                              class="ec-input ec-input--text" rows="3">{{ q.valor }}</textarea>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="ec-actions">
+                        <button type="submit" class="ec-btn ec-btn--save">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Guardar respuestas
+                        </button>
+
+                        {% if ec_tiene_respuestas %}
+                            <button type="submit" name="ec_action" value="eliminar" class="ec-btn ec-btn--delete"
+                                    onclick="return confirm('¿Está seguro de eliminar las respuestas de este capítulo?')">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                                Eliminar respuestas
+                            </button>
+                        {% endif %}
+                    </div>
+                </form>
+            {% else %}
+                <p class="ec-empty">No hay preguntas definidas para este capítulo.</p>
+            {% endif %}
+        {% else %}
+            <p class="ec-empty">Seleccione una capacitación para gestionar sus estándares de calidad.</p>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

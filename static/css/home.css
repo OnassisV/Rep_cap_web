@@ -4737,4 +4737,195 @@ h1 {
     }
 }
 
+/* ====================================================================
+   Estandares de Calidad – Laboratorio de Datos (temporal)
+   ==================================================================== */
+
+.ec-download-bar {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.4rem;
+}
+
+.ec-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1.1rem;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background: #2E86AB;
+    transition: background .2s;
+}
+.ec-download-btn:hover { background: #236b88; }
+.ec-download-btn--secondary {
+    background: #5a6e7f;
+}
+.ec-download-btn--secondary:hover { background: #495a68; }
+
+.ec-selector-bar {
+    margin-bottom: 1.4rem;
+}
+
+.ec-selector-form {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+
+.ec-label {
+    font-weight: 600;
+    font-size: .9rem;
+    color: var(--text-primary, #1e293b);
+}
+
+.ec-select {
+    flex: 1;
+    min-width: 260px;
+    padding: .5rem .7rem;
+    border: 1px solid var(--border-soft, #d1d5db);
+    border-radius: 8px;
+    font-size: .85rem;
+    background: #fff;
+}
+
+.ec-chapter-tabs {
+    display: flex;
+    gap: .35rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+    border-bottom: 2px solid var(--border-soft, #e2e8f0);
+    padding-bottom: .35rem;
+}
+
+.ec-chapter-tab {
+    padding: .45rem .9rem;
+    border-radius: 6px 6px 0 0;
+    font-size: .82rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: #64748b;
+    background: #f1f5f9;
+    border: 1px solid transparent;
+    border-bottom: none;
+    transition: background .2s, color .2s;
+}
+.ec-chapter-tab:hover { background: #e2e8f0; color: #334155; }
+.ec-chapter-tab.is-active {
+    background: #fff;
+    color: #2E86AB;
+    border-color: #e2e8f0;
+    font-weight: 700;
+}
+
+.ec-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: .65rem;
+    margin-left: .3rem;
+}
+.ec-badge--ok {
+    background: #d4e6b7;
+    color: #2d6a1e;
+}
+
+.ec-form {
+    max-width: 960px;
+}
+
+.ec-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-bottom: 1.4rem;
+}
+
+.ec-question-row {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+
+.ec-question-label {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--text-primary, #1e293b);
+    line-height: 1.35;
+}
+
+.ec-input {
+    width: 100%;
+    padding: .5rem .65rem;
+    border: 1px solid var(--border-soft, #d1d5db);
+    border-radius: 8px;
+    font-size: .82rem;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color .2s;
+}
+.ec-input:focus {
+    outline: none;
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 2px rgba(46, 134, 171, .15);
+}
+.ec-input--auto {
+    background: #f8fafc;
+    color: #64748b;
+    cursor: default;
+}
+.ec-input--text {
+    resize: vertical;
+    min-height: 60px;
+}
+.ec-input--select {
+    cursor: pointer;
+}
+
+.ec-actions {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    padding-top: .6rem;
+    border-top: 1px solid var(--border-soft, #e2e8f0);
+}
+
+.ec-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+.ec-btn--save {
+    background: #2E86AB;
+    color: #fff;
+}
+.ec-btn--save:hover { background: #236b88; }
+.ec-btn--delete {
+    background: #ef4444;
+    color: #fff;
+}
+.ec-btn--delete:hover { background: #dc2626; }
+
+.ec-empty {
+    color: #94a3b8;
+    font-style: italic;
+    padding: 2rem 0;
+    text-align: center;
+}
+
 

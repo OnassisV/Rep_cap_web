@@ -75,6 +75,7 @@ from .registro_capacitacion_schema import (
 )
 from .indicadores_adapters import build_indicadores_dashboard_context, build_indicadores_download
 from .sync_runtime import build_sync_status_context
+from . import estandares_calidad as ec_mod
 
 
 # Estructura central del GeoMenu.
@@ -180,6 +181,15 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         "modulos": [
             "analisis.py",
             "procesamiento_datos.py",
+        ],
+        "submenus": [
+            {
+                "slug": "estandares-calidad-lab",
+                "titulo": "Estándares de calidad",
+                "descripcion": "Gestión y reportes de estándares por capacitación (temporal).",
+                "adapter": "estandares_lab",
+                "legacy_module": "core/estandares_calidad.py",
+            },
         ],
     },
     {
@@ -1258,7 +1268,7 @@ def section_detail_view(request, section_slug: str):
         raise Http404("Seccion no encontrada.")
 
     section_submenus = section.get("submenus", [])
-    if section_slug == "reporte-indicadores" and len(section_submenus) == 1:
+    if section_slug in ("reporte-indicadores", "laboratorio-datos") and len(section_submenus) == 1:
         return redirect("core:submenu_detail", section_slug, str(section_submenus[0].get("slug", "dashboard-kpi")))
 
     # Construye contexto de identidad.
@@ -2553,6 +2563,123 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         indicadores_context["indicadores_download_base_url"] = f"{base_url}?{request.GET.urlencode()}" if request.GET else base_url
         context["mostrar_filtro_anio"] = False
         context.update(indicadores_context)
+
+    # ── Adaptacion del submenu "Estandares de calidad" en Laboratorio de Datos ──
+    if section_slug == "laboratorio-datos" and submenu_slug == "estandares-calidad-lab":
+        nombre_especialista = str(user_context.get("display_name", ""))
+        role_eff = str(user_context.get("role_effective", ""))
+        es_admin = _normalizar_texto(role_eff) in {"administrador", "admin", "superusuario"}
+
+        # Descargas Excel via GET param ?download=...
+        download_tipo = str(request.GET.get("download", "")).strip().lower()
+        if download_tipo == "analisis":
+            ec_anio = int(request.GET.get("anio", ec_mod.ANIO_VIGENTE) or ec_mod.ANIO_VIGENTE)
+            data = ec_mod.generar_reporte_analisis(ec_anio)
+            if data:
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                resp["Content-Disposition"] = f'attachment; filename="Reporte_Estandares_Calidad_{ts}.xlsx"'
+                return resp
+            messages.warning(request, "No hay datos de estándares cerrados para generar el reporte de análisis.")
+
+        if download_tipo == "individual":
+            ec_codigo = str(request.GET.get("codigo", "")).strip()
+            if ec_codigo:
+                data = ec_mod.generar_reporte_individual(ec_codigo)
+                if data:
+                    resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    resp["Content-Disposition"] = f'attachment; filename="Reporte_estandares_{ec_codigo}.xlsx"'
+                    return resp
+                messages.warning(request, f"No hay respuestas registradas para el código {ec_codigo}.")
+
+        # POST: guardar o eliminar respuestas.
+        if request.method == "POST":
+            ec_action = str(request.POST.get("ec_action", "")).strip()
+            ec_codigo = str(request.POST.get("ec_codigo", "")).strip()
+            ec_capitulo = str(request.POST.get("ec_capitulo", "")).strip()
+            redirect_url = _build_submenu_url(section_slug, submenu_slug, {"codigo": ec_codigo, "capitulo": ec_capitulo})
+
+            if ec_action == "guardar" and ec_codigo and ec_capitulo:
+                preguntas_cap = ec_mod.PREGUNTAS_CAPITULOS.get(ec_capitulo, [])
+                respuestas_dict: dict[str, str] = {}
+                for idx, pdef in enumerate(preguntas_cap):
+                    preg = pdef["pregunta"]
+                    val = str(request.POST.get(f"ec_resp_{idx}", "")).strip()
+                    if val:
+                        respuestas_dict[preg] = val
+                if respuestas_dict:
+                    try:
+                        ec_mod.guardar_respuestas(
+                            codigo=ec_codigo,
+                            usuario=str(request.user.username),
+                            capitulo=ec_capitulo,
+                            respuestas=respuestas_dict,
+                        )
+                        messages.success(request, f"Respuestas guardadas para {ec_capitulo}.")
+                    except Exception as exc:
+                        messages.error(request, f"Error al guardar: {exc}")
+                return redirect(redirect_url)
+
+            if ec_action == "eliminar" and ec_codigo and ec_capitulo:
+                try:
+                    usuario_del = None if es_admin else str(request.user.username)
+                    n = ec_mod.eliminar_respuestas(ec_codigo, ec_capitulo, usuario_del)
+                    messages.success(request, f"Se eliminaron {n} respuestas de {ec_capitulo}.")
+                except Exception as exc:
+                    messages.error(request, f"Error al eliminar: {exc}")
+                return redirect(redirect_url)
+
+        # GET: preparar contexto para el template.
+        ec_anio = int(anio_param) if anio_param.isdigit() else ec_mod.ANIO_VIGENTE
+        procesos = ec_mod.obtener_procesos_formativos(nombre_especialista, ec_anio)
+        ec_codigo_sel = str(request.GET.get("codigo", "")).strip()
+        ec_capitulo_sel = str(request.GET.get("capitulo", "")).strip() or (ec_mod.CAPITULOS[0] if ec_mod.CAPITULOS else "")
+
+        # Construir datos del formulario si hay codigo seleccionado.
+        ec_preguntas_render: list[dict[str, Any]] = []
+        ec_respuestas_existentes: dict[str, str] = {}
+        ec_datos_proceso: dict[str, Any] = {}
+        ec_kpis: dict[str, Any] = {}
+
+        if ec_codigo_sel:
+            ec_datos_proceso = ec_mod.obtener_datos_proceso(ec_codigo_sel)
+            ec_kpis = ec_mod.calcular_kpis(ec_codigo_sel)
+            ec_respuestas_existentes = ec_mod.cargar_respuestas(ec_codigo_sel, ec_capitulo_sel)
+
+            for idx, pdef in enumerate(ec_mod.PREGUNTAS_CAPITULOS.get(ec_capitulo_sel, [])):
+                preg = pdef["pregunta"]
+                tipo = pdef.get("tipo", "texto")
+                source = pdef.get("source", "")
+                opciones = pdef.get("opciones", [])
+
+                if tipo == "autollenado":
+                    valor = ec_mod.resolver_valor_autollenado(source, ec_datos_proceso, ec_kpis, nombre_especialista)
+                else:
+                    valor = ec_respuestas_existentes.get(preg, "")
+
+                ec_preguntas_render.append({
+                    "idx": idx,
+                    "pregunta": preg,
+                    "tipo": tipo,
+                    "source": source,
+                    "opciones": opciones,
+                    "valor": valor,
+                })
+
+        capitulos_existentes = ec_mod.obtener_capitulos_existentes(ec_codigo_sel) if ec_codigo_sel else set()
+
+        context.update({
+            "ec_procesos": procesos,
+            "ec_codigo_sel": ec_codigo_sel,
+            "ec_capitulo_sel": ec_capitulo_sel,
+            "ec_capitulos": ec_mod.CAPITULOS,
+            "ec_preguntas": ec_preguntas_render,
+            "ec_capitulos_existentes": capitulos_existentes,
+            "ec_tiene_respuestas": bool(ec_respuestas_existentes),
+            "ec_anio": ec_anio,
+            "mostrar_filtro_anio": False,
+        })
+        return render(request, "core/estandares_calidad.html", context)
 
     # Renderiza vista de submenu con adaptacion correspondiente.
     return render(request, "core/submenu_detail.html", context)
