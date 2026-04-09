@@ -1,0 +1,368 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestión de Forms | Laboratorio de Datos | CAP DIFOCA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+</head>
+<body>
+<div class="scene-grid"></div>
+
+<main class="detail-shell">
+    <header class="detail-hero">
+        <a href="{% url 'core:section_detail' section.slug %}" class="detail-back-arrow" aria-label="Volver a la sección">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M10.75 5.75 4.5 12m0 0 6.25 6.25M4.5 12h15"></path>
+            </svg>
+        </a>
+        <img class="detail-hero__image" src="{% static section.imagen %}?v=20260313a" alt="Imagen de {{ section.titulo }}">
+        <div class="detail-hero__body">
+            <h1>{{ submenu.titulo }}</h1>
+            <p class="subtitle">{{ submenu.descripcion }}</p>
+            <div class="detail-hero__actions">
+                {% if can_switch_role %}
+                    <details class="role-switcher">
+                        <summary class="role-pill" aria-label="Cambiar rol de trabajo">Rol: {{ role_effective }}</summary>
+                        <div class="role-switcher__menu" role="menu">
+                            {% for role_option in role_options %}
+                                <form method="post" action="{% url 'core:switch_role' %}" class="role-switcher__form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="role" value="{{ role_option }}">
+                                    <input type="hidden" name="next" value="{{ current_path }}">
+                                    <button type="submit" class="role-switcher__item{% if role_option == role_effective %} is-active{% endif %}" {% if role_option == role_effective %}disabled{% endif %}>{{ role_option }}</button>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% else %}
+                    <p class="role-pill">Rol: {{ role_effective }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {% include "core/_sync_status_bar.html" %}
+
+    <nav class="section-tabs" aria-label="Navegacion entre menus">
+        {% for nav_section in menu_sections %}
+            <div class="section-tab-wrap">
+                <a href="{% url 'core:section_detail' nav_section.slug %}" class="section-tab{% if nav_section.slug == section.slug %} is-active{% endif %}">{{ nav_section.titulo }}</a>
+                {% if nav_section.submenus %}
+                    <div class="section-tab-dropdown" role="menu">
+                        {% for nav_submenu in nav_section.submenus %}
+                            <a class="section-tab-dropdown__item{% if nav_section.slug == section.slug and nav_submenu.slug == submenu.slug %} is-active{% endif %}" href="{% url 'core:submenu_detail' nav_section.slug nav_submenu.slug %}">{{ nav_submenu.titulo }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </nav>
+
+    {# ── Toast de mensajes ── #}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="toast toast--{{ message.tags|default:'info' }}">{{ message }}</div>
+            <script>
+                (function() {
+                    var toast = document.currentScript.previousElementSibling;
+                    setTimeout(function() { toast.classList.add("is-dismissing"); }, 5000);
+                    toast.addEventListener("click", function() { toast.classList.add("is-dismissing"); });
+                })();
+            </script>
+        {% endfor %}
+    {% endif %}
+
+    {# ── Tabs de herramientas ── #}
+    <nav class="gf-tabs">
+        <a href="?gf_tab=limpieza" class="gf-tab{% if gf_tab == 'limpieza' %} is-active{% endif %}">🧹 Limpieza</a>
+        <a href="?gf_tab=transposicion" class="gf-tab{% if gf_tab == 'transposicion' %} is-active{% endif %}">🔄 Transposición</a>
+        <a href="?gf_tab=alpha" class="gf-tab{% if gf_tab == 'alpha' %} is-active{% endif %}">📊 Alpha Cronbach</a>
+        <a href="?gf_tab=comparativo" class="gf-tab{% if gf_tab == 'comparativo' %} is-active{% endif %}">📈 Comparativo CE vs CS</a>
+    </nav>
+
+    <section class="gf-content">
+
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {# TAB 1: LIMPIEZA DE FORMULARIOS                                     #}
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {% if gf_tab == "limpieza" %}
+        <div class="gf-panel">
+            <h2 class="gf-panel__title">Limpieza de formularios</h2>
+            <p class="gf-panel__desc">Sube un archivo Excel (.xlsx) exportado de Microsoft Forms. Se limpiarán prefijos, se formatearán DNIs, se eliminarán duplicados y columnas vacías.</p>
+            <form method="post" enctype="multipart/form-data" class="gf-form">
+                {% csrf_token %}
+                <input type="hidden" name="gf_tab" value="limpieza">
+                <div class="gf-form__row">
+                    <label class="gf-label">Archivo Excel:</label>
+                    <input type="file" name="gf_file" accept=".xlsx" required class="gf-file-input">
+                </div>
+                <button type="submit" class="gf-btn gf-btn--primary">Limpiar y descargar</button>
+            </form>
+        </div>
+    {% endif %}
+
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {# TAB 2: TRANSPOSICIÓN DE DATOS                                      #}
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {% if gf_tab == "transposicion" %}
+        <div class="gf-panel">
+            <h2 class="gf-panel__title">Transposición de datos</h2>
+
+            {% if gf_trans_step == "config" %}
+                <p class="gf-panel__desc">Archivo: <strong>{{ gf_trans_filename }}</strong> — Selecciona el tipo de transposición y las columnas.</p>
+                <form method="post" class="gf-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="transposicion">
+                    <input type="hidden" name="gf_step" value="procesar">
+
+                    <div class="gf-form__row">
+                        <label class="gf-label">Tipo de transposición:</label>
+                        <select name="tipo_transposicion" class="gf-select" id="gf-tipo-trans" onchange="document.getElementById('gf-largo-a-ancho').style.display=this.value==='largo_a_ancho'?'block':'none';document.getElementById('gf-ancho-a-largo').style.display=this.value==='ancho_a_largo'?'block':'none';">
+                            <option value="largo_a_ancho">De largo a ancho (2 columnas → una pregunta por columna)</option>
+                            <option value="ancho_a_largo">De ancho a largo (una pregunta por columna → 2 columnas)</option>
+                        </select>
+                    </div>
+
+                    {# Opciones largo a ancho #}
+                    <div id="gf-largo-a-ancho">
+                        <div class="gf-form__row">
+                            <label class="gf-label">Columna de preguntas:</label>
+                            <select name="col_pregunta" class="gf-select">
+                                {% for c in gf_trans_cols %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="gf-form__row">
+                            <label class="gf-label">Columna de respuestas:</label>
+                            <select name="col_respuesta" class="gf-select">
+                                {% for c in gf_trans_cols %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="gf-form__row">
+                            <label class="gf-label">Columnas de identificación (opcional):</label>
+                            <select name="columnas_id" multiple class="gf-select gf-select--multi">
+                                {% for c in gf_trans_cols %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    {# Opciones ancho a largo #}
+                    <div id="gf-ancho-a-largo" style="display:none">
+                        <div class="gf-form__row">
+                            <label class="gf-label">Columnas de identificación (se mantienen como están):</label>
+                            <select name="columnas_id" multiple class="gf-select gf-select--multi">
+                                {% for c in gf_trans_cols %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="gf-form__row">
+                            <label class="gf-label">Columnas a transponer (si no seleccionas, se usan todas las demás):</label>
+                            <select name="columnas_preguntas" multiple class="gf-select gf-select--multi">
+                                {% for c in gf_trans_cols %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="gf-btn gf-btn--primary">Transponer y descargar</button>
+                </form>
+            {% else %}
+                <p class="gf-panel__desc">Sube un archivo Excel para transponer sus datos.</p>
+                <form method="post" enctype="multipart/form-data" class="gf-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="transposicion">
+                    <input type="hidden" name="gf_step" value="subir">
+                    <div class="gf-form__row">
+                        <label class="gf-label">Archivo Excel:</label>
+                        <input type="file" name="gf_file" accept=".xlsx" required class="gf-file-input">
+                    </div>
+                    <button type="submit" class="gf-btn gf-btn--primary">Subir archivo</button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {# TAB 3: ALPHA DE CRONBACH                                           #}
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {% if gf_tab == "alpha" %}
+        <div class="gf-panel">
+            <h2 class="gf-panel__title">Análisis Alpha de Cronbach</h2>
+
+            {% if gf_alpha_step == "resultado" %}
+                <h3 class="gf-subtitle">Resultados ({{ gf_alpha_resultado.n_filas }} filas, {{ gf_alpha_resultado.n_items }} ítems)</h3>
+                <table class="gf-table">
+                    <thead><tr><th>Método</th><th>Alpha</th></tr></thead>
+                    <tbody>
+                        {% for r in gf_alpha_resultado.resultados %}
+                            <tr>
+                                <td>{{ r.metodo }}</td>
+                                <td class="gf-table__num">{{ r.alpha|floatformat:4 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="gf-info-box">
+                    <strong>¿Qué significa cada método?</strong>
+                    <ul>
+                        <li><strong>Listwise:</strong> Solo filas sin vacíos.</li>
+                        <li><strong>Imputar media:</strong> Rellena vacíos con la media del ítem.</li>
+                        <li><strong>Pairwise:</strong> Usa correlación par a par.</li>
+                        <li><strong>No tratar vacíos:</strong> Deja NaN tal cual.</li>
+                    </ul>
+                </div>
+                <form method="post" class="gf-form gf-form--inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="alpha">
+                    <input type="hidden" name="gf_step" value="exportar_alpha">
+                    <label class="gf-label">Exportar con método:</label>
+                    <select name="metodo_alpha" class="gf-select gf-select--sm">
+                        <option value="listwise">Listwise</option>
+                        <option value="media">Imputar media</option>
+                        <option value="pairwise">Pairwise</option>
+                        <option value="notratar">No tratar vacíos</option>
+                    </select>
+                    <button type="submit" class="gf-btn gf-btn--primary">Descargar reporte Excel</button>
+                </form>
+
+            {% elif gf_alpha_step == "config" %}
+                <p class="gf-panel__desc">
+                    Archivos: <strong>{{ gf_alpha_fnames|join:", " }}</strong>
+                    — Selecciona las columnas a incluir en el análisis.
+                </p>
+                <form method="post" class="gf-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="alpha">
+                    <input type="hidden" name="gf_step" value="calcular">
+                    <div class="gf-form__row">
+                        <label class="gf-label">Columnas a analizar:</label>
+                        <select name="columnas_analizar" multiple required class="gf-select gf-select--multi gf-select--tall">
+                            {% for c in gf_alpha_comunes %}<option value="{{ c }}" selected>{{ c }}</option>{% endfor %}
+                        </select>
+                        <small class="gf-hint">Mantén Ctrl/Cmd para seleccionar varias. Se muestran las columnas comunes entre archivos.</small>
+                    </div>
+                    <button type="submit" class="gf-btn gf-btn--primary">Calcular Alpha</button>
+                </form>
+
+            {% else %}
+                <p class="gf-panel__desc">Sube 1 o 2 archivos Excel. Si subes 2, se unirán las columnas comunes.</p>
+                <form method="post" enctype="multipart/form-data" class="gf-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="alpha">
+                    <input type="hidden" name="gf_step" value="subir">
+                    <div class="gf-form__row">
+                        <label class="gf-label">Archivos Excel (1 o 2):</label>
+                        <input type="file" name="gf_files" accept=".xlsx" multiple required class="gf-file-input">
+                    </div>
+                    <button type="submit" class="gf-btn gf-btn--primary">Subir archivos</button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {# TAB 4: COMPARATIVO CE VS CS                                        #}
+    {# ═══════════════════════════════════════════════════════════════════ #}
+    {% if gf_tab == "comparativo" %}
+        <div class="gf-panel">
+            <h2 class="gf-panel__title">Comparativo CE vs CS</h2>
+
+            {% if gf_comp_step == "resultado" %}
+                <h3 class="gf-subtitle">Resultados del análisis</h3>
+                <div class="gf-table-wrap">
+                    <table class="gf-table">
+                        <thead>
+                            <tr>
+                                <th>Pregunta Entrada</th>
+                                <th>Pregunta Salida</th>
+                                <th>Tipo</th>
+                                <th>Resultado</th>
+                                <th>Interpretación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in gf_comp_resultados %}
+                                <tr>
+                                    <td>{{ r.pregunta_entrada|truncatechars:60 }}</td>
+                                    <td>{{ r.pregunta_salida|truncatechars:60 }}</td>
+                                    <td>{{ r.tipo_entrada }}</td>
+                                    <td class="gf-table__num">
+                                        {% if r.mejora_porcentual is not None %}
+                                            Mejora: {{ r.mejora_porcentual }}%
+                                        {% else %}
+                                            {{ r.categoria_freq_entrada }} → {{ r.categoria_freq_salida }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ r.interpretacion }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <form method="post" class="gf-form gf-form--inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="comparativo">
+                    <input type="hidden" name="gf_step" value="descargar_comp">
+                    <button type="submit" class="gf-btn gf-btn--primary">Descargar reporte Excel</button>
+                </form>
+
+            {% elif gf_comp_step == "emparejar" %}
+                <p class="gf-panel__desc">Revisa los emparejamientos automáticos. Puedes ajustar las columnas de salida.</p>
+                <form method="post" class="gf-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="comparativo">
+                    <input type="hidden" name="gf_step" value="analizar">
+                    <input type="hidden" name="emps_count" value="{{ gf_comp_emps|length }}">
+
+                    <div class="gf-table-wrap">
+                        <table class="gf-table">
+                            <thead><tr><th>#</th><th>Pregunta Entrada (CE)</th><th>Pregunta Salida (CS)</th></tr></thead>
+                            <tbody>
+                                {% for emp in gf_comp_emps %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            {{ emp.entrada|truncatechars:80 }}
+                                            <input type="hidden" name="emp_entrada_{{ forloop.counter0 }}" value="{{ emp.entrada }}">
+                                        </td>
+                                        <td>
+                                            <select name="emp_salida_{{ forloop.counter0 }}" class="gf-select gf-select--sm">
+                                                {% for cs in gf_comp_cols_cs %}
+                                                    <option value="{{ cs }}" {% if cs == emp.salida %}selected{% endif %}>{{ cs|truncatechars:80 }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="gf-btn gf-btn--primary">Realizar análisis comparativo</button>
+                </form>
+
+            {% else %}
+                <p class="gf-panel__desc">Sube dos archivos Excel: uno de entrada (CE) y uno de salida (CS). El sistema emparejará preguntas automáticamente.</p>
+                <form method="post" enctype="multipart/form-data" class="gf-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="gf_tab" value="comparativo">
+                    <input type="hidden" name="gf_step" value="subir">
+                    <div class="gf-form__row">
+                        <label class="gf-label">Archivo Entrada (CE):</label>
+                        <input type="file" name="gf_file_ce" accept=".xlsx,.xls,.csv" required class="gf-file-input">
+                    </div>
+                    <div class="gf-form__row">
+                        <label class="gf-label">Archivo Salida (CS):</label>
+                        <input type="file" name="gf_file_cs" accept=".xlsx,.xls,.csv" required class="gf-file-input">
+                    </div>
+                    <button type="submit" class="gf-btn gf-btn--primary">Subir y emparejar</button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    </section>
+</main>
+</body>
+</html>

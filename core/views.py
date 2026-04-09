@@ -76,6 +76,7 @@ from .registro_capacitacion_schema import (
 from .indicadores_adapters import build_indicadores_dashboard_context, build_indicadores_download
 from .sync_runtime import build_sync_status_context
 from . import estandares_calidad as ec_mod
+from . import gestion_forms as gf_mod
 
 
 # Estructura central del GeoMenu.
@@ -2693,6 +2694,176 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             "mostrar_filtro_anio": False,
         })
         return render(request, "core/estandares_calidad.html", context)
+
+    # ── Gestion de Forms ──────────────────────────────────────────────────
+    if section_slug == "laboratorio-datos" and submenu_slug == "gestion-forms-lab":
+        import base64, json as _json
+
+        gf_tab = str(request.GET.get("gf_tab", request.POST.get("gf_tab", "limpieza"))).strip()
+        gf_step = str(request.GET.get("gf_step", request.POST.get("gf_step", ""))).strip()
+
+        # ---- Limpieza de formularios ----
+        if gf_tab == "limpieza" and request.method == "POST" and request.FILES.get("gf_file"):
+            up = request.FILES["gf_file"]
+            try:
+                data, fname = gf_mod.limpiar_y_exportar(up.read(), up.name)
+                resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                resp["Content-Disposition"] = f'attachment; filename="{fname}"'
+                return resp
+            except Exception as exc:
+                messages.error(request, f"Error al limpiar archivo: {exc}")
+
+        # ---- Transposicion: paso 1 = subir, paso 2 = configurar y descargar ----
+        if gf_tab == "transposicion" and request.method == "POST":
+            if gf_step == "subir" and request.FILES.get("gf_file"):
+                up = request.FILES["gf_file"]
+                raw = up.read()
+                cols = gf_mod.obtener_columnas_excel(raw)
+                request.session["gf_trans_file"] = base64.b64encode(raw).decode()
+                request.session["gf_trans_filename"] = up.name
+                request.session["gf_trans_cols"] = cols
+                context.update({
+                    "gf_tab": gf_tab,
+                    "gf_trans_cols": cols,
+                    "gf_trans_filename": up.name,
+                    "gf_trans_step": "config",
+                })
+                return render(request, "core/gestion_forms.html", context)
+
+            if gf_step == "procesar":
+                raw = base64.b64decode(request.session.get("gf_trans_file", ""))
+                fname = request.session.get("gf_trans_filename", "archivo.xlsx")
+                tipo = str(request.POST.get("tipo_transposicion", "ancho_a_largo"))
+                col_pregunta = str(request.POST.get("col_pregunta", ""))
+                col_respuesta = str(request.POST.get("col_respuesta", ""))
+                cols_id = request.POST.getlist("columnas_id")
+                cols_preg = request.POST.getlist("columnas_preguntas")
+                try:
+                    data, out_name = gf_mod.transponer_y_exportar(
+                        raw, fname, tipo, col_pregunta, col_respuesta, cols_id or None, cols_preg or None,
+                    )
+                    resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    resp["Content-Disposition"] = f'attachment; filename="{out_name}"'
+                    return resp
+                except Exception as exc:
+                    messages.error(request, f"Error en transposición: {exc}")
+
+        # ---- Alpha de Cronbach: paso 1 = subir, paso 2 = seleccionar cols, paso 3 = calcular/descargar ----
+        if gf_tab == "alpha" and request.method == "POST":
+            if gf_step == "subir" and request.FILES.getlist("gf_files"):
+                archivos = request.FILES.getlist("gf_files")
+                files_b64 = []
+                all_cols: list[list[str]] = []
+                fnames = []
+                for up in archivos[:2]:
+                    raw = up.read()
+                    files_b64.append(base64.b64encode(raw).decode())
+                    all_cols.append(gf_mod.obtener_columnas_excel(raw))
+                    fnames.append(up.name)
+                request.session["gf_alpha_files"] = files_b64
+                request.session["gf_alpha_fnames"] = fnames
+                request.session["gf_alpha_cols"] = all_cols
+                # Columnas comunes
+                if len(all_cols) == 2:
+                    comunes = sorted(set(all_cols[0]) & set(all_cols[1]))
+                else:
+                    comunes = all_cols[0] if all_cols else []
+                context.update({
+                    "gf_tab": gf_tab,
+                    "gf_alpha_step": "config",
+                    "gf_alpha_fnames": fnames,
+                    "gf_alpha_cols": all_cols,
+                    "gf_alpha_comunes": comunes,
+                })
+                return render(request, "core/gestion_forms.html", context)
+
+            if gf_step == "calcular":
+                files_b64 = request.session.get("gf_alpha_files", [])
+                cols_sel = request.POST.getlist("columnas_analizar")
+                files_bytes = [base64.b64decode(f) for f in files_b64]
+                try:
+                    resultado = gf_mod.calcular_alpha_cronbach_completo(files_bytes, cols_sel)
+                    request.session["gf_alpha_cols_sel"] = cols_sel
+                    context.update({
+                        "gf_tab": gf_tab,
+                        "gf_alpha_step": "resultado",
+                        "gf_alpha_resultado": resultado,
+                        "gf_alpha_cols_sel": cols_sel,
+                    })
+                    return render(request, "core/gestion_forms.html", context)
+                except Exception as exc:
+                    messages.error(request, f"Error en Alpha: {exc}")
+
+            if gf_step == "exportar_alpha":
+                files_b64 = request.session.get("gf_alpha_files", [])
+                cols_sel = request.session.get("gf_alpha_cols_sel", [])
+                metodo = str(request.POST.get("metodo_alpha", "listwise"))
+                files_bytes = [base64.b64decode(f) for f in files_b64]
+                try:
+                    data = gf_mod.exportar_alpha_excel(files_bytes, cols_sel, metodo)
+                    resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    resp["Content-Disposition"] = 'attachment; filename="reporte_alpha_detallado.xlsx"'
+                    return resp
+                except Exception as exc:
+                    messages.error(request, f"Error al exportar Alpha: {exc}")
+
+        # ---- Comparativo CE vs CS: paso 1 = subir, paso 2 = emparejar, paso 3 = analizar ----
+        if gf_tab == "comparativo" and request.method == "POST":
+            if gf_step == "subir" and request.FILES.get("gf_file_ce") and request.FILES.get("gf_file_cs"):
+                up_ce = request.FILES["gf_file_ce"]
+                up_cs = request.FILES["gf_file_cs"]
+                raw_ce = up_ce.read()
+                raw_cs = up_cs.read()
+                cols_ce = gf_mod.obtener_columnas_excel(raw_ce)
+                cols_cs = gf_mod.obtener_columnas_excel(raw_cs)
+                emps = gf_mod.emparejar_preguntas_auto(cols_ce, cols_cs)
+                request.session["gf_comp_ce"] = base64.b64encode(raw_ce).decode()
+                request.session["gf_comp_cs"] = base64.b64encode(raw_cs).decode()
+                request.session["gf_comp_cols_ce"] = cols_ce
+                request.session["gf_comp_cols_cs"] = cols_cs
+                request.session["gf_comp_emps"] = emps
+                context.update({
+                    "gf_tab": gf_tab,
+                    "gf_comp_step": "emparejar",
+                    "gf_comp_emps": emps,
+                    "gf_comp_cols_ce": cols_ce,
+                    "gf_comp_cols_cs": cols_cs,
+                })
+                return render(request, "core/gestion_forms.html", context)
+
+            if gf_step == "analizar":
+                raw_ce = base64.b64decode(request.session.get("gf_comp_ce", ""))
+                raw_cs = base64.b64decode(request.session.get("gf_comp_cs", ""))
+                # Reconstruir emparejamientos desde el form
+                emps_count = int(request.POST.get("emps_count", "0"))
+                emps = []
+                for i in range(emps_count):
+                    ce = request.POST.get(f"emp_entrada_{i}", "")
+                    cs = request.POST.get(f"emp_salida_{i}", "")
+                    if ce and cs:
+                        emps.append({"entrada": ce, "salida": cs, "similitud": 1.0})
+                try:
+                    resultados, excel_data = gf_mod.realizar_comparacion(raw_ce, raw_cs, emps)
+                    request.session["gf_comp_excel"] = base64.b64encode(excel_data).decode()
+                    context.update({
+                        "gf_tab": gf_tab,
+                        "gf_comp_step": "resultado",
+                        "gf_comp_resultados": resultados,
+                    })
+                    return render(request, "core/gestion_forms.html", context)
+                except Exception as exc:
+                    messages.error(request, f"Error en comparación: {exc}")
+
+            if gf_step == "descargar_comp":
+                excel_b64 = request.session.get("gf_comp_excel", "")
+                if excel_b64:
+                    data = base64.b64decode(excel_b64)
+                    resp = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    resp["Content-Disposition"] = 'attachment; filename="reporte_comparativo_ce_vs_cs.xlsx"'
+                    return resp
+
+        context.update({"gf_tab": gf_tab})
+        return render(request, "core/gestion_forms.html", context)
 
     # Renderiza vista de submenu con adaptacion correspondiente.
     return render(request, "core/submenu_detail.html", context)
