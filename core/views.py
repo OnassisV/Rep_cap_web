@@ -1468,7 +1468,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             auth_ok = False
             if admin_user_input and admin_pass_input:
                 from django.contrib.auth import authenticate as _auth
-                auth_user = _auth(request, username=admin_user_input, password=admin_pass_input)
+                auth_user = _auth(username=admin_user_input, password=admin_pass_input)
                 if auth_user is not None:
                     from django.contrib.auth.models import User as AuthUser
                     if auth_user.is_superuser or auth_user.is_staff:
