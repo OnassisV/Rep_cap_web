@@ -190,6 +190,13 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "adapter": "estandares_lab",
                 "legacy_module": "core/estandares_calidad.py",
             },
+            {
+                "slug": "gestion-forms-lab",
+                "titulo": "Gestión de Forms",
+                "descripcion": "Administración y seguimiento de formularios.",
+                "adapter": "gestion_forms_lab",
+                "legacy_module": None,
+            },
         ],
     },
     {
@@ -1268,7 +1275,7 @@ def section_detail_view(request, section_slug: str):
         raise Http404("Seccion no encontrada.")
 
     section_submenus = section.get("submenus", [])
-    if section_slug in ("reporte-indicadores", "laboratorio-datos") and len(section_submenus) == 1:
+    if section_slug in ("reporte-indicadores",) and len(section_submenus) == 1:
         return redirect("core:submenu_detail", section_slug, str(section_submenus[0].get("slug", "dashboard-kpi")))
 
     # Construye contexto de identidad.
