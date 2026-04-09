@@ -575,24 +575,27 @@ def generar_reporte_analisis(anio: int | None = None) -> bytes | None:
     try:
         conn = get_connection()
         try:
-            df_resp = pd.read_sql(
-                """
-                SELECT ec.codigo, ec.pregunta, ec.respuesta, ec.fecha_guardado,
-                       of2.denominacion_proceso_formativo, of2.especialista_cargo,
-                       of2.capacitacion_presencialidad
-                FROM estandares_calidad ec
-                LEFT JOIN oferta_formativa_difoca of2 ON ec.codigo = of2.codigo
-                WHERE of2.anio = %s AND of2.condicion = 'Cerrado'
-                ORDER BY ec.codigo, ec.pregunta
-                """,
-                conn,
-                params=(anio_filtro,),
-            )
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT ec.codigo, ec.pregunta, ec.respuesta, ec.fecha_guardado,
+                           of2.denominacion_proceso_formativo, of2.especialista_cargo,
+                           of2.capacitacion_presencialidad
+                    FROM estandares_calidad ec
+                    LEFT JOIN oferta_formativa_difoca of2 ON ec.codigo = of2.codigo
+                    WHERE of2.anio = %s AND of2.condicion = 'Cerrado'
+                    ORDER BY ec.codigo, ec.pregunta
+                    """,
+                    (anio_filtro,),
+                )
+                rows = cur.fetchall()
         finally:
             conn.close()
 
-        if df_resp.empty:
+        if not rows:
             return None
+
+        df_resp = pd.DataFrame(rows)
 
         buf = BytesIO()
         wb = openpyxl.Workbook()
