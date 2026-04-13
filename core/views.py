@@ -15,6 +15,8 @@ from django.contrib import messages
 from django.views.decorators.http import require_POST
 # Atajos para renderizar y redirigir.
 from django.shortcuts import redirect, render
+# Resolucion dinamica de URLs para evitar rutas hardcodeadas.
+from django.urls import reverse
 # Utilidad para validar redireccion segura.
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -245,6 +247,8 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
 
 # Indice rapido para resolver una seccion por slug.
 MENU_POR_SLUG = {seccion["slug"]: seccion for seccion in MENU_GEOMETRICO}
+
+
 def _buscar_submenu(section_slug: str, submenu_slug: str) -> tuple[dict[str, Any], dict[str, Any]]:
     """Retorna seccion + submenu solicitado o lanza 404 logico en el caller."""
     # Busca seccion principal por slug.
@@ -300,7 +304,7 @@ def _format_datetime_local(value: Any) -> str:
 def _build_submenu_url(section_slug: str, submenu_slug: str, params: dict[str, Any]) -> str:
     """Construye URL con query params para redireccion consistente."""
     query = urlencode({k: v for k, v in params.items() if str(v or "").strip()})
-    base = f"/app/seccion/{section_slug}/submenu/{submenu_slug}/"
+    base = reverse("core:submenu_detail", args=[section_slug, submenu_slug])
     return f"{base}?{query}" if query else base
 
 

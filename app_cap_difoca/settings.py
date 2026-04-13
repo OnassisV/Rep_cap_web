@@ -113,6 +113,8 @@ def build_django_database_config(fallback_mysql: dict[str, str | int] | None = N
             "PASSWORD": password,
             "HOST": host,
             "PORT": port,
+            # Reutiliza la conexion TCP durante 60 s para reducir overhead de autenticacion.
+            "CONN_MAX_AGE": 60,
             "OPTIONS": {
                 "charset": "utf8mb4",
             },
@@ -222,7 +224,15 @@ USE_TZ = True  # Usa fechas con zona horaria.
 STATIC_URL = "/static/"  # Prefijo URL para recursos estaticos.
 STATICFILES_DIRS = [BASE_DIR / "static"]  # Carpetas estaticas en desarrollo.
 STATIC_ROOT = BASE_DIR / "staticfiles"  # Carpeta destino para collectstatic.
-STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"  # Compresion ligera de estaticos.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # Comprime y agrega hash al nombre del archivo para cache-busting en produccion.
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Ajustes basicos de proxy/HTTPS para despliegues en Railway u otro PaaS.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -194,7 +194,7 @@ def build_sync_status_context() -> dict[str, Any]:
             {
                 "tone": "success" if last_status != "error" else "danger",
                 "label": "Tiempo restante",
-                "detail": f"{countdown_label if (countdown_label := countdown_detail) else 'Ahora'} | {countdown_note}",
+                "detail": f"{countdown_detail or 'Ahora'} | {countdown_note}",
             },
         ],
     }
