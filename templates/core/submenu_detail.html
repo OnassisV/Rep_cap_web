@@ -2561,6 +2561,114 @@
                 {% endif %}
             {% endif %}
 
+            <!-- Módulo Certificación: generación de PDFs por lote. -->
+            {% if adapter_kind == "emitir_certificados" %}
+                <h3 class="subsection-title">Emitir certificados por lote</h3>
+                <p class="module-panel__note">
+                    Completa los datos del curso, adjunta el Excel de participantes
+                    (Hoja1: DNI, NOMBRES, APELLIDOS, NOTAS, NOMBRE DE PUESTO, NOMBRE IGED)
+                    y las imágenes de firma. Recibirás un ZIP con todos los certificados PDF.
+                </p>
+
+                <form method="post" enctype="multipart/form-data" class="cert-form" id="cert-form" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="generar_certificados">
+
+                    <div class="form-grid-2">
+                        <div class="field-group">
+                            <label class="field-label" for="cert-curso-nombre">Nombre del curso <span class="required">*</span></label>
+                            <input type="text" id="cert-curso-nombre" name="curso_nombre" class="field-input"
+                                   value="{{ cert_form_curso_nombre|default:'' }}" placeholder="Ej. Gestión por Competencias" required>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label" for="cert-curso-codigo">Código del curso</label>
+                            <input type="text" id="cert-curso-codigo" name="curso_codigo" class="field-input"
+                                   value="{{ cert_form_curso_codigo|default:'' }}" placeholder="Ej. CAP-2026-001">
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label" for="cert-curso-descripcion">Descripción del curso</label>
+                        <textarea id="cert-curso-descripcion" name="curso_descripcion" class="field-input" rows="3"
+                                  placeholder="Breve descripción para el anverso del certificado">{{ cert_form_curso_descripcion|default:'' }}</textarea>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label" for="cert-excel">Excel de participantes (.xlsx) <span class="required">*</span></label>
+                        <input type="file" id="cert-excel" name="excel_participantes" class="field-input field-input--file"
+                               accept=".xlsx" required>
+                        <span class="field-hint">Hoja1: columnas DNI, NOMBRES, APELLIDOS, NOTAS, NOMBRE DE PUESTO, NOMBRE IGED. Hoja2: tabla de actividades.</span>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Número de firmas <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="n_firmas" value="1"
+                                       {% if cert_form_n_firmas != "2" %}checked{% endif %}
+                                       onchange="toggleFirma2(this.value)">
+                                1 firma
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="n_firmas" value="2"
+                                       {% if cert_form_n_firmas == "2" %}checked{% endif %}
+                                       onchange="toggleFirma2(this.value)">
+                                2 firmas
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="field-group">
+                            <label class="field-label" for="cert-firma1">Firma 1 (PNG/JPG) <span class="required">*</span></label>
+                            <input type="file" id="cert-firma1" name="firma1" class="field-input field-input--file"
+                                   accept=".png,.jpg,.jpeg" required>
+                        </div>
+                        <div class="field-group" id="firma2-group" style="{% if cert_form_n_firmas != '2' %}display:none{% endif %}">
+                            <label class="field-label" for="cert-firma2">Firma 2 (PNG/JPG)</label>
+                            <input type="file" id="cert-firma2" name="firma2" class="field-input field-input--file"
+                                   accept=".png,.jpg,.jpeg">
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label" for="cert-tabla-width">Ancho de la tabla de actividades</label>
+                        <select id="cert-tabla-width" name="tabla_width_pct" class="field-input">
+                            <option value="0.75">75 % del ancho</option>
+                            <option value="0.85" selected>85 % del ancho</option>
+                            <option value="0.95">95 % del ancho</option>
+                            <option value="1.0">100 % del ancho</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary btn--icon" id="cert-submit-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Generar certificados ZIP
+                        </button>
+                    </div>
+                </form>
+
+                <script>
+                    function toggleFirma2(val) {
+                        var g = document.getElementById("firma2-group");
+                        if (g) g.style.display = (val === "2") ? "" : "none";
+                    }
+                    (function () {
+                        var form = document.getElementById("cert-form");
+                        var btn  = document.getElementById("cert-submit-btn");
+                        if (!form || !btn) return;
+                        form.addEventListener("submit", function () {
+                            btn.disabled = true;
+                            btn.textContent = "Generando… espera un momento";
+                        });
+                    })();
+                </script>
+            {% endif %}
+
             <!-- Vista de placeholder para submenus aun no implementados en detalle. -->
             {% if adapter_kind == "placeholder" %}
                 <p class="module-panel__note">
