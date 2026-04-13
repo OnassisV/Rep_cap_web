@@ -876,15 +876,27 @@
                                 <div class="seguimiento-cards">
                                     {% for card in seguimiento_cards %}
                                         {% with condicion_txt=card.condicion|default:""|lower %}
+                                            {% if 'cerrado' in condicion_txt or 'finalizada' in condicion_txt or 'cancelada' in condicion_txt %}
                                             <a
                                                 href="{{ card.url }}"
-                                                class="cap-card{% if card.is_active %} is-active{% endif %}{% if 'cerrado' in condicion_txt %} is-cerrado{% else %} is-abierto{% endif %}"
+                                                class="cap-card{% if card.is_active %} is-active{% endif %} is-cerrado"
                                             >
                                                 <span class="cap-card__code">{{ card.codigo }}</span>
                                                 <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
-                                                <span class="cap-card__status{% if 'cerrado' in condicion_txt %} cap-card__status--cerrado{% else %} cap-card__status--abierto{% endif %}">
-                                                    {% if 'cerrado' in condicion_txt %}Cerrado{% else %}Abierto{% endif %}
+                                                <span class="cap-card__status cap-card__status--cerrado">
+                                                    {% if 'cancelada' in condicion_txt %}Cancelada{% else %}Cerrado{% endif %}
                                                 </span>
+                                            {% else %}
+                                            <a
+                                                href="{{ card.url }}"
+                                                class="cap-card{% if card.is_active %} is-active{% endif %} is-abierto"
+                                            >
+                                                <span class="cap-card__code">{{ card.codigo }}</span>
+                                                <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
+                                                <span class="cap-card__status cap-card__status--abierto">
+                                                    Abierto
+                                                </span>
+                                            {% endif %}
                                                 <span class="cap-card__meta">ID {{ card.id_simple }} | Actividades: {{ card.total_actividades }}</span>
                                             </a>
                                         {% endwith %}

@@ -133,11 +133,11 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "legacy_module": "core/legacy_adapters.py + templates/core/submenu_detail.html",
             },
             {
-                "slug": "oferta-formativa",
-                "titulo": "Oferta formativa",
-                "descripcion": "Listado operativo de procesos disponibles.",
-                "adapter": "oferta",
-                "legacy_module": "core/legacy_adapters.py + templates/core/submenu_detail.html",
+                "slug": "certificacion",
+                "titulo": "Certificación",
+                "descripcion": "Emite certificados PDF por lote desde un Excel de participantes.",
+                "adapter": "emitir_certificados",
+                "legacy_module": "core/certificados_adapter.py",
             },
             {
                 "slug": "estandares-calidad",
@@ -1963,45 +1963,53 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             }
 
             # Obtiene lista de capacitaciones del usuario (o todas si admin).
-            qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
-            if not is_admin:
-                qs = qs.filter(creado_por=username)
-
-            # ── Filtro de año ──
-            editar_anios = sorted(
-                set(qs.values_list("cap_anio", flat=True)),
-                reverse=True,
-            )
-            editar_anios = [a for a in editar_anios if a]
-            anio_param = str(request.GET.get("anio", "")).strip()
             try:
-                _ed_anio = int(anio_param)
-            except (ValueError, TypeError):
-                _ed_anio = None
-            if _ed_anio not in editar_anios:
-                _ed_actual = _date_type.today().year
-                _ed_anio = _ed_actual if _ed_actual in editar_anios else (editar_anios[0] if editar_anios else None)
-            context["anios_disponibles"] = editar_anios
-            context["anio_seleccionado"] = _ed_anio
+                qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
+                if not is_admin:
+                    qs = qs.filter(creado_por=username)
 
-            qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
-            from django.db.models import Case, When, Value, IntegerField as _IntF
-            _estado_orden = Case(
-                When(cap_estado="Borrador", then=Value(1)),
-                When(cap_estado="En proceso", then=Value(2)),
-                When(cap_estado="Finalizada", then=Value(3)),
-                When(cap_estado="Cancelada", then=Value(4)),
-                default=Value(5),
-                output_field=_IntF(),
-            )
-            editar_lista = list(
-                qs_filtrado.annotate(_est_ord=_estado_orden)
-                .order_by("_est_ord", "cap_codigo", "cap_id_curso")
-                .values(
-                    "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
-                    "cap_estado", "paso_actual", "creado_nombre", "creado_en",
-                )[:200]
-            )
+                # ── Filtro de año ──
+                editar_anios = sorted(
+                    set(qs.values_list("cap_anio", flat=True)),
+                    reverse=True,
+                )
+                editar_anios = [a for a in editar_anios if a]
+                anio_param = str(request.GET.get("anio", "")).strip()
+                try:
+                    _ed_anio = int(anio_param)
+                except (ValueError, TypeError):
+                    _ed_anio = None
+                if _ed_anio not in editar_anios:
+                    _ed_actual = _date_type.today().year
+                    _ed_anio = _ed_actual if _ed_actual in editar_anios else (editar_anios[0] if editar_anios else None)
+                context["anios_disponibles"] = editar_anios
+                context["anio_seleccionado"] = _ed_anio
+
+                qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
+                from django.db.models import Case, When, Value, IntegerField as _IntF
+                _estado_orden = Case(
+                    When(cap_estado="Borrador", then=Value(1)),
+                    When(cap_estado="En proceso", then=Value(2)),
+                    When(cap_estado="Finalizada", then=Value(3)),
+                    When(cap_estado="Cancelada", then=Value(4)),
+                    default=Value(5),
+                    output_field=_IntF(),
+                )
+                editar_lista = list(
+                    qs_filtrado.annotate(_est_ord=_estado_orden)
+                    .order_by("_est_ord", "cap_codigo", "cap_id_curso")
+                    .values(
+                        "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
+                        "cap_estado", "paso_actual", "creado_nombre", "creado_en",
+                    )[:200]
+                )
+            except Exception as _ed_exc:
+                import logging as _log
+                _log.getLogger("core.views").warning("editar-capacitacion: error al cargar lista: %s", _ed_exc)
+                messages.warning(request, "No se pudo cargar la lista de capacitaciones. Intenta recargar la página.")
+                editar_anios = []
+                editar_lista = []
+                qs = Capacitacion.objects.none()
 
             # Si se recibe ?id=X, carga la capacitacion para edicion.
             cap_id_param = str(request.GET.get("id", "")).strip()
@@ -2031,6 +2039,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             editar_secciones_render = []
             editar_flujo_unificado = []
             if editar_cap:
+                # Inicialización defensiva para evitar UnboundLocalError si ninguna
+                # sección tiene slug "solicitud-inicial".
+                catalogo_iged_ed: dict = {}
                 # Reutiliza misma logica de secciones que en registro.
                 for seccion in REGISTRO_CAPACITACION_SECCIONES:
                     campos_render_ed = []
@@ -2869,6 +2880,84 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         context.update({"gf_tab": gf_tab})
         return render(request, "core/gestion_forms.html", context)
+
+    # ---- Modulo Certificacion: genera PDFs por lote desde Excel ----
+    if section_slug == "certificacion" and submenu_slug == "emitir-certificados":
+        if request.method == "POST":
+            action = str(request.POST.get("action", "")).strip()
+            if action == "generar_certificados":
+                from core.certificados_adapter import generar_certificados_zip, validar_excel_certificados
+
+                excel_file = request.FILES.get("excel_participantes")
+                firma1_file = request.FILES.get("firma1")
+                firma2_file = request.FILES.get("firma2")
+
+                curso_nombre = str(request.POST.get("curso_nombre", "")).strip()
+                curso_descripcion = str(request.POST.get("curso_descripcion", "")).strip()
+                curso_codigo = str(request.POST.get("curso_codigo", "")).strip()
+                n_firmas = int(request.POST.get("n_firmas", "1"))
+                tabla_width_pct = float(request.POST.get("tabla_width_pct", "0.85"))
+
+                # Validaciones básicas de campos obligatorios.
+                errores_form: list[str] = []
+                if not curso_nombre:
+                    errores_form.append("El nombre del curso es obligatorio.")
+                if not excel_file:
+                    errores_form.append("Debes adjuntar el Excel de participantes (.xlsx).")
+                if not firma1_file:
+                    errores_form.append("Debes adjuntar al menos la Firma 1.")
+                if n_firmas == 2 and not firma2_file:
+                    errores_form.append("Seleccionaste 2 firmas pero no adjuntaste la Firma 2.")
+
+                if errores_form:
+                    for msg in errores_form:
+                        messages.error(request, msg)
+                else:
+                    excel_bytes = excel_file.read()
+                    ok, err_msg = validar_excel_certificados(excel_bytes)
+                    if not ok:
+                        messages.error(request, f"Error en el Excel: {err_msg}")
+                    else:
+                        firma_bytes_list: list[bytes] = [firma1_file.read()]
+                        if n_firmas == 2 and firma2_file:
+                            firma_bytes_list.append(firma2_file.read())
+
+                        params = {
+                            "curso_nombre": curso_nombre,
+                            "curso_descripcion": curso_descripcion,
+                            "curso_codigo": curso_codigo,
+                            "n_firmas": n_firmas,
+                            "tabla_width_pct": tabla_width_pct,
+                        }
+
+                        try:
+                            zip_buffer, n_certs, errores_gen = generar_certificados_zip(
+                                params, excel_bytes, firma_bytes_list
+                            )
+                            if errores_gen:
+                                for e in errores_gen[:5]:
+                                    messages.warning(request, e)
+                            if n_certs > 0:
+                                zip_buffer.seek(0)
+                                nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
+                                resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
+                                resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
+                                return resp
+                            else:
+                                messages.error(request, "No se generó ningún certificado. Revisa el Excel.")
+                        except Exception as exc:
+                            import logging as _log
+                            _log.getLogger("core.views").exception("Error generando certificados ZIP")
+                            messages.error(request, f"Error al generar certificados: {exc}")
+
+        # GET o POST con errores: renderiza el formulario.
+        context.update({
+            "cert_form_curso_nombre": str(request.POST.get("curso_nombre", "")),
+            "cert_form_curso_descripcion": str(request.POST.get("curso_descripcion", "")),
+            "cert_form_curso_codigo": str(request.POST.get("curso_codigo", "")),
+            "cert_form_n_firmas": str(request.POST.get("n_firmas", "1")),
+        })
+        return render(request, "core/submenu_detail.html", context)
 
     # Renderiza vista de submenu con adaptacion correspondiente.
     return render(request, "core/submenu_detail.html", context)
