@@ -229,8 +229,8 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        # Comprime y agrega hash al nombre del archivo para cache-busting en produccion.
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Compresion ligera sin manifest para evitar errores con archivos no registrados.
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 

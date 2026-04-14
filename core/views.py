@@ -2959,14 +2959,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         return render(request, "core/submenu_detail.html", context)
 
     # Renderiza vista de submenu con adaptacion correspondiente.
-    try:
-        return render(request, "core/submenu_detail.html", context)
-    except Exception as _render_exc:
-        import logging as _rlog
-        _rlog.getLogger("core.views").exception(
-            "Error renderizando submenu %s/%s: %s", section_slug, submenu_slug, _render_exc,
-        )
-        raise
+    return render(request, "core/submenu_detail.html", context)
 
 
 @login_required
