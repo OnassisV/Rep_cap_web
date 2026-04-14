@@ -3083,6 +3083,10 @@ def _evaluar_formula_en_fila(formula: str, fila: dict[str, Any]) -> float:
     if not formula:
         return 0.0
 
+    # Normaliza comas decimales a puntos (ej: 0,3 → 0.3).
+    # Solo reemplaza comas entre dígitos para no afectar otros usos.
+    formula = re.sub(r"(\d),(\d)", r"\1.\2", formula)
+
     # Mapa normalizado de columnas disponibles en la fila.
     indice_columnas = {
         _normalizar_clave_formula(col): col
