@@ -2199,8 +2199,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if row_id:
                         actividad_fuera_info = obtener_excel_actividad_fuera_info(codigo_sel, row_id)
                         if actividad_fuera_info.get("exists"):
-                            with open(str(actividad_fuera_info.get("path", "")), "rb") as file_fuera:
-                                content = file_fuera.read()
+                            content = actividad_fuera_info.get("contenido", b"")
                             file_name = str(actividad_fuera_info.get("file_name", "")).strip() or "actividad_fuera.xlsx"
                             response = HttpResponse(
                                 content,

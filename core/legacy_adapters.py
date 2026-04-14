@@ -884,13 +884,18 @@ def _normalizar_fragmento_archivo(valor: Any) -> str:
 
 def _ruta_excel_actividad_fuera_desde_fila(codigo: str, fila: dict[str, Any]) -> Path:
     """Construye la ruta del Excel asociado a una actividad de origen Fuera."""
+    return _actividades_fuera_dir(crear=True) / _nombre_archivo_actividad_fuera(codigo, fila)
+
+
+def _nombre_archivo_actividad_fuera(codigo: str, fila: dict[str, Any]) -> str:
+    """Genera nombre de archivo unico para una actividad fuera."""
     id_simple = extraer_id_capacitacion(codigo)
+    id_estructura = str(fila.get("id_estructura", "") or "").strip()
     codigo_actividad = str(fila.get("codigo_actividad", "") or "").strip()
     actividad = str(fila.get("actividad", "") or "").strip()
     base = codigo_actividad if codigo_actividad else actividad
     fragmento = _normalizar_fragmento_archivo(base)
-    nombre_archivo = f"excel_{id_simple}_{fragmento}.xlsx"
-    return _actividades_fuera_dir(crear=True) / nombre_archivo
+    return f"excel_{id_simple}_{id_estructura}_{fragmento}.xlsx"
 
 
 def _obtener_actividad_estructura_por_id(id_estructura: int) -> dict[str, Any]:
@@ -933,6 +938,27 @@ def obtener_actividades_plantilla(codigo: str, estructura: list[dict[str, Any]])
     if not codigo:
         return {"plataforma": [], "fuera": []}
 
+    # Carga ids de archivos existentes en BD de una sola vez.
+    ids_fuera = [
+        int(row.get("id_estructura") or 0)
+        for row in estructura
+        if _normalizar_texto(row.get("origen", "")) == "fuera"
+    ]
+    archivos_bd: dict[int, int] = {}
+    if ids_fuera:
+        try:
+            with get_connection() as connection:
+                with connection.cursor() as cursor:
+                    placeholders = ",".join(["%s"] * len(ids_fuera))
+                    cursor.execute(
+                        f"SELECT id_estructura, tamanio FROM cap_archivos_actividad_fuera WHERE id_estructura IN ({placeholders})",
+                        tuple(ids_fuera),
+                    )
+                    for r in cursor.fetchall():
+                        archivos_bd[int(r["id_estructura"])] = int(r.get("tamanio") or 0)
+        except Exception:
+            pass
+
     plataforma: list[dict[str, Any]] = []
     fuera: list[dict[str, Any]] = []
 
@@ -954,20 +980,21 @@ def obtener_actividades_plantilla(codigo: str, estructura: list[dict[str, Any]])
         if origen != "fuera":
             continue
 
-        ruta = _ruta_excel_actividad_fuera_desde_fila(codigo, row)
-        existe = ruta.exists()
+        id_est = int(row.get("id_estructura") or 0)
+        existe = id_est in archivos_bd
+        nombre = _nombre_archivo_actividad_fuera(codigo, row)
         fuera.append(
             {
-                "id_estructura": int(row.get("id_estructura") or 0),
+                "id_estructura": id_est,
                 "actividad": str(row.get("actividad", "") or "").strip(),
                 "codigo_actividad": str(row.get("codigo_actividad", "") or "").strip(),
                 "cumplimiento_nota": str(row.get("cumplimiento_nota", "") or "").strip(),
                 "tipo": str(row.get("tipo", "") or "").strip(),
                 "grupo": str(row.get("grupo", "") or "").strip(),
-                "archivo_path": str(ruta),
-                "archivo_nombre": ruta.name,
+                "archivo_path": "",
+                "archivo_nombre": nombre,
                 "archivo_existe": existe,
-                "archivo_size": int(ruta.stat().st_size) if existe else 0,
+                "archivo_size": archivos_bd.get(id_est, 0),
             }
         )
 
@@ -975,7 +1002,7 @@ def obtener_actividades_plantilla(codigo: str, estructura: list[dict[str, Any]])
 
 
 def guardar_excel_actividad_fuera(codigo: str, id_estructura: int, contenido_bytes: bytes) -> bool:
-    """Guarda un Excel cargado para una actividad de origen Fuera."""
+    """Guarda un Excel cargado para una actividad de origen Fuera en BD."""
     codigo = str(codigo or "").strip()
     if not codigo or not contenido_bytes:
         return False
@@ -994,16 +1021,31 @@ def guardar_excel_actividad_fuera(codigo: str, id_estructura: int, contenido_byt
     if _normalizar_texto(fila.get("origen", "")) != "fuera":
         return False
 
-    ruta = _ruta_excel_actividad_fuera_desde_fila(codigo, fila)
+    nombre = _nombre_archivo_actividad_fuera(codigo, fila)
     try:
-        ruta.write_bytes(contenido_bytes)
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO cap_archivos_actividad_fuera
+                        (id_estructura, nombre_archivo, contenido, tamanio, fecha_carga)
+                    VALUES (%s, %s, %s, %s, NOW())
+                    ON DUPLICATE KEY UPDATE
+                        nombre_archivo = VALUES(nombre_archivo),
+                        contenido = VALUES(contenido),
+                        tamanio = VALUES(tamanio),
+                        fecha_carga = NOW()
+                    """,
+                    (int(id_estructura), nombre, contenido_bytes, len(contenido_bytes)),
+                )
+            connection.commit()
         return True
     except Exception:
         return False
 
 
 def eliminar_excel_actividad_fuera(codigo: str, id_estructura: int) -> bool:
-    """Elimina el Excel asociado a una actividad de origen Fuera."""
+    """Elimina el Excel asociado a una actividad de origen Fuera desde BD."""
     codigo = str(codigo or "").strip()
     if not codigo:
         return False
@@ -1017,37 +1059,53 @@ def eliminar_excel_actividad_fuera(codigo: str, id_estructura: int) -> bool:
     if not id_simple or id_fila != id_simple:
         return False
 
-    ruta = _ruta_excel_actividad_fuera_desde_fila(codigo, fila)
     try:
-        if ruta.exists():
-            ruta.unlink()
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM cap_archivos_actividad_fuera WHERE id_estructura = %s",
+                    (int(id_estructura),),
+                )
+            connection.commit()
         return True
     except Exception:
         return False
 
 
 def obtener_excel_actividad_fuera_info(codigo: str, id_estructura: int) -> dict[str, Any]:
-    """Retorna metadata de descarga del Excel de una actividad de origen Fuera."""
+    """Retorna metadata de descarga del Excel de una actividad de origen Fuera desde BD."""
+    _empty = {"exists": False, "file_name": "", "actividad": "", "contenido": b""}
     codigo = str(codigo or "").strip()
     if not codigo:
-        return {"exists": False, "path": "", "file_name": "", "actividad": ""}
+        return _empty
 
     fila = _obtener_actividad_estructura_por_id(id_estructura)
     if not fila:
-        return {"exists": False, "path": "", "file_name": "", "actividad": ""}
+        return _empty
 
     id_simple = extraer_id_capacitacion(codigo)
     id_fila = str(fila.get("id_capacitacion", "") or "").strip()
     if not id_simple or id_fila != id_simple:
-        return {"exists": False, "path": "", "file_name": "", "actividad": ""}
+        return _empty
 
-    ruta = _ruta_excel_actividad_fuera_desde_fila(codigo, fila)
-    return {
-        "exists": ruta.exists(),
-        "path": str(ruta),
-        "file_name": ruta.name,
-        "actividad": str(fila.get("actividad", "") or "").strip(),
-    }
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT nombre_archivo, contenido FROM cap_archivos_actividad_fuera WHERE id_estructura = %s LIMIT 1",
+                    (int(id_estructura),),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return _empty
+                return {
+                    "exists": True,
+                    "file_name": row.get("nombre_archivo", "actividad_fuera.xlsx"),
+                    "actividad": str(fila.get("actividad", "") or "").strip(),
+                    "contenido": row.get("contenido", b""),
+                }
+    except Exception:
+        return _empty
 
 
 def _ruta_columnas_nominal_config() -> Path:
@@ -2336,6 +2394,58 @@ def _leer_excel_fuera_dni_nota(path_excel: str) -> dict[str, Any]:
         return {}
 
 
+def _leer_excel_fuera_desde_bytes(contenido: bytes) -> dict[str, Any]:
+    """Lee mapa DNI->NOTA desde bytes de un Excel en memoria."""
+    if not contenido:
+        return {}
+    try:
+        from io import BytesIO
+        from openpyxl import load_workbook
+    except Exception:
+        return {}
+    try:
+        wb = load_workbook(BytesIO(contenido), read_only=True, data_only=True)
+        ws = wb.active
+        headers = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+        if not headers:
+            return {}
+
+        idx_dni = None
+        idx_nota = None
+        for i, header in enumerate(headers):
+            norm = _normalizar_header_excel(header)
+            if norm == "dni" and idx_dni is None:
+                idx_dni = i
+            if norm in {"nota", "puntaje", "calificacion"} and idx_nota is None:
+                idx_nota = i
+
+        if idx_dni is None:
+            return {}
+
+        if idx_nota is None and len(headers) >= 2:
+            idx_nota = 1 if idx_dni != 1 else 0
+
+        resultado: dict[str, Any] = {}
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row is None or idx_dni >= len(row):
+                continue
+            dni = _normalizar_dni(row[idx_dni])
+            if not dni:
+                continue
+
+            nota = None
+            if idx_nota is not None and idx_nota < len(row):
+                nota = row[idx_nota]
+                if isinstance(nota, str):
+                    nota = nota.strip()
+                    if nota == "":
+                        nota = None
+            resultado[dni] = nota
+        return resultado
+    except Exception:
+        return {}
+
+
 def _obtener_dnis_matriculados_por_codigo(codigo: str) -> list[str]:
     """Retorna listado de DNI con estado matriculado (estado=2) para un codigo."""
     codigo = str(codigo or "").strip()
@@ -2791,9 +2901,23 @@ def _obtener_mapa_actividad_plataforma(codigo: str, actividad: dict[str, Any]) -
 
 
 def _obtener_mapa_actividad_fuera(codigo: str, actividad: dict[str, Any]) -> dict[str, Any]:
-    """Lee el Excel de actividad fuera y retorna mapa DNI->valor."""
-    ruta = _ruta_excel_actividad_fuera_desde_fila(codigo, actividad)
-    return _leer_excel_fuera_dni_nota(str(ruta))
+    """Lee el Excel de actividad fuera desde BD y retorna mapa DNI->valor."""
+    id_estructura = int(actividad.get("id_estructura") or 0)
+    if not id_estructura:
+        return {}
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT contenido FROM cap_archivos_actividad_fuera WHERE id_estructura = %s LIMIT 1",
+                    (id_estructura,),
+                )
+                row = cursor.fetchone()
+                if not row or not row.get("contenido"):
+                    return {}
+                return _leer_excel_fuera_desde_bytes(row["contenido"])
+    except Exception:
+        return {}
 
 
 def _aplicar_estado_matricula_y_retiros(
