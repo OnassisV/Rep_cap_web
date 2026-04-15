@@ -3215,11 +3215,41 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         # ── GET: Procesamiento sincrónicas ──
         if submenu_slug == "procesamiento-sincronicas":
-            sync_caps = obtener_capacitaciones_sincronicas(
-                role_effective=str(user_context.get("role_effective", "")),
-                display_name=str(user_context.get("display_name", "")),
-                username=str(request.user.username),
-            )
+            from core.models import Capacitacion
+
+            _proc_username = str(request.user.username)
+            _proc_role = str(user_context.get("role_effective", ""))
+            _proc_is_admin = _normalizar_texto(_proc_role) in {
+                "administrador", "admin", "superusuario",
+            }
+            _proc_display = str(user_context.get("display_name", ""))
+
+            _proc_qs = Capacitacion.objects.filter(
+                cap_tipo="Capacitación sincrónica",
+            ).order_by("-cap_anio", "cap_codigo")
+
+            if not _proc_is_admin:
+                _proc_user_caps = obtener_capacitaciones_sincronicas(
+                    role_effective=_proc_role,
+                    display_name=_proc_display,
+                    username=_proc_username,
+                )
+                _proc_codigos = [str(c.get("codigo", "")).strip() for c in _proc_user_caps]
+                _proc_qs = _proc_qs.filter(cap_codigo__in=_proc_codigos)
+
+            # Convertir queryset a lista de dicts compatibles con aplicar_filtro_anio_sync
+            sync_caps = [
+                {
+                    "codigo": str(c.cap_codigo or "").strip(),
+                    "anio": str(c.cap_anio or "").strip(),
+                    "condicion": str(c.cap_estado or "").strip(),
+                    "tipo_proceso_formativo": str(c.cap_tipo or "").strip(),
+                    "denominacion_proceso_formativo": str(c.cap_nombre or "").strip(),
+                    "especialista_cargo": str(c.creado_nombre or "").strip(),
+                }
+                for c in _proc_qs
+            ]
+
             sync_anios, sync_anio_sel, sync_filtradas = aplicar_filtro_anio_sync(sync_caps, anio_param)
             context["anios_disponibles"] = sync_anios
             context["anio_seleccionado"] = sync_anio_sel
