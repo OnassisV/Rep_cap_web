@@ -54,6 +54,7 @@ _IGED_NAME_ALIASES = {
     "ugel paucar de sarasara": "UGEL PAUCAR DEL SARA SARA",
     "ugel paucar del sarasara": "UGEL PAUCAR DEL SARA SARA",
     "ugel paucar de sara sara": "UGEL PAUCAR DEL SARA SARA",
+    "ugel ramon castilla caballocoha": "UGEL RAMON CASTILLA CABALLOCOCHA",
 }
 
 
@@ -159,16 +160,16 @@ def _normalize_iged_name(series: pd.Series) -> pd.Series:
         .str.strip()
         .str.replace(r"\s+", " ", regex=True)
     )
-    normalized_key = (
+    # Normalizar a MAYUSCULAS ASCII para evitar duplicados por case/acentos
+    result = (
         cleaned
-        .str.lower()
+        .str.upper()
         .str.normalize("NFKD")
         .str.encode("ascii", errors="ignore")
         .str.decode("ascii")
         .str.replace(r"\s+", " ", regex=True)
     )
-
-    result = cleaned.copy()
+    normalized_key = result.str.lower()
     for alias, canonical in _IGED_NAME_ALIASES.items():
         result.loc[normalized_key == alias] = canonical
     return result
