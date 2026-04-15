@@ -419,8 +419,10 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     Retorna dict con: ok, error, df_tutor, df_usuarios, df_entrada, df_salida,
     output_path, output_file, stats.
     """
+    logger.info("procesar_sincronicas: inicio para codigo=%s", codigo)
     storage = _storage_dir(codigo)
     entradas, salidas = _listar_archivos(storage)
+    logger.info("procesar_sincronicas: entradas=%d, salidas=%d", len(entradas), len(salidas))
 
     if not entradas:
         return {"ok": False, "error": "No hay archivos de entrada."}
@@ -432,6 +434,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     manifest = _cargar_manifest(storage)
     run_prev = _obtener_run_completado(manifest, input_hash)
     if run_prev:
+        logger.info("procesar_sincronicas: reutilizando run previo")
         return {
             "ok": True,
             "reutilizado": True,
@@ -441,6 +444,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
         }
 
     # Procesar archivos
+    logger.info("procesar_sincronicas: leyendo archivos Excel...")
     dfs_entrada, dfs_salida = [], []
     for nombre in entradas:
         df = pd.read_excel(storage / nombre)
@@ -451,6 +455,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
 
     df_entrada = pd.concat(dfs_entrada, ignore_index=True)
     df_salida = pd.concat(dfs_salida, ignore_index=True)
+    logger.info("procesar_sincronicas: df_entrada=%d filas, df_salida=%d filas", len(df_entrada), len(df_salida))
 
     # Crear df_usuarios
     dnis_e = set(df_entrada["DNI"].dropna().astype(str)) if "DNI" in df_entrada.columns else set()
@@ -528,6 +533,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
         df_usuarios["nombre_iged"] = df_usuarios["nombre_iged"].replace(["", "NAN"], pd.NA)
 
     # Merge con iged_s3
+    logger.info("procesar_sincronicas: merge con iged_s3...")
     iged_cat = _obtener_catalogo_iged()
     if not iged_cat.empty:
         df_usuarios = df_usuarios.merge(iged_cat, on=["region", "nombre_iged"], how="left")
@@ -633,6 +639,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     df_tutor = df_tutor[existing]
 
     # Generar Excel
+    logger.info("procesar_sincronicas: generando Excel... df_tutor=%d filas", len(df_tutor))
     output_bytes = _generar_excel(df_tutor, df_usuarios, codigo)
     cap_info = _obtener_nombre_capacitacion(codigo)
     anio_cap = cap_info.get("anio") or str(datetime.now().year)
@@ -646,6 +653,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     # Guardar resultado dentro del directorio de la capacitacion.
     output_path = storage / output_file
     output_path.write_bytes(output_bytes)
+    logger.info("procesar_sincronicas: archivo guardado en %s (%d bytes)", output_path, len(output_bytes))
 
     # Actualizar manifest
     stats = {

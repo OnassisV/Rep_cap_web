@@ -2956,7 +2956,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         messages.error(request, "No se pudo eliminar el archivo.")
 
                 elif action == "procesar_sincronica" and post_codigo:
+                    logger.info("POST procesar_sincronica: codigo=%s", post_codigo)
                     resultado = procesar_sincronicas(post_codigo)
+                    logger.info("POST procesar_sincronica: resultado ok=%s", resultado.get("ok"))
                     if resultado.get("ok"):
                         if resultado.get("reutilizado"):
                             messages.info(request, "Los insumos no cambiaron. Se reutilizó el resultado previo.")
@@ -3227,6 +3229,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         # ── GET: Procesamiento sincrónicas ──
         if submenu_slug == "procesamiento-sincronicas":
+          try:
             from core.models import Capacitacion
 
             _proc_username = str(request.user.username)
@@ -3324,6 +3327,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "sync_cards": sync_cards,
                 "sync_resultado": sync_resultado,
             })
+          except Exception as exc:
+            logger.exception("Error en GET procesamiento-sincronicas: %s", exc)
+            messages.error(request, f"Error cargando procesamiento: {exc}")
 
     if section_slug == "reporte-indicadores" and submenu_slug == "dashboard-kpi":
         download_kind = str(request.GET.get("download", "")).strip().lower()
