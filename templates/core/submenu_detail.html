@@ -2727,26 +2727,38 @@
                             <details class="seguimiento-collapse" open data-seguimiento-collapse>
                                 <summary class="seguimiento-collapse__summary">
                                     <span class="seguimiento-collapse__bullet">•</span>
-                                    Capacitaciones sincrónicas
-                                    <span class="seguimiento-collapse__badge">{{ sync_cards|length }}</span>
+                                    <span class="seguimiento-collapse__title">Capacitaciones sincrónicas</span>
+                                    <span class="seguimiento-collapse__hint seguimiento-collapse__hint--open">Minimizar</span>
+                                    <span class="seguimiento-collapse__hint seguimiento-collapse__hint--closed">Expandir</span>
                                 </summary>
-                                <div class="seguimiento-list">
+                                <p>Selecciona un proceso para operar las pestañas de procesamiento.</p>
+                                <div class="seguimiento-cards">
                                     {% for card in sync_cards %}
-                                        <a href="{{ card.url }}"
-                                           class="cap-card{% if card.is_active %} is-active{% endif %}{% if card.procesado %} cap-card--procesada{% endif %}"
-                                        >
-                                            <span class="cap-card__codigo">{{ card.codigo }}</span>
-                                            <span class="cap-card__nombre">{{ card.denominacion_proceso_formativo|truncatechars:50 }}</span>
-                                            <span class="cap-card__estado cap-card__estado--{{ card.condicion|lower }}">{{ card.condicion }}</span>
-                                            <span class="cap-card__meta">
-                                                <span class="cap-card__archivos">
-                                                    E: {{ card.total_entradas }} | S: {{ card.total_salidas }}
+                                        {% with condicion_txt=card.condicion|default:""|lower %}
+                                            {% if condicion_txt == 'finalizada' or condicion_txt == 'cancelada' or 'cerrado' in condicion_txt %}
+                                            <a
+                                                href="{{ card.url }}"
+                                                class="cap-card{% if card.is_active %} is-active{% endif %} is-cerrado"
+                                            >
+                                                <span class="cap-card__code">{{ card.codigo }}</span>
+                                                <span class="cap-card__name">{{ card.denominacion_proceso_formativo }}</span>
+                                                <span class="cap-card__status cap-card__status--cerrado">
+                                                    {% if 'cancelada' in condicion_txt %}Cancelada{% else %}Cerrado{% endif %}
                                                 </span>
-                                                {% if card.procesado %}
-                                                    <span class="cap-card__badge cap-card__badge--ok">Procesada</span>
-                                                {% endif %}
-                                            </span>
-                                        </a>
+                                            {% else %}
+                                            <a
+                                                href="{{ card.url }}"
+                                                class="cap-card{% if card.is_active %} is-active{% endif %} is-abierto"
+                                            >
+                                                <span class="cap-card__code">{{ card.codigo }}</span>
+                                                <span class="cap-card__name">{{ card.denominacion_proceso_formativo }}</span>
+                                                <span class="cap-card__status cap-card__status--abierto">
+                                                    {{ card.condicion }}
+                                                </span>
+                                            {% endif %}
+                                                <span class="cap-card__meta">E: {{ card.total_entradas }} | S: {{ card.total_salidas }}{% if card.procesado %} | Procesada{% endif %}</span>
+                                            </a>
+                                        {% endwith %}
                                     {% endfor %}
                                 </div>
                             </details>
@@ -2756,10 +2768,10 @@
                         <div class="seguimiento-main">
                             {% if sync_codigo_sel %}
                                 <!-- Tabs -->
-                                <nav class="seguimiento-tabs">
+                                <nav class="seguimiento-tabs" aria-label="Tabs de procesamiento">
                                     {% for tab in sync_tabs %}
                                         <a
-                                            class="seguimiento-tabs__item{% if tab.slug == sync_tab_activo %} is-active{% endif %}"
+                                            class="seguimiento-tab{% if tab.slug == sync_tab_activo %} is-active{% endif %}"
                                             href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ sync_codigo_sel }}&tab={{ tab.slug }}"
                                         >
                                             {{ tab.titulo }}

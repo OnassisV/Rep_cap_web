@@ -2928,47 +2928,51 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             if post_codigo:
                 redirect_params["codigo"] = post_codigo
 
-            if action == "upload_sincronica" and post_codigo:
-                from datetime import datetime as _dt_sync
-                ts = _dt_sync.now().strftime("%Y%m%d_%H%M%S")
-                storage = sync_storage_dir(post_codigo)
-                archivos_entrada = request.FILES.getlist("archivos_entrada")
-                archivos_salida = request.FILES.getlist("archivos_salida")
-                total_guardados = 0
-                if archivos_entrada:
-                    guardados = guardar_archivos_subidos(archivos_entrada, "entrada", storage, ts)
-                    total_guardados += len(guardados)
-                if archivos_salida:
-                    guardados = guardar_archivos_subidos(archivos_salida, "salida", storage, ts)
-                    total_guardados += len(guardados)
-                if total_guardados > 0:
-                    messages.success(request, f"{total_guardados} archivo(s) guardado(s) correctamente.")
-                else:
-                    messages.info(request, "No se guardaron archivos nuevos (posibles duplicados).")
-
-            elif action == "delete_archivo_sincronica" and post_codigo:
-                nombre = str(request.POST.get("nombre_archivo", "")).strip()
-                storage = sync_storage_dir(post_codigo)
-                if nombre and eliminar_archivo(storage, nombre):
-                    messages.success(request, f"Archivo '{nombre}' eliminado.")
-                else:
-                    messages.error(request, "No se pudo eliminar el archivo.")
-
-            elif action == "procesar_sincronica" and post_codigo:
-                resultado = procesar_sincronicas(post_codigo)
-                if resultado.get("ok"):
-                    if resultado.get("reutilizado"):
-                        messages.info(request, "Los insumos no cambiaron. Se reutilizó el resultado previo.")
+            try:
+                if action == "upload_sincronica" and post_codigo:
+                    from datetime import datetime as _dt_sync
+                    ts = _dt_sync.now().strftime("%Y%m%d_%H%M%S")
+                    storage = sync_storage_dir(post_codigo)
+                    archivos_entrada = request.FILES.getlist("archivos_entrada")
+                    archivos_salida = request.FILES.getlist("archivos_salida")
+                    total_guardados = 0
+                    if archivos_entrada:
+                        guardados = guardar_archivos_subidos(archivos_entrada, "entrada", storage, ts)
+                        total_guardados += len(guardados)
+                    if archivos_salida:
+                        guardados = guardar_archivos_subidos(archivos_salida, "salida", storage, ts)
+                        total_guardados += len(guardados)
+                    if total_guardados > 0:
+                        messages.success(request, f"{total_guardados} archivo(s) guardado(s) correctamente.")
                     else:
-                        stats = resultado.get("stats", {})
-                        messages.success(
-                            request,
-                            f"Procesamiento completado: {stats.get('tutores', 0)} tutores, "
-                            f"{stats.get('usuarios_unicos', 0)} usuarios únicos.",
-                        )
-                    redirect_params["tab"] = "resultado"
-                else:
-                    messages.error(request, resultado.get("error", "Error en el procesamiento."))
+                        messages.info(request, "No se guardaron archivos nuevos (posibles duplicados).")
+
+                elif action == "delete_archivo_sincronica" and post_codigo:
+                    nombre = str(request.POST.get("nombre_archivo", "")).strip()
+                    storage = sync_storage_dir(post_codigo)
+                    if nombre and eliminar_archivo(storage, nombre):
+                        messages.success(request, f"Archivo '{nombre}' eliminado.")
+                    else:
+                        messages.error(request, "No se pudo eliminar el archivo.")
+
+                elif action == "procesar_sincronica" and post_codigo:
+                    resultado = procesar_sincronicas(post_codigo)
+                    if resultado.get("ok"):
+                        if resultado.get("reutilizado"):
+                            messages.info(request, "Los insumos no cambiaron. Se reutilizó el resultado previo.")
+                        else:
+                            stats = resultado.get("stats", {})
+                            messages.success(
+                                request,
+                                f"Procesamiento completado: {stats.get('tutores', 0)} tutores, "
+                                f"{stats.get('usuarios_unicos', 0)} usuarios únicos.",
+                            )
+                        redirect_params["tab"] = "resultado"
+                    else:
+                        messages.error(request, resultado.get("error", "Error en el procesamiento."))
+            except Exception as exc:
+                logger.exception("Error en POST procesamiento-sincronicas: %s", exc)
+                messages.error(request, f"Error inesperado: {exc}")
 
             return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
 

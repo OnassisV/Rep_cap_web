@@ -398,21 +398,15 @@ def _obtener_catalogo_iged() -> pd.DataFrame:
 
 
 def _obtener_nombre_capacitacion(codigo: str) -> dict[str, str]:
-    """Obtiene anio/tipo/denominacion de oferta_formativa_difoca."""
+    """Obtiene anio/tipo/denominacion de cap_capacitaciones (Django ORM)."""
     try:
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT anio, tipo_proceso_formativo, denominacion_proceso_formativo "
-                    "FROM oferta_formativa_difoca WHERE codigo = %s LIMIT 1",
-                    (str(codigo).strip(),),
-                )
-                row = cur.fetchone()
-        if row:
+        from core.models import Capacitacion
+        cap = Capacitacion.objects.filter(cap_codigo=str(codigo).strip()).first()
+        if cap:
             return {
-                "anio": str(row.get("anio", "")).strip(),
-                "tipo": str(row.get("tipo_proceso_formativo", "")).strip(),
-                "denominacion": str(row.get("denominacion_proceso_formativo", "")).strip(),
+                "anio": str(cap.cap_anio or "").strip(),
+                "tipo": str(cap.cap_tipo or "").strip(),
+                "denominacion": str(cap.cap_nombre or "").strip(),
             }
     except Exception:
         logger.exception("Error leyendo nombre capacitacion")
