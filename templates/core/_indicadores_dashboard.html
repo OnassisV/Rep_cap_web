@@ -146,6 +146,43 @@
     </section>
 {% endif %}
 
+{% if indicadores_debug %}
+    <section class="indicadores-debug" aria-label="Debug temporal de KPIs">
+        <header class="indicadores-debug__head">
+            <div>
+                <h3>Debug temporal de cobertura</h3>
+                <p>Este bloque aparece solo con el parámetro <strong>debug_kpi=1</strong>.</p>
+            </div>
+            <span class="indicadores-debug__badge">Vista: {{ indicadores_debug.active_tab }}</span>
+        </header>
+        <div class="indicadores-debug__grid">
+            <article class="indicadores-debug__card">
+                <span>Filtros activos</span>
+                <small>Años: {{ indicadores_debug.years }}</small>
+                <small>Condición: {{ indicadores_debug.condition }}</small>
+                <small>Procesos: {{ indicadores_debug.processes }}</small>
+                <small>Regiones: {{ indicadores_debug.regions }}</small>
+                <small>IGED: {{ indicadores_debug.igeds }}</small>
+                <small>Desde: {{ indicadores_debug.fecha_inicio }}</small>
+                <small>Hasta: {{ indicadores_debug.fecha_fin }}</small>
+            </article>
+            <article class="indicadores-debug__card">
+                <span>Cobertura DRE/GRE</span>
+                <strong>{{ indicadores_debug.dre_tasa }}</strong>
+                <small>Numerador: {{ indicadores_debug.dre_numerador }}</small>
+                <small>Denominador: {{ indicadores_debug.dre_denominador }}</small>
+            </article>
+            <article class="indicadores-debug__card">
+                <span>Cobertura UGEL</span>
+                <strong>{{ indicadores_debug.ugel_tasa }}</strong>
+                <small>Numerador: {{ indicadores_debug.ugel_numerador }}</small>
+                <small>Denominador: {{ indicadores_debug.ugel_denominador }}</small>
+                <small>Participaciones base: {{ indicadores_debug.participaciones }}</small>
+            </article>
+        </div>
+    </section>
+{% endif %}
+
 <nav class="indicadores-tabs" aria-label="Vistas del dashboard de indicadores">
     {% for tab in indicadores_tabs %}
         <a href="{{ tab.url }}" class="indicadores-tabs__item{% if tab.slug == indicadores_active_tab %} is-active{% endif %}" {% if tab.slug == indicadores_active_tab %}aria-current="page"{% endif %}>{{ tab.title }}</a>

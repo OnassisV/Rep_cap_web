@@ -17,7 +17,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from accounts.db import get_connection
-from core.indicadores_adapters import _normalize_iged_name
+from core.indicadores_adapters import _count_distinct_non_empty, _normalize_iged_name
 
 ANIO_VIGENTE = datetime.now().year
 
@@ -435,12 +435,8 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
         if "nombre_iged" in merged.columns and "tipo_iged" in merged.columns:
             nombres_iged = _normalize_iged_name(merged["nombre_iged"])
             tipo_norm = merged["tipo_iged"].astype(str).str.upper().str.replace(" ", "", regex=False)
-            dre_cob = int(
-                nombres_iged[base_participa & (tipo_norm == "DRE/GRE")].nunique()
-            )
-            ugel_cob = int(
-                nombres_iged[base_participa & (tipo_norm == "UGEL")].nunique()
-            )
+            dre_cob = _count_distinct_non_empty(nombres_iged[base_participa & (tipo_norm == "DRE/GRE")])
+            ugel_cob = _count_distinct_non_empty(nombres_iged[base_participa & (tipo_norm == "UGEL")])
             kpi["kpi_cobertura_participantes_dual"] = f"{dre_cob} DRE/GRE, {ugel_cob} UGEL"
         else:
             kpi["kpi_cobertura_participantes_dual"] = ""
@@ -449,12 +445,8 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
         if "nombre_iged" in merged.columns and "tipo_iged" in merged.columns:
             nombres_iged = _normalize_iged_name(merged["nombre_iged"])
             tipo_norm = merged["tipo_iged"].astype(str).str.upper().str.replace(" ", "", regex=False)
-            dre_fort = int(
-                nombres_iged[base_participa & (tipo_norm == "DRE/GRE") & aprobados_flag].nunique()
-            )
-            ugel_fort = int(
-                nombres_iged[base_participa & (tipo_norm == "UGEL") & aprobados_flag].nunique()
-            )
+            dre_fort = _count_distinct_non_empty(nombres_iged[base_participa & (tipo_norm == "DRE/GRE") & aprobados_flag])
+            ugel_fort = _count_distinct_non_empty(nombres_iged[base_participa & (tipo_norm == "UGEL") & aprobados_flag])
             kpi["kpi_cobertura_aprobados_dual"] = f"{dre_fort} DRE/GRE, {ugel_fort} UGEL"
         else:
             kpi["kpi_cobertura_aprobados_dual"] = ""

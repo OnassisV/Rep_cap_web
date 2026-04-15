@@ -47,9 +47,25 @@ COUNT_COLUMNS = {
     "Capacitaciones",
 }
 
-_IGED_NAME_KEY_ALIASES = {
-    "ugelpaucarsarasara": "UGEL PAUCAR DEL SARA SARA",
+_IGED_NAME_ALIASES = {
+    "ugel paucar de sarasara": "UGEL PAUCAR DEL SARA SARA",
+    "ugel paucar del sarasara": "UGEL PAUCAR DEL SARA SARA",
+    "ugel paucar de sara sara": "UGEL PAUCAR DEL SARA SARA",
 }
+
+
+def _is_truthy_param(value: Any) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "si", "sí", "on", "yes"}
+
+
+def _debug_filter_value(values: list[str], empty_label: str = "Todos") -> str:
+    cleaned = [str(value).strip() for value in values if str(value).strip()]
+    if not cleaned:
+        return empty_label
+    if len(cleaned) <= 4:
+        return ", ".join(cleaned)
+    preview = ", ".join(cleaned[:4])
+    return f"{preview} ... (+{len(cleaned) - 4})"
 
 
 def _fetch_dataframe(table_name: str, columns: list[str]) -> pd.DataFrame:
@@ -133,24 +149,6 @@ def _normalize_iged_type(series: pd.Series) -> pd.Series:
     return series.fillna("").astype(str).str.strip().str.upper().str.replace(" ", "", regex=False)
 
 
-def _iged_name_key(series: pd.Series) -> pd.Series:
-    normalized = (
-        series.fillna("")
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .str.normalize("NFKD")
-        .str.encode("ascii", errors="ignore")
-        .str.decode("ascii")
-        .str.replace(r"[^a-z0-9\s]", " ", regex=True)
-        .str.replace(r"\b(del|de|la|las|el|los)\b", " ", regex=True)
-        .str.replace(r"\s+", " ", regex=True)
-        .str.strip()
-        .str.replace(" ", "", regex=False)
-    )
-    return normalized
-
-
 def _normalize_iged_name(series: pd.Series) -> pd.Series:
     cleaned = (
         series.fillna("")
@@ -158,12 +156,24 @@ def _normalize_iged_name(series: pd.Series) -> pd.Series:
         .str.strip()
         .str.replace(r"\s+", " ", regex=True)
     )
-    normalized_key = _iged_name_key(cleaned)
+    normalized_key = (
+        cleaned
+        .str.lower()
+        .str.normalize("NFKD")
+        .str.encode("ascii", errors="ignore")
+        .str.decode("ascii")
+        .str.replace(r"\s+", " ", regex=True)
+    )
 
     result = cleaned.copy()
-    for alias_key, canonical in _IGED_NAME_KEY_ALIASES.items():
-        result.loc[normalized_key == alias_key] = canonical
+    for alias, canonical in _IGED_NAME_ALIASES.items():
+        result.loc[normalized_key == alias] = canonical
     return result
+
+
+def _count_distinct_non_empty(series: pd.Series) -> int:
+    cleaned = series.fillna("").astype(str).str.strip()
+    return int(cleaned[cleaned != ""].nunique())
 
 
 def _normalize_gender(series: pd.Series) -> pd.Series:
@@ -260,8 +270,8 @@ def _national_iged_totals(iged: pd.DataFrame) -> tuple[int, int]:
         return 0, 0
     tipo = _normalize_iged_type(iged.get("tipo IGED", pd.Series(dtype=str)))
     nombre = _normalize_iged_name(iged.get("NOMBRE IGED", pd.Series(dtype=str)))
-    total_dre = int(nombre[tipo == "DRE/GRE"].nunique())
-    total_ugel = int(nombre[tipo == "UGEL"].nunique())
+    total_dre = _count_distinct_non_empty(nombre[tipo == "DRE/GRE"])
+    total_ugel = _count_distinct_non_empty(nombre[tipo == "UGEL"])
     return total_dre, total_ugel
 
 
@@ -340,28 +350,28 @@ def _calculate_base_kpis(
         **{
             "DRE/GRE Coberturada": (
                 "nombre_iged",
-                lambda values: int(values[merged.loc[values.index, "tipo_iged_norm"] == "DRE/GRE"].nunique()),
+                lambda values: _count_distinct_non_empty(values[merged.loc[values.index, "tipo_iged_norm"] == "DRE/GRE"]),
             ),
             "DRE/GRE Fortalecida": (
                 "nombre_iged",
-                lambda values: int(
+                lambda values: _count_distinct_non_empty(
                     values[
                         (merged.loc[values.index, "tipo_iged_norm"] == "DRE/GRE")
                         & (merged.loc[values.index, "cert_base"] == 1)
-                    ].nunique()
+                    ]
                 ),
             ),
             "UGEL Coberturada": (
                 "nombre_iged",
-                lambda values: int(values[merged.loc[values.index, "tipo_iged_norm"] == "UGEL"].nunique()),
+                lambda values: _count_distinct_non_empty(values[merged.loc[values.index, "tipo_iged_norm"] == "UGEL"]),
             ),
             "UGEL Fortalecida": (
                 "nombre_iged",
-                lambda values: int(
+                lambda values: _count_distinct_non_empty(
                     values[
                         (merged.loc[values.index, "tipo_iged_norm"] == "UGEL")
                         & (merged.loc[values.index, "cert_base"] == 1)
-                    ].nunique()
+                    ]
                 ),
             ),
         },
@@ -645,10 +655,10 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
 
     tipo_norm = merged.get("tipo_iged_norm", pd.Series(dtype=str)).fillna("")
     nombre_iged = merged.get("nombre_iged", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
-    dre_cobertura = int(nombre_iged[tipo_norm == "DRE/GRE"].nunique())
-    ugel_cobertura = int(nombre_iged[tipo_norm == "UGEL"].nunique())
-    dre_fortalecida = int(nombre_iged[(tipo_norm == "DRE/GRE") & (merged.get("cert_base", 0) == 1)].nunique())
-    ugel_fortalecida = int(nombre_iged[(tipo_norm == "UGEL") & (merged.get("cert_base", 0) == 1)].nunique())
+    dre_cobertura = _count_distinct_non_empty(nombre_iged[tipo_norm == "DRE/GRE"])
+    ugel_cobertura = _count_distinct_non_empty(nombre_iged[tipo_norm == "UGEL"])
+    dre_fortalecida = _count_distinct_non_empty(nombre_iged[(tipo_norm == "DRE/GRE") & (merged.get("cert_base", 0) == 1)])
+    ugel_fortalecida = _count_distinct_non_empty(nombre_iged[(tipo_norm == "UGEL") & (merged.get("cert_base", 0) == 1)])
 
     total_dre, total_ugel = _national_iged_totals(iged_df)
     tasa_retencion = participaciones / matriculaciones if matriculaciones else pd.NA
@@ -735,6 +745,38 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
         cards.append({"label": label, "value": _format_cell(fmt_col, value), "meta": meta})
 
     return cards
+
+
+def _build_dashboard_debug(query_data: Any, active_tab: str, filters: dict[str, Any], merged: pd.DataFrame, iged_df: pd.DataFrame) -> dict[str, str] | None:
+    if not _is_truthy_param(query_data.get("debug_kpi")):
+        return None
+
+    tipo_norm = merged.get("tipo_iged_norm", pd.Series(dtype=str)).fillna("")
+    nombre_iged = merged.get("nombre_iged", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
+    participaciones = int(merged.get("base_participa", pd.Series(dtype=bool)).fillna(False).sum())
+    dre_cobertura = _count_distinct_non_empty(nombre_iged[tipo_norm == "DRE/GRE"])
+    ugel_cobertura = _count_distinct_non_empty(nombre_iged[tipo_norm == "UGEL"])
+    total_dre, total_ugel = _national_iged_totals(iged_df)
+    tasa_dre = dre_cobertura / total_dre if total_dre else pd.NA
+    tasa_ugel = ugel_cobertura / total_ugel if total_ugel else pd.NA
+
+    return {
+        "active_tab": active_tab,
+        "years": _debug_filter_value(filters.get("selected_years", []), "Auto: año actual o todos"),
+        "condition": str(filters.get("selected_condition") or "Todas"),
+        "processes": _debug_filter_value(filters.get("selected_processes", [])),
+        "regions": _debug_filter_value(filters.get("selected_regions", []), "Todas"),
+        "igeds": _debug_filter_value(filters.get("selected_igeds", []), "Todas"),
+        "fecha_inicio": str(filters.get("fecha_inicio") or "Sin límite"),
+        "fecha_fin": str(filters.get("fecha_fin") or "Sin límite"),
+        "participaciones": _format_cell("Capacitacion", participaciones),
+        "dre_numerador": _format_cell("Capacitacion", dre_cobertura),
+        "dre_denominador": _format_cell("Capacitacion", total_dre),
+        "dre_tasa": _format_cell("Tasa Cobertura DRE/GRE", tasa_dre),
+        "ugel_numerador": _format_cell("Capacitacion", ugel_cobertura),
+        "ugel_denominador": _format_cell("Capacitacion", total_ugel),
+        "ugel_tasa": _format_cell("Tasa Cobertura UGEL", tasa_ugel),
+    }
 
 
 def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
@@ -826,24 +868,27 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
         "difoca": df_difoca,
     }
 
+    filters = {
+        "year_options": year_options,
+        "condition_options": condition_options,
+        "process_options": process_options,
+        "region_options": region_options,
+        "iged_options": iged_options,
+        "selected_years": selected_years,
+        "selected_condition": selected_condition,
+        "selected_processes": selected_processes,
+        "selected_regions": selected_regions,
+        "selected_igeds": selected_igeds,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+    }
+
     return {
-        "filters": {
-            "year_options": year_options,
-            "condition_options": condition_options,
-            "process_options": process_options,
-            "region_options": region_options,
-            "iged_options": iged_options,
-            "selected_years": selected_years,
-            "selected_condition": selected_condition,
-            "selected_processes": selected_processes,
-            "selected_regions": selected_regions,
-            "selected_igeds": selected_igeds,
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
-        },
+        "filters": filters,
         "tabs": tabs,
         "active_tab": active_tab,
         "summary_cards": _summary_cards(active_tab, _merged_cap, iged, _sat_global),
+        "debug": _build_dashboard_debug(query_data, active_tab, filters, _merged_cap, iged),
         "dataframes": dataframes,
     }
 
@@ -914,6 +959,7 @@ def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
         "indicadores_tabs": dashboard.get("tabs", []),
         "indicadores_active_tab": dashboard.get("active_tab", "capacitacion"),
         "indicadores_summary_cards": dashboard.get("summary_cards", []),
+        "indicadores_debug": dashboard.get("debug"),
         "indicadores_table_capacitacion": _table_payload(dataframes.get("capacitacion", pd.DataFrame())),
         "indicadores_table_region": _table_payload(dataframes.get("region", pd.DataFrame())),
         "indicadores_table_iged": _table_payload(dataframes.get("iged", pd.DataFrame())),

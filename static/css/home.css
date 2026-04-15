@@ -3640,6 +3640,71 @@ h1 {
     font-size: 1.22rem;
 }
 
+.indicadores-debug {
+    margin: 0 0 1rem;
+    padding: 1rem;
+    border: 1px solid #c8d7e6;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #f8fbff 0%, #eef5fb 100%);
+}
+
+.indicadores-debug__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+}
+
+.indicadores-debug__head h3 {
+    margin: 0;
+    color: #214864;
+}
+
+.indicadores-debug__head p {
+    margin: 0.2rem 0 0;
+    color: #60798f;
+}
+
+.indicadores-debug__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: #dce9f5;
+    color: #214864;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.indicadores-debug__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.indicadores-debug__card {
+    display: grid;
+    gap: 0.22rem;
+    padding: 0.9rem;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid #d6e2ee;
+}
+
+.indicadores-debug__card span,
+.indicadores-debug__card small {
+    color: #5c748a;
+}
+
+.indicadores-debug__card strong {
+    color: #173f5b;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.18rem;
+}
+
 .indicadores-tabs {
     display: flex;
     flex-wrap: wrap;
