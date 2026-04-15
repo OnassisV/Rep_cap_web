@@ -2788,10 +2788,18 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             _sync_role = str(user_context.get("role_effective", ""))
                             if _normalizar_texto(_sync_role) in {"administrador", "admin", "superusuario"}:
                                 from accounts.db import fetch_user_record
-                                _sync_rec = fetch_user_record(_sync_asignar)
+                                try:
+                                    _sync_rec = fetch_user_record(_sync_asignar)
+                                except Exception:
+                                    _sync_rec = None
+                                    logger.warning("No se pudo buscar usuario asignado: %s", _sync_asignar)
                                 if _sync_rec:
                                     _sync_creado_por = str(_sync_rec.get("usuario", _sync_asignar)).strip()
                                     _sync_creado_nombre = str(_sync_rec.get("especialista_cargo", "")).strip() or _sync_creado_por
+                        logger.info(
+                            "Registro sincronica: asignar_a=%r creado_por=%s creado_nombre=%s",
+                            _sync_asignar, _sync_creado_por, _sync_creado_nombre,
+                        )
 
                         resultado = crear_registro_capacitacion(
                             payload=payload_tipado,
