@@ -12,6 +12,8 @@ from accounts.db import get_connection
 
 
 RATE_COLUMNS = {
+    "Tasa Varones",
+    "Tasa Mujeres",
     "Tasa Cobertura DRE/GRE",
     "Tasa Cobertura UGEL",
     "Tasa DRE/GRE Fortalecida",
@@ -27,6 +29,8 @@ COUNT_COLUMNS = {
     "Postulaciones",
     "Matriculaciones",
     "Participaciones",
+    "Varones",
+    "Mujeres",
     "Retiros",
     "Finalizaciones",
     "Certificaciones",
@@ -122,6 +126,22 @@ def _to_flag(series: pd.Series) -> pd.Series:
 
 def _normalize_iged_type(series: pd.Series) -> pd.Series:
     return series.fillna("").astype(str).str.strip().str.upper().str.replace(" ", "", regex=False)
+
+
+def _normalize_gender(series: pd.Series) -> pd.Series:
+    normalized = (
+        series.fillna("")
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .str.normalize("NFKD")
+        .str.encode("ascii", errors="ignore")
+        .str.decode("ascii")
+    )
+    result = pd.Series("", index=series.index, dtype=str)
+    result.loc[normalized.isin({"m", "masculino", "masculina", "hombre", "varon", "masc"})] = "M"
+    result.loc[normalized.isin({"f", "femenino", "femenina", "mujer", "fem"})] = "F"
+    return result
 
 
 def _selected_values(values: list[str], options: list[str], default: list[str]) -> list[str]:
@@ -229,8 +249,11 @@ def _calculate_base_kpis(
     merged["aprobados_certificados_flag"] = _to_flag(merged.get("aprobados_certificados", pd.Series(dtype=object)))
     merged["desaprobado_permanente_flag"] = _to_flag(merged.get("desaprobado_permanente", pd.Series(dtype=object)))
     merged["retiros_flag"] = _to_flag(merged.get("retiros", pd.Series(dtype=object)))
+    merged["genero_norm"] = _normalize_gender(merged.get("genero", pd.Series(index=merged.index, dtype=object)))
 
     merged["base_participa"] = (merged["estado_num"] == 2) & (merged["compromiso_num"].isin([20, 1]))
+    merged["varones_base"] = (merged["base_participa"] & (merged["genero_norm"] == "M")).astype(int)
+    merged["mujeres_base"] = (merged["base_participa"] & (merged["genero_norm"] == "F")).astype(int)
     merged["retiros_base"] = ((merged["base_participa"]) & (merged["retiros_flag"] == 1)).astype(int)
     merged["finalizados"] = (
         merged["base_participa"]
@@ -267,6 +290,8 @@ def _calculate_base_kpis(
         Postulaciones=("dni", "count"),
         Matriculaciones=("estado_num", lambda values: int((values == 2).sum())),
         Participaciones=("base_participa", lambda values: int(values.fillna(False).sum())),
+        Varones=("varones_base", "sum"),
+        Mujeres=("mujeres_base", "sum"),
         Retiros=("retiros_base", "sum"),
         Finalizaciones=("finalizados", "sum"),
         Certificaciones=("cert_base", "sum"),
@@ -306,6 +331,8 @@ def _calculate_base_kpis(
     kpis["Tasa Cobertura UGEL"] = kpis["UGEL Coberturada"] / total_ugel_nacional if total_ugel_nacional else pd.NA
     kpis["Tasa DRE/GRE Fortalecida"] = kpis["DRE/GRE Fortalecida"] / kpis["DRE/GRE Coberturada"].replace(0, pd.NA)
     kpis["Tasa UGEL Fortalecida"] = kpis["UGEL Fortalecida"] / kpis["UGEL Coberturada"].replace(0, pd.NA)
+    kpis["Tasa Varones"] = kpis["Varones"] / kpis["Participaciones"].replace(0, pd.NA)
+    kpis["Tasa Mujeres"] = kpis["Mujeres"] / kpis["Participaciones"].replace(0, pd.NA)
     kpis["Tasa Retencion"] = kpis["Participaciones"] / kpis["Matriculaciones"].replace(0, pd.NA)
     kpis["Tasa Finalizacion"] = kpis["Finalizaciones"] / kpis["Participaciones"].replace(0, pd.NA)
     kpis["Tasa Certificacion"] = kpis["Certificaciones"] / kpis["Finalizaciones"].replace(0, pd.NA)
@@ -375,11 +402,15 @@ def _calculate_capacitacion_kpis(
         "Postulaciones",
         "Matriculaciones",
         "Participaciones",
+        "Varones",
+        "Mujeres",
         "Retiros",
         "Finalizaciones",
         "Certificaciones",
         "Evaluados",
         "Progreso",
+        "Tasa Varones",
+        "Tasa Mujeres",
         "Tasa Retencion",
         "Tasa Finalizacion",
         "Tasa Certificacion",
@@ -417,12 +448,16 @@ def _calculate_region_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, ig
         "Postulaciones",
         "Matriculaciones",
         "Participaciones",
+        "Varones",
+        "Mujeres",
         "Finalizaciones",
         "Certificaciones",
         "DRE/GRE Coberturada",
         "UGEL Coberturada",
         "Tasa Cobertura DRE/GRE",
         "Tasa Cobertura UGEL",
+        "Tasa Varones",
+        "Tasa Mujeres",
         "Tasa Retencion",
         "Tasa Finalizacion",
         "Tasa Certificacion",
@@ -452,12 +487,16 @@ def _calculate_iged_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, iged
         "Capacitacion",
         "Postulaciones",
         "Participaciones",
+        "Varones",
+        "Mujeres",
         "Finalizaciones",
         "Certificaciones",
         "Tasa Cobertura DRE/GRE",
         "Tasa Cobertura UGEL",
         "Tasa DRE/GRE Fortalecida",
         "Tasa UGEL Fortalecida",
+        "Tasa Varones",
+        "Tasa Mujeres",
         "Tasa Retencion",
         "Tasa Finalizacion",
         "Tasa Certificacion",
@@ -535,6 +574,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
     postulaciones = len(merged)
     matriculaciones = int((merged.get("estado_num", pd.Series(dtype=float)) == 2).sum())
     participaciones = int(merged.get("base_participa", pd.Series(dtype=bool)).fillna(False).sum())
+    varones = int(merged.get("varones_base", pd.Series(dtype=int)).fillna(0).sum())
+    mujeres = int(merged.get("mujeres_base", pd.Series(dtype=int)).fillna(0).sum())
     retiros = int(merged.get("retiros_base", pd.Series(dtype=int)).fillna(0).sum())
     finalizaciones = int(merged.get("finalizados", pd.Series(dtype=int)).fillna(0).sum())
     certificaciones = int(merged.get("cert_base", pd.Series(dtype=int)).fillna(0).sum())
@@ -562,6 +603,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
     tasa_cobertura_ugel = ugel_cobertura / total_ugel if total_ugel else pd.NA
     tasa_dre_fortalecida = dre_fortalecida / dre_cobertura if dre_cobertura else pd.NA
     tasa_ugel_fortalecida = ugel_fortalecida / ugel_cobertura if ugel_cobertura else pd.NA
+    tasa_varones = varones / participaciones if participaciones else pd.NA
+    tasa_mujeres = mujeres / participaciones if participaciones else pd.NA
     efectividad = 1 if (finalizaciones > 0 and (certificaciones / finalizaciones) >= 0.6) else 0
 
     scope_card = {
@@ -577,6 +620,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
             ("Postulaciones", "Capacitacion", postulaciones, "Total con filtros aplicados"),
             ("Matriculaciones", "Capacitacion", matriculaciones, "Total con filtros aplicados"),
             ("Participaciones", "Capacitacion", participaciones, "Total con filtros aplicados"),
+            ("Tasa Varones", "Tasa Varones", tasa_varones, "Varones / Participaciones"),
+            ("Tasa Mujeres", "Tasa Mujeres", tasa_mujeres, "Mujeres / Participaciones"),
             ("Retiros", "Capacitacion", retiros, "Total con filtros aplicados"),
             ("Finalizaciones", "Capacitacion", finalizaciones, "Total con filtros aplicados"),
             ("Certificaciones", "Capacitacion", certificaciones, "Total con filtros aplicados"),
@@ -594,6 +639,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
             ("Postulaciones", "Capacitacion", postulaciones, "Total con filtros aplicados"),
             ("Matriculaciones", "Capacitacion", matriculaciones, "Total con filtros aplicados"),
             ("Participaciones", "Capacitacion", participaciones, "Total con filtros aplicados"),
+            ("Tasa Varones", "Tasa Varones", tasa_varones, "Varones / Participaciones"),
+            ("Tasa Mujeres", "Tasa Mujeres", tasa_mujeres, "Mujeres / Participaciones"),
             ("Finalizaciones", "Capacitacion", finalizaciones, "Total con filtros aplicados"),
             ("Certificaciones", "Capacitacion", certificaciones, "Total con filtros aplicados"),
             ("DRE/GRE Coberturada", "Capacitacion", dre_cobertura, "Total con filtros aplicados"),
@@ -608,6 +655,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
             ("Capacitacion", "Capacitacion", num_capacitaciones, "Total con filtros aplicados"),
             ("Postulaciones", "Capacitacion", postulaciones, "Total con filtros aplicados"),
             ("Participaciones", "Capacitacion", participaciones, "Total con filtros aplicados"),
+            ("Tasa Varones", "Tasa Varones", tasa_varones, "Varones / Participaciones"),
+            ("Tasa Mujeres", "Tasa Mujeres", tasa_mujeres, "Mujeres / Participaciones"),
             ("Finalizaciones", "Capacitacion", finalizaciones, "Total con filtros aplicados"),
             ("Certificaciones", "Capacitacion", certificaciones, "Total con filtros aplicados"),
             ("Tasa Cobertura DRE/GRE", "Tasa Cobertura DRE/GRE", tasa_cobertura_dre, "Coberturadas / Total nacional"),
