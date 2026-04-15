@@ -403,6 +403,74 @@ def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
     return True
 
 
+def _serializar_capacitacion_valores(cap_obj) -> dict[str, str]:
+    """Serializa campos escalares del modelo al formato usado por el formulario."""
+    valores: dict[str, str] = {}
+    for field in cap_obj._meta.get_fields():
+        if not hasattr(field, "column"):
+            continue
+        val = getattr(cap_obj, field.name, None)
+        if val is None:
+            valores[field.name] = ""
+        elif isinstance(val, datetime):
+            valores[field.name] = val.strftime("%Y-%m-%d %H:%M")
+        elif isinstance(val, _date_type):
+            valores[field.name] = val.strftime("%Y-%m-%d")
+        else:
+            valores[field.name] = str(val)
+    return valores
+
+
+def _recalcular_paso_actual(cap_obj) -> int:
+    """Recalcula el avance real del flujo a partir de los campos completos.
+
+    El valor devuelto representa cuántos pasos del flujo unificado están
+    realmente completos, evitando que la UI muestre 7/7 solo por navegación.
+    """
+    valores_form = _serializar_capacitacion_valores(cap_obj)
+
+    secciones_render: list[dict[str, Any]] = []
+    for seccion in REGISTRO_CAPACITACION_SECCIONES:
+        campos_render = [
+            _enriquecer_campo_registro(campo, valores_form)
+            for campo in seccion.get("campos", [])
+        ]
+        sec_copy = {**seccion, "campos": campos_render}
+        sec_copy.update(_contar_estado_bloque_registro(campos_render))
+        secciones_render.append(sec_copy)
+
+    solicitud = next(
+        (s for s in secciones_render if str(s.get("slug", "")) == "solicitud-inicial"),
+        None,
+    )
+    flujo_matriz = _construir_flujo_matriz_sustento(secciones_render, valores_form)
+    flujo_diag = _construir_flujo_diagnostico(secciones_render, valores_form)
+    sustento = _construir_pasarela_sustento(
+        flujo_matriz,
+        flujo_diag,
+        secciones_render,
+        valores_form,
+    )
+    flujo_exp = _construir_flujo_expediente(secciones_render, valores_form)
+    flujo = _construir_flujo_unificado(
+        secciones_render,
+        valores_form,
+        solicitud,
+        sustento,
+        flujo_exp,
+    )
+
+    pasos_completos = sum(1 for paso in flujo if bool(paso.get("is_complete")))
+    pasos_iniciados = sum(1 for paso in flujo if bool(paso.get("is_started")))
+    total_pasos = len(flujo) or 7
+
+    if pasos_completos > 0:
+        return min(total_pasos, pasos_completos)
+    if pasos_iniciados > 0:
+        return 1
+    return 1
+
+
 def _coercer_valor_registro_capacitacion(tipo: str, valor_raw: str) -> Any:
     """Convierte valor de formulario a tipo base para serializacion JSON."""
     valor = str(valor_raw or "").strip()
@@ -1005,16 +1073,40 @@ def _construir_flujo_unificado(
     })
 
     # Paso 2: Sustento tecnico
+    sustento_req = sustento_done = sustento_filled = 0
+    sustento_complete = False
+    sustento_started = False
+    if not sustento_etapa or not bool(sustento_etapa.get("is_enabled")):
+        sustento_complete = True
+    else:
+        componentes_completos: list[bool] = []
+
+        for clave in ("matriz", "diagnostico"):
+            flujo = sustento_etapa.get(clave)
+            if not flujo or not bool(flujo.get("is_enabled")):
+                continue
+            pasos_flujo = list(flujo.get("steps", []))
+            sustento_req += sum(int(item.get("required_count", 0) or 0) for item in pasos_flujo)
+            sustento_done += sum(int(item.get("required_done", 0) or 0) for item in pasos_flujo)
+            sustento_filled += sum(int(item.get("filled_count", 0) or 0) for item in pasos_flujo)
+            sustento_started = sustento_started or any(
+                bool(item.get("is_started")) or bool(item.get("is_complete"))
+                for item in pasos_flujo
+            )
+            componentes_completos.append(bool(pasos_flujo) and all(bool(item.get("is_complete")) for item in pasos_flujo))
+
+        sustento_complete = bool(componentes_completos) and all(componentes_completos)
+
     pasos.append({
         "slug": "paso-sustento",
         "titulo": "Sustento tecnico",
         "descripcion": "",
         "panel_type": "sustento",
-        "required_count": 0,
-        "required_done": 0,
-        "filled_count": 0,
-        "is_complete": False,
-        "is_started": bool(sustento_etapa and sustento_etapa.get("is_enabled")),
+        "required_count": sustento_req,
+        "required_done": sustento_done,
+        "filled_count": sustento_filled,
+        "is_complete": sustento_complete,
+        "is_started": sustento_started or bool(sustento_etapa and sustento_etapa.get("is_enabled")),
     })
 
     # Pasos 3-7: Expediente
@@ -1469,7 +1561,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 cap_obj = qs.get(pk=int(cap_id))
                 cap_obj.cap_codigo = str(request.POST.get("cap_codigo", "")).strip()
                 cap_obj.cap_id_curso = str(request.POST.get("cap_id_curso", "")).strip()
-                cap_obj.save(update_fields=["cap_codigo", "cap_id_curso", "actualizado_en"])
+                cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
+                cap_obj.save(update_fields=["cap_codigo", "cap_id_curso", "paso_actual", "actualizado_en"])
                 # Auto-estado: si ahora tiene código → al menos "En proceso".
                 _auto_actualizar_estado(cap_obj)
                 messages.success(request, "Identificadores de plataforma actualizados.")
@@ -1519,13 +1612,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     else:
                         setattr(cap_obj, codigo, coerced)
 
-                # Actualiza paso_actual si se envio.
-                paso_post = request.POST.get("paso_actual", "")
-                if paso_post:
-                    try:
-                        cap_obj.paso_actual = max(1, int(paso_post))
-                    except (ValueError, TypeError):
-                        pass
+                # Recalcula el avance real desde la completitud de bloques.
+                cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
 
                 cap_obj.save()
                 # Auto-estado según código/ID y completitud.
@@ -2077,19 +2165,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 try:
                     cap_obj = qs.get(pk=int(cap_id_param))
                     editar_cap = cap_obj
-                    # Serializa campos escalares del modelo al dict de valores_form.
-                    for field in cap_obj._meta.get_fields():
-                        if not hasattr(field, "column"):
-                            continue
-                        val = getattr(cap_obj, field.name, None)
-                        if val is None:
-                            editar_valores[field.name] = ""
-                        elif isinstance(val, datetime):
-                            editar_valores[field.name] = val.strftime("%Y-%m-%d %H:%M")
-                        elif isinstance(val, _date_type):
-                            editar_valores[field.name] = val.strftime("%Y-%m-%d")
-                        else:
-                            editar_valores[field.name] = str(val)
+                    editar_valores = _serializar_capacitacion_valores(cap_obj)
                 except (Capacitacion.DoesNotExist, ValueError):
                     pass
 
