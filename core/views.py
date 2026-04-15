@@ -2725,6 +2725,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             eliminar_archivo,
             procesar_sincronicas,
             obtener_resultado_procesamiento,
+            sincronizar_capacitaciones_desde_oferta,
             _storage_dir as sync_storage_dir,
         )
 
@@ -3020,6 +3021,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         # ── GET: Editar sincrónica (reutiliza adapter_kind = "editar_capacitacion") ──
         if submenu_slug == "editar-sincronica":
             from core.models import Capacitacion
+
+            # Auto-importar sincrónicas de oferta_formativa_difoca que aún no existan
+            sincronizar_capacitaciones_desde_oferta()
 
             username = str(request.user.username)
             role_eff = str(user_context.get("role_effective", ""))
