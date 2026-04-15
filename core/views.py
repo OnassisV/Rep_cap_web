@@ -1446,8 +1446,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 cap_obj = qs.get(pk=int(cap_id))
 
                 # Lee TODOS los campos del formulario (sin filtro de seccion).
+                # cap_codigo y cap_id_curso se gestionan solo desde save_id_plataforma;
+                # excluirlos aquí evita que se borren al guardar otros pasos.
+                _CAMPOS_EXCLUIDOS_SAVE = {"cap_codigo", "cap_id_curso"}
                 for campo in iterar_campos_registro_capacitacion():
                     codigo = str(campo.get("codigo", "")).strip()
+                    if codigo in _CAMPOS_EXCLUIDOS_SAVE:
+                        continue
                     tipo = str(campo.get("tipo", "")).strip()
                     if tipo == "hidden_json":
                         raw_val = str(request.POST.get(codigo, ""))
