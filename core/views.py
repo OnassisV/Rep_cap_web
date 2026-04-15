@@ -2797,7 +2797,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 try:
                     qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica")
                     if not is_admin:
-                        qs = qs.filter(creado_por__in=[username, display_name])
+                        sync_oferta = obtener_capacitaciones_sincronicas(
+                            role_effective=role_eff,
+                            display_name=display_name,
+                            username=username,
+                        )
+                        codigos_permitidos = {
+                            str(f.get("codigo", "")).strip() for f in sync_oferta
+                        }
+                        qs = qs.filter(cap_codigo__in=codigos_permitidos)
                     cap_obj = qs.get(pk=int(cap_id))
 
                     _CAMPOS_EXCLUIDOS_SAVE = {"cap_codigo", "cap_id_curso"}
@@ -3035,8 +3043,17 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 # Solo sincrónicas (opuesto al filtro de gestión)
                 qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
+                # Filtrar por especialista asignado en oferta_formativa
                 if not is_admin:
-                    qs = qs.filter(creado_por__in=[username, display_name])
+                    sync_oferta = obtener_capacitaciones_sincronicas(
+                        role_effective=role_eff,
+                        display_name=display_name,
+                        username=username,
+                    )
+                    codigos_permitidos = {
+                        str(f.get("codigo", "")).strip() for f in sync_oferta
+                    }
+                    qs = qs.filter(cap_codigo__in=codigos_permitidos)
 
                 editar_anios = sorted(set(qs.values_list("cap_anio", flat=True)), reverse=True)
                 editar_anios = [a for a in editar_anios if a]
