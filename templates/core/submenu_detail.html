@@ -161,6 +161,20 @@
                     <input type="hidden" name="action" value="create_capacitacion">
                     {{ registro_iged_catalogo|json_script:"registro-iged-catalogo" }}
 
+                    {% if is_admin_registro and lista_usuarios_asignar %}
+                    <div class="registro-asignar-creador" style="margin-bottom:1.2rem;padding:0.8rem 1rem;background:#f0f4ff;border:1px solid #c5d4f0;border-radius:8px;">
+                        <label for="asignar_a" style="font-weight:600;font-size:0.92rem;color:#334155;">
+                            Asignar responsable (creador)
+                        </label>
+                        <select name="asignar_a" id="asignar_a" style="margin-top:0.3rem;width:100%;max-width:400px;padding:0.45rem 0.6rem;border:1px solid #cbd5e1;border-radius:6px;font-size:0.9rem;">
+                            <option value="">— Yo mismo ({{ display_name }}) —</option>
+                            {% for u in lista_usuarios_asignar %}
+                                <option value="{{ u.usuario }}">{{ u.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     {% if registro_flujo_unificado %}
                         <section class="registro-unified-flow" data-unified-flow>
                             <div class="registro-unified-roadmap" aria-label="Pasos del registro">

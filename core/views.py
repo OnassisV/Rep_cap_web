@@ -1527,11 +1527,24 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         f"Se detectaron {len(errores)} observaciones. Corrige los campos marcados como obligatorios.",
                     )
             else:
+                # Si admin asigna creador, usar esos valores
+                _reg_creado_por = str(request.user.username)
+                _reg_creado_nombre = str(user_context.get("display_name", ""))
+                _asignar_a = str(request.POST.get("asignar_a", "")).strip()
+                if _asignar_a:
+                    _role_reg = str(user_context.get("role_effective", ""))
+                    if _normalizar_texto(_role_reg) in {"administrador", "admin", "superusuario"}:
+                        from accounts.db import fetch_user_record
+                        _user_rec = fetch_user_record(_asignar_a)
+                        if _user_rec:
+                            _reg_creado_por = str(_user_rec.get("usuario", _asignar_a)).strip()
+                            _reg_creado_nombre = str(_user_rec.get("especialista_cargo", "")).strip() or _reg_creado_por
+
                 # Crea la capacitacion en la BD (solo datos de solicitud).
                 resultado = crear_registro_capacitacion(
                     payload=payload_tipado,
-                    creado_por=str(request.user.username),
-                    creado_nombre=str(user_context.get("display_name", "")),
+                    creado_por=_reg_creado_por,
+                    creado_nombre=_reg_creado_nombre,
                 )
                 if resultado.get("ok"):
                     request.session.pop(draft_key, None)
@@ -2095,6 +2108,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             }
             origen_actual = str(valores_form.get("sol_origen_institucional", "")).strip()
 
+            # Admin: lista de usuarios para asignar creador
+            role_eff_reg = str(user_context.get("role_effective", ""))
+            is_admin_reg = _normalizar_texto(role_eff_reg) in {
+                "administrador", "admin", "superusuario",
+            }
+            lista_usuarios_asignar = []
+            if is_admin_reg:
+                from accounts.db import fetch_users_with_names
+                lista_usuarios_asignar = fetch_users_with_names()
+
             context.update(
                 {
                     "valores_form": valores_form,
@@ -2114,6 +2137,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_origen_externo": origen_externo,
                     "registro_campos_total": campos_totales,
                     "registro_campos_obligatorios": campos_obligatorios,
+                    "is_admin_registro": is_admin_reg,
+                    "lista_usuarios_asignar": lista_usuarios_asignar,
                 }
             )
 
@@ -2756,10 +2781,23 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         for mensaje in errores[:8]:
                             messages.error(request, mensaje)
                     else:
+                        # Si admin asigna creador, usar esos valores
+                        _sync_creado_por = str(request.user.username)
+                        _sync_creado_nombre = str(user_context.get("display_name", ""))
+                        _sync_asignar = str(request.POST.get("asignar_a", "")).strip()
+                        if _sync_asignar:
+                            _sync_role = str(user_context.get("role_effective", ""))
+                            if _normalizar_texto(_sync_role) in {"administrador", "admin", "superusuario"}:
+                                from accounts.db import fetch_user_record
+                                _sync_rec = fetch_user_record(_sync_asignar)
+                                if _sync_rec:
+                                    _sync_creado_por = str(_sync_rec.get("usuario", _sync_asignar)).strip()
+                                    _sync_creado_nombre = str(_sync_rec.get("especialista_cargo", "")).strip() or _sync_creado_por
+
                         resultado = crear_registro_capacitacion(
                             payload=payload_tipado,
-                            creado_por=str(request.user.username),
-                            creado_nombre=str(user_context.get("display_name", "")),
+                            creado_por=_sync_creado_por,
+                            creado_nombre=_sync_creado_nombre,
                         )
                         if resultado.get("ok"):
                             request.session.pop(draft_key, None)
@@ -2797,15 +2835,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 try:
                     qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica")
                     if not is_admin:
-                        sync_oferta = obtener_capacitaciones_sincronicas(
+                        sync_caps_user = obtener_capacitaciones_sincronicas(
                             role_effective=role_eff,
                             display_name=display_name,
                             username=username,
                         )
-                        codigos_permitidos = {
-                            str(f.get("codigo", "")).strip() for f in sync_oferta
-                        }
-                        qs = qs.filter(cap_codigo__in=codigos_permitidos)
+                        codigos_usuario = [str(c.get("codigo", "")).strip() for c in sync_caps_user]
+                        qs = qs.filter(cap_codigo__in=codigos_usuario)
                     cap_obj = qs.get(pk=int(cap_id))
 
                     _CAMPOS_EXCLUIDOS_SAVE = {"cap_codigo", "cap_id_curso"}
@@ -3026,6 +3062,18 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "registro_campos_obligatorios": campos_obligatorios,
             })
 
+            # Admin: lista de usuarios para asignar creador
+            role_eff_sync_reg = str(user_context.get("role_effective", ""))
+            is_admin_sync_reg = _normalizar_texto(role_eff_sync_reg) in {
+                "administrador", "admin", "superusuario",
+            }
+            if is_admin_sync_reg:
+                from accounts.db import fetch_users_with_names
+                context["lista_usuarios_asignar"] = fetch_users_with_names()
+            else:
+                context["lista_usuarios_asignar"] = []
+            context["is_admin_registro"] = is_admin_sync_reg
+
         # ── GET: Editar sincrónica (reutiliza adapter_kind = "editar_capacitacion") ──
         if submenu_slug == "editar-sincronica":
             from core.models import Capacitacion
@@ -3043,17 +3091,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 # Solo sincrónicas (opuesto al filtro de gestión)
                 qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
-                # Filtrar por especialista asignado en oferta_formativa
                 if not is_admin:
-                    sync_oferta = obtener_capacitaciones_sincronicas(
+                    # Filtrar por códigos que pertenecen al usuario en oferta_formativa
+                    sync_caps_user = obtener_capacitaciones_sincronicas(
                         role_effective=role_eff,
                         display_name=display_name,
                         username=username,
                     )
-                    codigos_permitidos = {
-                        str(f.get("codigo", "")).strip() for f in sync_oferta
-                    }
-                    qs = qs.filter(cap_codigo__in=codigos_permitidos)
+                    codigos_usuario = [str(c.get("codigo", "")).strip() for c in sync_caps_user]
+                    qs = qs.filter(cap_codigo__in=codigos_usuario)
 
                 editar_anios = sorted(set(qs.values_list("cap_anio", flat=True)), reverse=True)
                 editar_anios = [a for a in editar_anios if a]

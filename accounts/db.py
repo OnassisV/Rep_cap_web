@@ -84,6 +84,27 @@ def fetch_usernames(limit: int = 500) -> list[str]:
     return usernames
 
 
+def fetch_users_with_names(limit: int = 500) -> list[dict[str, str]]:
+    """Retorna lista de usuarios con su username y nombre (especialista_cargo)."""
+    query = "SELECT usuario, especialista_cargo FROM usuarios ORDER BY especialista_cargo LIMIT %s"
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, (limit,))
+                rows = cursor.fetchall()
+    except Exception:
+        logger.exception("Could not fetch users with names from legacy database.")
+        return []
+
+    result: list[dict[str, str]] = []
+    for row in rows:
+        usuario = str(row.get("usuario", "")).strip()
+        nombre = str(row.get("especialista_cargo", "")).strip()
+        if usuario:
+            result.append({"usuario": usuario, "nombre": nombre or usuario})
+    return result
+
+
 def fetch_user_record(username: str) -> dict[str, Any] | None:
     """Obtiene un registro de usuario con username, nombre, hash de clave y cargo."""
     # Lee solo las columnas necesarias para el flujo de autenticacion.
