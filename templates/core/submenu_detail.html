@@ -139,7 +139,7 @@
             {% endif %}
 
             <!-- Filtro anual comun para submenus adaptados con oferta formativa. -->
-            {% if mostrar_filtro_anio and anios_disponibles and adapter_kind != "seguimiento" %}
+            {% if mostrar_filtro_anio and anios_disponibles and adapter_kind != "seguimiento" and adapter_kind != "sincronicas_procesamiento" %}
                 <div class="year-filter">
                     <span class="year-filter__label">Año:</span>
                     {% for anio in anios_disponibles %}
