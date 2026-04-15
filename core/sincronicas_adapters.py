@@ -192,7 +192,7 @@ def obtener_capacitaciones_sincronicas(
 
     for row in rows:
         tipo = str(row.get("tipo_proceso_formativo", "")).strip()
-        if "sincron" not in tipo.lower():
+        if "sincr" not in tipo.lower():
             continue
         cond = str(row.get("condicion", "")).strip().lower()
         if cond not in ("cerrado", "implementacion", "en implementacion"):
