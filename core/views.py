@@ -2956,10 +2956,20 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             "cert_form_curso_codigo": str(request.POST.get("curso_codigo", "")),
             "cert_form_n_firmas": str(request.POST.get("n_firmas", "1")),
         })
-        return render(request, "core/submenu_detail.html", context)
+        try:
+            return render(request, "core/submenu_detail.html", context)
+        except Exception as _render_exc:
+            import traceback as _tb
+            from django.http import HttpResponse as _HR
+            return _HR(f"<pre>{_tb.format_exc()}</pre>", content_type="text/html", status=500)
 
     # Renderiza vista de submenu con adaptacion correspondiente.
-    return render(request, "core/submenu_detail.html", context)
+    try:
+        return render(request, "core/submenu_detail.html", context)
+    except Exception as _render_exc:
+        import traceback as _tb
+        from django.http import HttpResponse as _HR
+        return _HR(f"<pre>{_tb.format_exc()}</pre>", content_type="text/html", status=500)
 
 
 @login_required
