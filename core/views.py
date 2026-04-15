@@ -1,9 +1,12 @@
 ﻿"""Vistas protegidas del modulo core para pantalla inicial y secciones."""
 
+import logging
 import os
 
 # Tipado para mantener estructura de datos del menu mas clara.
 from typing import Any
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, date as _date_type
 from urllib.parse import urlencode
 
