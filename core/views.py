@@ -1409,6 +1409,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         if action == "save_id_plataforma" and cap_id:
             username = str(request.user.username)
+            display_name = str(user_context.get("display_name", ""))
             role_eff = str(user_context.get("role_effective", ""))
             is_admin = _normalizar_texto(role_eff) in {
                 "administrador", "admin", "superusuario",
@@ -1416,7 +1417,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 qs = Capacitacion.objects.all()
                 if not is_admin:
-                    qs = qs.filter(creado_por=username)
+                    qs = qs.filter(creado_por__in=[username, display_name])
                 cap_obj = qs.get(pk=int(cap_id))
                 cap_obj.cap_codigo = str(request.POST.get("cap_codigo", "")).strip()
                 cap_obj.cap_id_curso = str(request.POST.get("cap_id_curso", "")).strip()
@@ -1432,6 +1433,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         if action == "save_capacitacion" and cap_id:
             username = str(request.user.username)
+            display_name = str(user_context.get("display_name", ""))
             role_eff = str(user_context.get("role_effective", ""))
             is_admin = _normalizar_texto(role_eff) in {
                 "administrador", "admin", "superusuario",
@@ -1440,7 +1442,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 qs = Capacitacion.objects.all()
                 if not is_admin:
-                    qs = qs.filter(creado_por=username)
+                    qs = qs.filter(creado_por__in=[username, display_name])
                 cap_obj = qs.get(pk=int(cap_id))
 
                 # Lee TODOS los campos del formulario (sin filtro de seccion).
@@ -1962,11 +1964,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "administrador", "admin", "superusuario",
             }
 
+            display_name = str(user_context.get("display_name", ""))
+
             # Obtiene lista de capacitaciones del usuario (o todas si admin).
             try:
                 qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
                 if not is_admin:
-                    qs = qs.filter(creado_por=username)
+                    qs = qs.filter(creado_por__in=[username, display_name])
 
                 # ── Filtro de año ──
                 editar_anios = sorted(
