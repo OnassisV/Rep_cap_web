@@ -233,10 +233,16 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         ],
         "submenus": [
             {
-                "slug": "registro-sincronicas",
-                "titulo": "Registro y edición",
-                "descripcion": "Registra y edita archivos de entrada/salida de capacitaciones sincrónicas.",
-                "adapter": "sincronicas_registro",
+                "slug": "registrar-sincronica",
+                "titulo": "Registrar sincrónica",
+                "descripcion": "Registra una nueva capacitación sincrónica.",
+                "adapter": "registro_capacitacion",
+            },
+            {
+                "slug": "editar-sincronica",
+                "titulo": "Editar sincrónica",
+                "descripcion": "Edita capacitaciones sincrónicas existentes.",
+                "adapter": "editar_capacitacion",
             },
             {
                 "slug": "procesamiento-sincronicas",
@@ -2722,8 +2728,145 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             _storage_dir as sync_storage_dir,
         )
 
-        # POST: manejo de archivos y procesamiento.
-        if request.method == "POST":
+        # ── POST: Registrar nueva sincrónica ──
+        if (
+            request.method == "POST"
+            and submenu_slug == "registrar-sincronica"
+        ):
+            action = str(request.POST.get("action", "")).strip()
+            draft_key = "registro_sincronica_form_draft"
+            redirect_url = _build_submenu_url(section_slug, submenu_slug, {})
+            try:
+                if action == "create_capacitacion":
+                    payload_raw: dict[str, str] = {}
+                    for campo in iterar_campos_registro_capacitacion(secciones_filtro=SECCIONES_PASO_1):
+                        codigo = str(campo.get("codigo", "")).strip()
+                        payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
+
+                    errores, payload_tipado = _validar_registro_capacitacion(
+                        payload_raw, secciones_validas=SECCIONES_PASO_1,
+                    )
+                    # Forzar tipo sincrónica
+                    payload_tipado["cap_tipo"] = "Capacitación sincrónica"
+                    payload_tipado["cap_estado"] = "Borrador"
+
+                    if errores:
+                        request.session[draft_key] = payload_raw
+                        for mensaje in errores[:8]:
+                            messages.error(request, mensaje)
+                    else:
+                        resultado = crear_registro_capacitacion(
+                            payload=payload_tipado,
+                            creado_por=str(request.user.username),
+                            creado_nombre=str(user_context.get("display_name", "")),
+                        )
+                        if resultado.get("ok"):
+                            request.session.pop(draft_key, None)
+                            messages.success(
+                                request,
+                                f"Capacitación sincrónica registrada como borrador. Código: {resultado.get('cap_codigo', '')}.",
+                            )
+                        else:
+                            request.session[draft_key] = payload_raw
+                            messages.error(request, resultado.get("error", "No se pudo registrar."))
+            except Exception as exc:
+                messages.error(request, f"Error inesperado: {exc}")
+            return redirect(redirect_url)
+
+        # ── POST: Editar sincrónica ──
+        if (
+            request.method == "POST"
+            and submenu_slug == "editar-sincronica"
+        ):
+            from core.models import Capacitacion
+
+            action = str(request.POST.get("action", "")).strip()
+            cap_id = str(request.POST.get("cap_id", "")).strip()
+            redirect_params_ed: dict[str, str] = {}
+            if cap_id:
+                redirect_params_ed["id"] = cap_id
+
+            if action == "save_capacitacion" and cap_id:
+                username = str(request.user.username)
+                display_name = str(user_context.get("display_name", ""))
+                role_eff = str(user_context.get("role_effective", ""))
+                is_admin = _normalizar_texto(role_eff) in {
+                    "administrador", "admin", "superusuario",
+                }
+                try:
+                    qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica")
+                    if not is_admin:
+                        qs = qs.filter(creado_por__in=[username, display_name])
+                    cap_obj = qs.get(pk=int(cap_id))
+
+                    _CAMPOS_EXCLUIDOS_SAVE = {"cap_codigo", "cap_id_curso"}
+                    for campo in iterar_campos_registro_capacitacion():
+                        codigo_campo = str(campo.get("codigo", "")).strip()
+                        if codigo_campo in _CAMPOS_EXCLUIDOS_SAVE:
+                            continue
+                        tipo = str(campo.get("tipo", "")).strip()
+                        if tipo == "hidden_json":
+                            raw_val = str(request.POST.get(codigo_campo, ""))
+                        else:
+                            raw_val = str(request.POST.get(codigo_campo, "")).strip()
+                        if not hasattr(cap_obj, codigo_campo):
+                            continue
+                        coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
+                        if coerced is None:
+                            field_obj = cap_obj._meta.get_field(codigo_campo)
+                            if field_obj.null:
+                                setattr(cap_obj, codigo_campo, None)
+                            else:
+                                setattr(cap_obj, codigo_campo, "")
+                        else:
+                            setattr(cap_obj, codigo_campo, coerced)
+
+                    # Mantener tipo sincrónica
+                    cap_obj.cap_tipo = "Capacitación sincrónica"
+                    cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
+                    cap_obj.save()
+                    _auto_actualizar_estado(cap_obj)
+                    messages.success(request, "Capacitación sincrónica actualizada correctamente.")
+                except Capacitacion.DoesNotExist:
+                    messages.error(request, "No se encontró la capacitación o no tienes permisos.")
+                except Exception as exc:
+                    messages.error(request, f"Error al guardar: {exc}")
+
+            elif action == "save_id_plataforma" and cap_id:
+                from core.models import Capacitacion
+                try:
+                    cap_obj = Capacitacion.objects.get(pk=int(cap_id))
+                    new_codigo = str(request.POST.get("cap_codigo", "")).strip()
+                    new_id_curso = str(request.POST.get("cap_id_curso", "")).strip()
+                    if new_codigo:
+                        cap_obj.cap_codigo = new_codigo
+                    cap_obj.cap_id_curso = new_id_curso
+                    cap_obj.save(update_fields=["cap_codigo", "cap_id_curso"])
+                    _auto_actualizar_estado(cap_obj)
+                    messages.success(request, "Identificadores de plataforma actualizados.")
+                except Capacitacion.DoesNotExist:
+                    messages.error(request, "No se encontró la capacitación o no tienes permisos.")
+                except Exception as exc:
+                    messages.error(request, f"Error al guardar identificadores: {exc}")
+
+            elif action == "cancel_capacitacion" and cap_id:
+                from core.models import Capacitacion
+                try:
+                    cap_obj = Capacitacion.objects.get(pk=int(cap_id))
+                    cap_obj.cap_estado = "Cancelada"
+                    cap_obj.save(update_fields=["cap_estado"])
+                    messages.success(request, "Capacitación sincrónica cancelada.")
+                    redirect_params_ed = {}
+                except Exception:
+                    messages.error(request, "No se pudo cancelar la capacitación.")
+
+            return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params_ed))
+
+        # ── POST: Procesamiento (archivos y proceso) ──
+        if (
+            request.method == "POST"
+            and submenu_slug == "procesamiento-sincronicas"
+        ):
             action = str(request.POST.get("action", "")).strip()
             post_codigo = str(request.POST.get("codigo", "")).strip()
             post_anio = str(request.POST.get("anio", "")).strip()
@@ -2777,79 +2920,305 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
 
-        # GET: cargar datos para ambos submenus.
-        sync_caps = obtener_capacitaciones_sincronicas(
-            role_effective=str(user_context.get("role_effective", "")),
-            display_name=str(user_context.get("display_name", "")),
-            username=str(request.user.username),
-        )
-        sync_anios, sync_anio_sel, sync_filtradas = aplicar_filtro_anio_sync(sync_caps, anio_param)
-        context["anios_disponibles"] = sync_anios
-        context["anio_seleccionado"] = sync_anio_sel
-        context["capacitaciones"] = sync_filtradas
+        # ── GET: Registrar sincrónica (reutiliza adapter_kind = "registro_capacitacion") ──
+        if submenu_slug == "registrar-sincronica":
+            context["mostrar_filtro_anio"] = False
+            draft_key = "registro_sincronica_form_draft"
+            draft_payload = request.session.get(draft_key, {})
 
-        # Codigo seleccionado y tab activo
-        codigo_param = str(request.GET.get("codigo", "")).strip()
-        codigos_visibles = [str(f.get("codigo", "")).strip() for f in sync_filtradas]
-        sync_codigo_sel = codigo_param if codigo_param in codigos_visibles else (codigos_visibles[0] if codigos_visibles else "")
+            valores_form = _valor_por_defecto_registro_capacitacion()
+            # Pre-fijar tipo a Capacitación sincrónica
+            valores_form["cap_tipo"] = "Capacitación sincrónica"
+            if isinstance(draft_payload, dict):
+                for campo in iterar_campos_registro_capacitacion():
+                    codigo = str(campo.get("codigo", "")).strip()
+                    if codigo in draft_payload:
+                        valores_form[codigo] = str(draft_payload.get(codigo, "")).strip()
+                # Siempre mantener tipo sincrónica
+                valores_form["cap_tipo"] = "Capacitación sincrónica"
 
-        tab_param = str(request.GET.get("tab", "archivos")).strip().lower()
-        sync_tabs = [
-            {"slug": "archivos", "titulo": "Archivos"},
-            {"slug": "resultado", "titulo": "Resultado"},
-        ]
-        tabs_validos = {t["slug"] for t in sync_tabs}
-        sync_tab_activo = tab_param if tab_param in tabs_validos else "archivos"
+            secciones_render: list[dict[str, Any]] = []
+            campos_totales = 0
+            campos_obligatorios = 0
+            for seccion in REGISTRO_CAPACITACION_SECCIONES:
+                campos_render: list[dict[str, Any]] = []
+                for campo in seccion.get("campos", []):
+                    campos_totales += 1
+                    if bool(campo.get("obligatorio")):
+                        campos_obligatorios += 1
+                    campos_render.append(
+                        _enriquecer_campo_registro(campo, valores_form)
+                    )
+                secciones_render.append({**seccion, "campos": campos_render})
 
-        # Info de archivos para el codigo seleccionado
-        sync_archivos_info = obtener_info_archivos(sync_codigo_sel) if sync_codigo_sel else {
-            "entradas": [], "salidas": [], "total_entradas": 0, "total_salidas": 0,
-            "procesado": False, "output_file": "",
-        }
+            catalogo_iged = obtener_catalogo_iged_por_region()
+            regiones_iged = sorted(catalogo_iged.keys())
+            for seccion in secciones_render:
+                estado_bloque = _contar_estado_bloque_registro(list(seccion.get("campos", [])))
+                seccion.update(estado_bloque)
+                if str(seccion.get("slug", "")) == "solicitud-inicial":
+                    for campo in seccion.get("campos", []):
+                        codigo = str(campo.get("codigo", "")).strip()
+                        if codigo == "sol_region_iged":
+                            campo["opciones"] = regiones_iged
+                        elif codigo == "sol_iged_nombre":
+                            region_sel = str(valores_form.get("sol_region_iged", "")).strip()
+                            campo["opciones"] = [
+                                str(item.get("nombre", "")).strip()
+                                for item in catalogo_iged.get(region_sel, [])
+                                if str(item.get("nombre", "")).strip()
+                            ]
+                    seccion["special_layout"] = "solicitud"
+                    seccion["campos_left"] = [
+                        c for c in seccion.get("campos", []) if str(c.get("ui_zone", "main")) == "left"
+                    ]
+                    seccion["campos_right"] = [
+                        c for c in seccion.get("campos", []) if str(c.get("ui_zone", "main")) == "right"
+                    ]
 
-        # Descargar resultado procesado
-        download_kind = str(request.GET.get("download", "")).strip().lower()
-        if download_kind == "resultado_xlsx" and sync_codigo_sel:
-            res = obtener_resultado_procesamiento(sync_codigo_sel)
-            if res.get("exists") and os.path.exists(str(res.get("output_path", ""))):
-                with open(str(res["output_path"]), "rb") as f:
-                    content = f.read()
-                response = HttpResponse(
-                    content,
-                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                )
-                response["Content-Disposition"] = f'attachment; filename="{res.get("output_file", "resultado.xlsx")}"'
-                return response
-            messages.warning(request, "No se encontró el resultado procesado.")
+            flujo_matriz = _construir_flujo_matriz_sustento(secciones_render, valores_form)
+            flujo_diagnostico = _construir_flujo_diagnostico(secciones_render, valores_form)
+            etapa_sustento = _construir_pasarela_sustento(flujo_matriz, flujo_diagnostico, secciones_render, valores_form)
+            flujo_expediente = _construir_flujo_expediente(secciones_render, valores_form)
+            solicitud_inicial = next(
+                (s for s in secciones_render if str(s.get("slug", "")) == "solicitud-inicial"), None,
+            )
+            flujo_unificado = _construir_flujo_unificado(
+                secciones_render, valores_form, solicitud_inicial, etapa_sustento, flujo_expediente,
+            )
+            slugs_diagnostico = {
+                "diagnostico-paso-1", "diagnostico-paso-1b", "diagnostico-paso-2",
+                "diagnostico-paso-3", "diagnostico-paso-4", "diagnostico-paso-5",
+            }
+            secciones_posteriores = [
+                s for s in secciones_render
+                if str(s.get("slug", "")) != "solicitud-inicial"
+                and str(s.get("slug", "")) not in slugs_diagnostico
+            ]
+            origen_actual = str(valores_form.get("sol_origen_institucional", "")).strip()
+            origen_externo = origen_actual in {"IGED", "Unidad orgánica"}
 
-        # Construir cards de sidebar
-        sync_cards: list[dict[str, Any]] = []
-        for fila in sync_filtradas:
-            cod = str(fila.get("codigo", "")).strip()
-            info = obtener_info_archivos(cod) if cod else {}
-            card_params = {"anio": sync_anio_sel, "codigo": cod, "tab": sync_tab_activo}
-            sync_cards.append({
-                **fila,
-                "url": _build_submenu_url(section_slug, submenu_slug, card_params),
-                "is_active": cod == sync_codigo_sel,
-                "total_entradas": info.get("total_entradas", 0),
-                "total_salidas": info.get("total_salidas", 0),
-                "procesado": info.get("procesado", False),
+            context.update({
+                "valores_form": valores_form,
+                "registro_form_sections": secciones_render,
+                "registro_form_sections_rest": secciones_posteriores,
+                "registro_form_sections_restantes": secciones_posteriores,
+                "registro_solicitud": solicitud_inicial,
+                "registro_matriz_flujo": flujo_matriz,
+                "registro_diagnostico_flujo": flujo_diagnostico,
+                "registro_sustento_etapa": etapa_sustento,
+                "registro_expediente_flujo": flujo_expediente,
+                "registro_flujo_unificado": flujo_unificado,
+                "registro_iged_catalogo": catalogo_iged,
+                "registro_iged_regiones": regiones_iged,
+                "registro_origen_actual": origen_actual,
+                "registro_origen_externo": origen_externo,
+                "registro_campos_total": campos_totales,
+                "registro_campos_obligatorios": campos_obligatorios,
             })
 
-        # Resultado de procesamiento previo
-        sync_resultado = {}
-        if sync_codigo_sel:
-            sync_resultado = obtener_resultado_procesamiento(sync_codigo_sel)
+        # ── GET: Editar sincrónica (reutiliza adapter_kind = "editar_capacitacion") ──
+        if submenu_slug == "editar-sincronica":
+            from core.models import Capacitacion
 
-        context.update({
-            "sync_tabs": sync_tabs,
-            "sync_tab_activo": sync_tab_activo,
-            "sync_codigo_sel": sync_codigo_sel,
-            "sync_archivos_info": sync_archivos_info,
-            "sync_cards": sync_cards,
-            "sync_resultado": sync_resultado,
-        })
+            username = str(request.user.username)
+            role_eff = str(user_context.get("role_effective", ""))
+            is_admin = _normalizar_texto(role_eff) in {
+                "administrador", "admin", "superusuario",
+            }
+            display_name = str(user_context.get("display_name", ""))
+
+            try:
+                # Solo sincrónicas (opuesto al filtro de gestión)
+                qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
+                if not is_admin:
+                    qs = qs.filter(creado_por__in=[username, display_name])
+
+                editar_anios = sorted(set(qs.values_list("cap_anio", flat=True)), reverse=True)
+                editar_anios = [a for a in editar_anios if a]
+                try:
+                    _ed_anio = int(anio_param) if anio_param else None
+                except (ValueError, TypeError):
+                    _ed_anio = None
+                if _ed_anio not in editar_anios:
+                    _ed_actual = _date_type.today().year
+                    _ed_anio = _ed_actual if _ed_actual in editar_anios else (editar_anios[0] if editar_anios else None)
+                context["anios_disponibles"] = editar_anios
+                context["anio_seleccionado"] = _ed_anio
+
+                qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
+                from django.db.models import Case, When, Value, IntegerField as _IntF
+                _estado_orden = Case(
+                    When(cap_estado="Borrador", then=Value(1)),
+                    When(cap_estado="En proceso", then=Value(2)),
+                    When(cap_estado="Por finalizar", then=Value(3)),
+                    When(cap_estado="Finalizada", then=Value(4)),
+                    When(cap_estado="Cancelada", then=Value(5)),
+                    default=Value(6),
+                    output_field=_IntF(),
+                )
+                editar_lista = list(
+                    qs_filtrado.annotate(_est_ord=_estado_orden)
+                    .order_by("_est_ord", "cap_codigo", "cap_id_curso")
+                    .values(
+                        "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
+                        "cap_estado", "cap_tipo", "paso_actual", "creado_nombre", "creado_en",
+                    )[:200]
+                )
+            except Exception as _ed_exc:
+                import logging as _log
+                _log.getLogger("core.views").warning("editar-sincronica: error al cargar lista: %s", _ed_exc)
+                messages.warning(request, "No se pudo cargar la lista de capacitaciones sincrónicas.")
+                editar_anios = []
+                editar_lista = []
+                qs = Capacitacion.objects.none()
+
+            cap_id_param = str(request.GET.get("id", "")).strip()
+            editar_cap = None
+            editar_valores = {}
+            if cap_id_param:
+                try:
+                    cap_obj = qs.get(pk=int(cap_id_param))
+                    editar_cap = cap_obj
+                    editar_valores = _serializar_capacitacion_valores(cap_obj)
+                except (Capacitacion.DoesNotExist, ValueError):
+                    pass
+
+            editar_secciones_render = []
+            editar_flujo_unificado = []
+            if editar_cap:
+                catalogo_iged_ed: dict = {}
+                for seccion in REGISTRO_CAPACITACION_SECCIONES:
+                    campos_render_ed = []
+                    for campo in seccion.get("campos", []):
+                        campos_render_ed.append(_enriquecer_campo_registro(campo, editar_valores))
+                    sec_copy = {**seccion, "campos": campos_render_ed}
+                    estado_bloque = _contar_estado_bloque_registro(campos_render_ed)
+                    sec_copy.update(estado_bloque)
+
+                    if str(sec_copy.get("slug", "")) == "solicitud-inicial":
+                        catalogo_iged_ed = obtener_catalogo_iged_por_region()
+                        regiones_iged_ed = sorted(catalogo_iged_ed.keys())
+                        for campo in sec_copy.get("campos", []):
+                            codigo_c = str(campo.get("codigo", "")).strip()
+                            if codigo_c == "sol_region_iged":
+                                campo["opciones"] = regiones_iged_ed
+                            elif codigo_c == "sol_iged_nombre":
+                                region_sel = str(editar_valores.get("sol_region_iged", "")).strip()
+                                campo["opciones"] = [
+                                    str(item.get("nombre", "")).strip()
+                                    for item in catalogo_iged_ed.get(region_sel, [])
+                                    if str(item.get("nombre", "")).strip()
+                                ]
+                        sec_copy["special_layout"] = "solicitud"
+                        sec_copy["campos_left"] = [
+                            c for c in sec_copy.get("campos", []) if str(c.get("ui_zone", "main")) == "left"
+                        ]
+                        sec_copy["campos_right"] = [
+                            c for c in sec_copy.get("campos", []) if str(c.get("ui_zone", "main")) == "right"
+                        ]
+
+                    editar_secciones_render.append(sec_copy)
+
+                solicitud_ed = next(
+                    (s for s in editar_secciones_render if str(s.get("slug", "")) == "solicitud-inicial"), None,
+                )
+                flujo_matriz_ed = _construir_flujo_matriz_sustento(editar_secciones_render, editar_valores)
+                flujo_diag_ed = _construir_flujo_diagnostico(editar_secciones_render, editar_valores)
+                etapa_sustento_ed = _construir_pasarela_sustento(flujo_matriz_ed, flujo_diag_ed, editar_secciones_render, editar_valores)
+                flujo_exp_ed = _construir_flujo_expediente(editar_secciones_render, editar_valores)
+                editar_flujo_unificado = _construir_flujo_unificado(
+                    editar_secciones_render, editar_valores, solicitud_ed, etapa_sustento_ed, flujo_exp_ed,
+                )
+
+                context.update({
+                    "editar_cap": {
+                        "id": editar_cap.pk,
+                        "cap_nombre": editar_cap.cap_nombre,
+                        "cap_estado": editar_cap.cap_estado,
+                        "paso_actual": editar_cap.paso_actual,
+                    },
+                    "editar_valores": editar_valores,
+                    "editar_secciones_render": editar_secciones_render,
+                    "editar_flujo_unificado": editar_flujo_unificado,
+                    "editar_solicitud": solicitud_ed,
+                    "editar_matriz_flujo": flujo_matriz_ed,
+                    "editar_diagnostico_flujo": flujo_diag_ed,
+                    "editar_sustento_etapa": etapa_sustento_ed,
+                    "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
+                })
+
+            context["editar_lista"] = editar_lista
+
+        # ── GET: Procesamiento sincrónicas ──
+        if submenu_slug == "procesamiento-sincronicas":
+            sync_caps = obtener_capacitaciones_sincronicas(
+                role_effective=str(user_context.get("role_effective", "")),
+                display_name=str(user_context.get("display_name", "")),
+                username=str(request.user.username),
+            )
+            sync_anios, sync_anio_sel, sync_filtradas = aplicar_filtro_anio_sync(sync_caps, anio_param)
+            context["anios_disponibles"] = sync_anios
+            context["anio_seleccionado"] = sync_anio_sel
+            context["capacitaciones"] = sync_filtradas
+
+            codigo_param = str(request.GET.get("codigo", "")).strip()
+            codigos_visibles = [str(f.get("codigo", "")).strip() for f in sync_filtradas]
+            sync_codigo_sel = codigo_param if codigo_param in codigos_visibles else (codigos_visibles[0] if codigos_visibles else "")
+
+            tab_param = str(request.GET.get("tab", "archivos")).strip().lower()
+            sync_tabs = [
+                {"slug": "archivos", "titulo": "Archivos"},
+                {"slug": "resultado", "titulo": "Resultado"},
+            ]
+            tabs_validos = {t["slug"] for t in sync_tabs}
+            sync_tab_activo = tab_param if tab_param in tabs_validos else "archivos"
+
+            sync_archivos_info = obtener_info_archivos(sync_codigo_sel) if sync_codigo_sel else {
+                "entradas": [], "salidas": [], "total_entradas": 0, "total_salidas": 0,
+                "procesado": False, "output_file": "",
+            }
+
+            download_kind = str(request.GET.get("download", "")).strip().lower()
+            if download_kind == "resultado_xlsx" and sync_codigo_sel:
+                res = obtener_resultado_procesamiento(sync_codigo_sel)
+                if res.get("exists") and os.path.exists(str(res.get("output_path", ""))):
+                    with open(str(res["output_path"]), "rb") as f:
+                        content = f.read()
+                    response = HttpResponse(
+                        content,
+                        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+                    response["Content-Disposition"] = f'attachment; filename="{res.get("output_file", "resultado.xlsx")}"'
+                    return response
+                messages.warning(request, "No se encontró el resultado procesado.")
+
+            sync_cards: list[dict[str, Any]] = []
+            for fila in sync_filtradas:
+                cod = str(fila.get("codigo", "")).strip()
+                info = obtener_info_archivos(cod) if cod else {}
+                card_params = {"anio": sync_anio_sel, "codigo": cod, "tab": sync_tab_activo}
+                sync_cards.append({
+                    **fila,
+                    "url": _build_submenu_url(section_slug, submenu_slug, card_params),
+                    "is_active": cod == sync_codigo_sel,
+                    "total_entradas": info.get("total_entradas", 0),
+                    "total_salidas": info.get("total_salidas", 0),
+                    "procesado": info.get("procesado", False),
+                })
+
+            sync_resultado = {}
+            if sync_codigo_sel:
+                sync_resultado = obtener_resultado_procesamiento(sync_codigo_sel)
+
+            context.update({
+                "sync_tabs": sync_tabs,
+                "sync_tab_activo": sync_tab_activo,
+                "sync_codigo_sel": sync_codigo_sel,
+                "sync_archivos_info": sync_archivos_info,
+                "sync_cards": sync_cards,
+                "sync_resultado": sync_resultado,
+            })
 
     if section_slug == "reporte-indicadores" and submenu_slug == "dashboard-kpi":
         download_kind = str(request.GET.get("download", "")).strip().lower()
