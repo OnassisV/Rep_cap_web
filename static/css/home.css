@@ -1457,6 +1457,13 @@ h1 {
     border-color: #b02a37;
 }
 
+.registro-status--porfinalizar {
+    background: #fd7e14;
+    color: #fff;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.3rem;
+}
+
 .registro-status--cancelada {
     background: #dc3545;
     color: #fff;

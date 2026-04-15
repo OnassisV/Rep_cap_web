@@ -323,8 +323,10 @@ def _auto_actualizar_estado(cap_obj) -> None:
 
     - Sin código ni ID curso → Borrador
     - Con código o ID curso  → En proceso (mínimo)
-    - Paso 7 alcanzado y todos los campos obligatorios llenos → Finalizada
-    No degrada: si ya está Finalizada no baja a En proceso.
+    - Paso 7 + código (año < 2026) → Finalizada
+    - Paso 7 + código (año >= 2026) → Por finalizar
+    - Paso 7 + código + fórmula + certificados (año >= 2026) → Finalizada
+    No degrada: si ya está Finalizada no baja a estados anteriores.
     No toca registros Cancelados.
     """
     from core.models import Capacitacion
@@ -343,16 +345,62 @@ def _auto_actualizar_estado(cap_obj) -> None:
     # Tiene código o ID → al menos En proceso.
     nuevo = Capacitacion.Estado.EN_PROCESO
 
-    # ¿Completó todo? paso_actual >= 7 indica que recorrió el flujo completo.
+    # ¿Completó todo el flujo? paso_actual >= 7 indica que recorrió los 7 pasos.
     if cap_obj.paso_actual >= 7 and tiene_codigo:
-        nuevo = Capacitacion.Estado.FINALIZADA
+        anio = cap_obj.cap_anio or 0
+        if anio >= 2026:
+            # 2026+: verificar fórmula de promedio y certificados para Finalizada.
+            nuevo = Capacitacion.Estado.POR_FINALIZAR
+            if _cap_tiene_formula_y_certificados(cap_obj):
+                nuevo = Capacitacion.Estado.FINALIZADA
+        else:
+            nuevo = Capacitacion.Estado.FINALIZADA
 
+    # No degradar desde Finalizada.
     if cap_obj.cap_estado == Capacitacion.Estado.FINALIZADA and nuevo != Capacitacion.Estado.FINALIZADA:
-        return  # no degradar de Finalizada
+        return
+    # No degradar desde Por finalizar a En proceso.
+    if cap_obj.cap_estado == Capacitacion.Estado.POR_FINALIZAR and nuevo == Capacitacion.Estado.EN_PROCESO:
+        return
 
     if cap_obj.cap_estado != nuevo:
         cap_obj.cap_estado = nuevo
         cap_obj.save(update_fields=["cap_estado", "actualizado_en"])
+
+
+def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
+    """Verifica si la capacitación tiene fórmula de promedio registrada
+    y al menos un participante con certificado determinado."""
+    from core.legacy_adapters import obtener_formulas_promedio
+    from accounts.db import get_connection
+
+    # Construye código completo: "XXXXX-YYY"
+    codigo_completo = cap_obj.cap_codigo or ""
+    if cap_obj.cap_id_curso:
+        codigo_completo = f"{cap_obj.cap_codigo}-{cap_obj.cap_id_curso}"
+
+    if not codigo_completo.strip():
+        return False
+
+    # 1. Verificar fórmula de promedio registrada.
+    formulas = obtener_formulas_promedio(codigo_completo)
+    if not formulas:
+        return False
+
+    # 2. Verificar al menos un participante con aprobados_certificados = 1.
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM bbdd_difoca WHERE codigo = %s AND aprobados_certificados = 1 LIMIT 1",
+                    (codigo_completo,),
+                )
+                if not cursor.fetchone():
+                    return False
+    except Exception:
+        return False
+
+    return True
 
 
 def _coercer_valor_registro_capacitacion(tipo: str, valor_raw: str) -> Any:
@@ -1999,9 +2047,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 _estado_orden = Case(
                     When(cap_estado="Borrador", then=Value(1)),
                     When(cap_estado="En proceso", then=Value(2)),
-                    When(cap_estado="Finalizada", then=Value(3)),
-                    When(cap_estado="Cancelada", then=Value(4)),
-                    default=Value(5),
+                    When(cap_estado="Por finalizar", then=Value(3)),
+                    When(cap_estado="Finalizada", then=Value(4)),
+                    When(cap_estado="Cancelada", then=Value(5)),
+                    default=Value(6),
                     output_field=_IntF(),
                 )
                 editar_lista = list(

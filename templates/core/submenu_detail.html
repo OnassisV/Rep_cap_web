@@ -876,7 +876,7 @@
                                 <div class="seguimiento-cards">
                                     {% for card in seguimiento_cards %}
                                         {% with condicion_txt=card.condicion|default:""|lower %}
-                                            {% if 'cerrado' in condicion_txt or 'finalizada' in condicion_txt or 'cancelada' in condicion_txt %}
+                                            {% if condicion_txt == 'finalizada' or condicion_txt == 'cancelada' or 'cerrado' in condicion_txt %}
                                             <a
                                                 href="{{ card.url }}"
                                                 class="cap-card{% if card.is_active %} is-active{% endif %} is-cerrado"

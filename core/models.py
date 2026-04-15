@@ -17,6 +17,7 @@ class Capacitacion(models.Model):
     class Estado(models.TextChoices):
         BORRADOR = "Borrador"
         EN_PROCESO = "En proceso"
+        POR_FINALIZAR = "Por finalizar"
         FINALIZADA = "Finalizada"
         CANCELADA = "Cancelada"
 
