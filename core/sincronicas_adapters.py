@@ -812,9 +812,14 @@ def _escribir_df_a_sheet(
     # Data
     for r_idx, row in enumerate(df.itertuples(index=False), start_row + 1):
         for c_idx, val in enumerate(row, 1):
-            cell_val = val
-            if isinstance(val, float) and pd.isna(val):
+            try:
+                is_na = pd.isna(val)
+            except (ValueError, TypeError):
+                is_na = False
+            if is_na:
                 cell_val = ""
+            else:
+                cell_val = val
             ws.cell(row=r_idx, column=c_idx, value=cell_val)
 
     # Table
