@@ -47,10 +47,8 @@ COUNT_COLUMNS = {
     "Capacitaciones",
 }
 
-_IGED_NAME_ALIASES = {
-    "ugel paucar de sarasara": "UGEL PAUCAR DEL SARA SARA",
-    "ugel paucar del sarasara": "UGEL PAUCAR DEL SARA SARA",
-    "ugel paucar de sara sara": "UGEL PAUCAR DEL SARA SARA",
+_IGED_NAME_KEY_ALIASES = {
+    "ugelpaucarsarasara": "UGEL PAUCAR DEL SARA SARA",
 }
 
 
@@ -135,6 +133,24 @@ def _normalize_iged_type(series: pd.Series) -> pd.Series:
     return series.fillna("").astype(str).str.strip().str.upper().str.replace(" ", "", regex=False)
 
 
+def _iged_name_key(series: pd.Series) -> pd.Series:
+    normalized = (
+        series.fillna("")
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .str.normalize("NFKD")
+        .str.encode("ascii", errors="ignore")
+        .str.decode("ascii")
+        .str.replace(r"[^a-z0-9\s]", " ", regex=True)
+        .str.replace(r"\b(del|de|la|las|el|los)\b", " ", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+        .str.replace(" ", "", regex=False)
+    )
+    return normalized
+
+
 def _normalize_iged_name(series: pd.Series) -> pd.Series:
     cleaned = (
         series.fillna("")
@@ -142,18 +158,11 @@ def _normalize_iged_name(series: pd.Series) -> pd.Series:
         .str.strip()
         .str.replace(r"\s+", " ", regex=True)
     )
-    normalized_key = (
-        cleaned
-        .str.lower()
-        .str.normalize("NFKD")
-        .str.encode("ascii", errors="ignore")
-        .str.decode("ascii")
-        .str.replace(r"\s+", " ", regex=True)
-    )
+    normalized_key = _iged_name_key(cleaned)
 
     result = cleaned.copy()
-    for alias, canonical in _IGED_NAME_ALIASES.items():
-        result.loc[normalized_key == alias] = canonical
+    for alias_key, canonical in _IGED_NAME_KEY_ALIASES.items():
+        result.loc[normalized_key == alias_key] = canonical
     return result
 
 
