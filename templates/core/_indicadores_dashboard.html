@@ -178,6 +178,16 @@
                 <small>Numerador: {{ indicadores_debug.ugel_numerador }}</small>
                 <small>Denominador: {{ indicadores_debug.ugel_denominador }}</small>
                 <small>Participaciones base: {{ indicadores_debug.participaciones }}</small>
+                <small>Filas merged: {{ indicadores_debug.merged_rows }}</small>
+            </article>
+            <article class="indicadores-debug__card" style="grid-column: 1 / -1;">
+                <span>Cruce UGEL (numerador={{ indicadores_debug.total_ugel_numerador_set }} vs catálogo={{ indicadores_debug.total_ugel_catalogo_set }})</span>
+                <small><strong>Solo en numerador (no en catálogo):</strong> {{ indicadores_debug.solo_en_numerador }}</small>
+                <small><strong>Solo en catálogo (no en datos):</strong> {{ indicadores_debug.solo_en_catalogo }}</small>
+            </article>
+            <article class="indicadores-debug__card" style="grid-column: 1 / -1; max-height: 200px; overflow-y: auto;">
+                <span>Lista UGEL numerador ({{ indicadores_debug.total_ugel_numerador_set }})</span>
+                <small style="word-break: break-all;">{{ indicadores_debug.lista_ugel_numerador }}</small>
             </article>
         </div>
     </section>

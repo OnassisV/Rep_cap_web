@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from io import BytesIO
 from typing import Any
@@ -10,6 +11,8 @@ import re
 import pandas as pd
 
 from accounts.db import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 RATE_COLUMNS = {
@@ -661,6 +664,17 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
     ugel_fortalecida = _count_distinct_non_empty(nombre_iged[(tipo_norm == "UGEL") & (merged.get("cert_base", 0) == 1)])
 
     total_dre, total_ugel = _national_iged_totals(iged_df)
+
+    logger.warning(
+        "[CARDS] ugel_cobertura=%d / total_ugel=%d = %.4f%%, "
+        "dre_cobertura=%d / total_dre=%d, merged_rows=%d, "
+        "tipo_norm_counts=%s",
+        ugel_cobertura, total_ugel,
+        (ugel_cobertura / total_ugel * 100) if total_ugel else 0,
+        dre_cobertura, total_dre, len(merged),
+        dict(tipo_norm.value_counts()),
+    )
+
     tasa_retencion = participaciones / matriculaciones if matriculaciones else pd.NA
     tasa_finalizacion = finalizaciones / participaciones if participaciones else pd.NA
     tasa_certificacion = certificaciones / finalizaciones if finalizaciones else pd.NA
@@ -760,6 +774,28 @@ def _build_dashboard_debug(query_data: Any, active_tab: str, filters: dict[str, 
     tasa_dre = dre_cobertura / total_dre if total_dre else pd.NA
     tasa_ugel = ugel_cobertura / total_ugel if total_ugel else pd.NA
 
+    # --- listas de UGEL para cruzar ---
+    ugel_mask = tipo_norm == "UGEL"
+    ugel_series = nombre_iged[ugel_mask].fillna("").astype(str).str.strip()
+    ugel_set_numerador = set(ugel_series[ugel_series != ""].unique())
+
+    tipo_cat = _normalize_iged_type(iged_df.get("tipo IGED", pd.Series(dtype=str)))
+    nombre_cat = _normalize_iged_name(iged_df.get("NOMBRE IGED", pd.Series(dtype=str))).fillna("").astype(str).str.strip()
+    ugel_set_catalogo = set(nombre_cat[(tipo_cat == "UGEL") & (nombre_cat != "")].unique())
+
+    solo_numerador = sorted(ugel_set_numerador - ugel_set_catalogo)
+    solo_catalogo = sorted(ugel_set_catalogo - ugel_set_numerador)
+
+    # log al servidor
+    logger.warning(
+        "[DEBUG KPI] ugel_cobertura=%d, total_ugel=%d, tasa=%.4f%%, "
+        "solo_numerador=%s, solo_catalogo=%s, merged_rows=%d, tipo_norm_values=%s",
+        ugel_cobertura, total_ugel,
+        (ugel_cobertura / total_ugel * 100) if total_ugel else 0,
+        solo_numerador, solo_catalogo, len(merged),
+        dict(tipo_norm.value_counts()),
+    )
+
     return {
         "active_tab": active_tab,
         "years": _debug_filter_value(filters.get("selected_years", []), "Auto: año actual o todos"),
@@ -776,6 +812,12 @@ def _build_dashboard_debug(query_data: Any, active_tab: str, filters: dict[str, 
         "ugel_numerador": _format_cell("Capacitacion", ugel_cobertura),
         "ugel_denominador": _format_cell("Capacitacion", total_ugel),
         "ugel_tasa": _format_cell("Tasa Cobertura UGEL", tasa_ugel),
+        "merged_rows": str(len(merged)),
+        "solo_en_numerador": ", ".join(solo_numerador) if solo_numerador else "(ninguna)",
+        "solo_en_catalogo": ", ".join(solo_catalogo) if solo_catalogo else "(ninguna)",
+        "lista_ugel_numerador": ", ".join(sorted(ugel_set_numerador)),
+        "total_ugel_numerador_set": str(len(ugel_set_numerador)),
+        "total_ugel_catalogo_set": str(len(ugel_set_catalogo)),
     }
 
 
