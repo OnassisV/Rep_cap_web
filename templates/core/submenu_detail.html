@@ -2689,6 +2689,257 @@
                 </script>
             {% endif %}
 
+            <!-- ═══ SINCRÓNICAS: Registro y edición / Procesamiento ═══ -->
+            {% if adapter_kind == "sincronicas_registro" or adapter_kind == "sincronicas_procesamiento" %}
+                <!-- Selector de año -->
+                {% if anios_disponibles %}
+                    <div class="year-filter">
+                        <span class="year-filter__label">Año:</span>
+                        {% for anio in anios_disponibles %}
+                            <a
+                                class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
+                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}&codigo={{ sync_codigo_sel }}&tab={{ sync_tab_activo }}"
+                            >
+                                {{ anio }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if sync_cards %}
+                    <div class="seguimiento-layout" data-seguimiento-layout>
+                        <!-- Sidebar con tarjetas de capacitaciones sincrónicas -->
+                        <aside class="seguimiento-sidebar">
+                            <details class="seguimiento-collapse" open data-seguimiento-collapse>
+                                <summary class="seguimiento-collapse__summary">
+                                    <span class="seguimiento-collapse__bullet">•</span>
+                                    Capacitaciones sincrónicas
+                                    <span class="seguimiento-collapse__badge">{{ sync_cards|length }}</span>
+                                </summary>
+                                <div class="seguimiento-list">
+                                    {% for card in sync_cards %}
+                                        <a href="{{ card.url }}"
+                                           class="cap-card{% if card.is_active %} is-active{% endif %}{% if card.procesado %} cap-card--procesada{% endif %}"
+                                        >
+                                            <span class="cap-card__codigo">{{ card.codigo }}</span>
+                                            <span class="cap-card__nombre">{{ card.denominacion_proceso_formativo|truncatechars:50 }}</span>
+                                            <span class="cap-card__estado cap-card__estado--{{ card.condicion|lower }}">{{ card.condicion }}</span>
+                                            <span class="cap-card__meta">
+                                                <span class="cap-card__archivos">
+                                                    E: {{ card.total_entradas }} | S: {{ card.total_salidas }}
+                                                </span>
+                                                {% if card.procesado %}
+                                                    <span class="cap-card__badge cap-card__badge--ok">Procesada</span>
+                                                {% endif %}
+                                            </span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        </aside>
+
+                        <!-- Panel principal -->
+                        <div class="seguimiento-main">
+                            {% if sync_codigo_sel %}
+                                <!-- Tabs -->
+                                <nav class="seguimiento-tabs">
+                                    {% for tab in sync_tabs %}
+                                        <a
+                                            class="seguimiento-tabs__item{% if tab.slug == sync_tab_activo %} is-active{% endif %}"
+                                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ sync_codigo_sel }}&tab={{ tab.slug }}"
+                                        >
+                                            {{ tab.titulo }}
+                                        </a>
+                                    {% endfor %}
+                                </nav>
+
+                                <!-- Tab: Archivos -->
+                                {% if sync_tab_activo == "archivos" %}
+                                    <div class="sync-archivos">
+                                        <h3>Archivos de {{ sync_codigo_sel }}</h3>
+
+                                        <!-- Métricas rápidas -->
+                                        <div class="mini-metric-row">
+                                            <div class="mini-metric">
+                                                <span class="mini-metric__value">{{ sync_archivos_info.total_entradas }}</span>
+                                                <span class="mini-metric__label">Entrada(s)</span>
+                                            </div>
+                                            <div class="mini-metric">
+                                                <span class="mini-metric__value">{{ sync_archivos_info.total_salidas }}</span>
+                                                <span class="mini-metric__label">Salida(s)</span>
+                                            </div>
+                                            <div class="mini-metric">
+                                                <span class="mini-metric__value">
+                                                    {% if sync_archivos_info.procesado %}Sí{% else %}No{% endif %}
+                                                </span>
+                                                <span class="mini-metric__label">Procesada</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Formulario de subida -->
+                                        <form method="post" enctype="multipart/form-data"
+                                              action="{% url 'core:submenu_detail' section.slug submenu.slug %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="upload_sincronica">
+                                            <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
+                                            <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+
+                                            <div class="sync-upload-grid">
+                                                <div class="sync-upload-group">
+                                                    <label class="sync-upload-label">Archivos de entrada (.xlsx)</label>
+                                                    <input type="file" name="archivos_entrada" accept=".xlsx,.xls" multiple
+                                                           class="sync-upload-input">
+                                                </div>
+                                                <div class="sync-upload-group">
+                                                    <label class="sync-upload-label">Archivos de salida (.xlsx)</label>
+                                                    <input type="file" name="archivos_salida" accept=".xlsx,.xls" multiple
+                                                           class="sync-upload-input">
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn-primary-soft">
+                                                Subir archivos
+                                            </button>
+                                        </form>
+
+                                        <!-- Lista de archivos de entrada -->
+                                        {% if sync_archivos_info.entradas %}
+                                            <h4>Archivos de entrada</h4>
+                                            <table class="simple-table">
+                                                <thead>
+                                                    <tr><th>Archivo</th><th>Acción</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for nombre in sync_archivos_info.entradas %}
+                                                        <tr>
+                                                            <td>{{ nombre }}</td>
+                                                            <td>
+                                                                <form method="post" style="display:inline"
+                                                                      action="{% url 'core:submenu_detail' section.slug submenu.slug %}">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="action" value="delete_archivo_sincronica">
+                                                                    <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
+                                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                                    <input type="hidden" name="nombre_archivo" value="{{ nombre }}">
+                                                                    <button type="submit" class="btn-danger-small"
+                                                                            onclick="return confirm('¿Eliminar {{ nombre }}?')">
+                                                                        Eliminar
+                                                                    </button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% endif %}
+
+                                        <!-- Lista de archivos de salida -->
+                                        {% if sync_archivos_info.salidas %}
+                                            <h4>Archivos de salida</h4>
+                                            <table class="simple-table">
+                                                <thead>
+                                                    <tr><th>Archivo</th><th>Acción</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for nombre in sync_archivos_info.salidas %}
+                                                        <tr>
+                                                            <td>{{ nombre }}</td>
+                                                            <td>
+                                                                <form method="post" style="display:inline"
+                                                                      action="{% url 'core:submenu_detail' section.slug submenu.slug %}">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="action" value="delete_archivo_sincronica">
+                                                                    <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
+                                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                                    <input type="hidden" name="nombre_archivo" value="{{ nombre }}">
+                                                                    <button type="submit" class="btn-danger-small"
+                                                                            onclick="return confirm('¿Eliminar {{ nombre }}?')">
+                                                                        Eliminar
+                                                                    </button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% endif %}
+
+                                        <!-- Botón de procesamiento -->
+                                        {% if sync_archivos_info.total_entradas > 0 and sync_archivos_info.total_salidas > 0 %}
+                                            <form method="post"
+                                                  action="{% url 'core:submenu_detail' section.slug submenu.slug %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="procesar_sincronica">
+                                                <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
+                                                <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                <button type="submit" class="btn-primary-soft sync-btn-procesar"
+                                                        onclick="return confirm('¿Procesar archivos de entrada y salida?')">
+                                                    Procesar y generar plantilla
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Tab: Resultado -->
+                                {% if sync_tab_activo == "resultado" %}
+                                    <div class="sync-resultado">
+                                        <h3>Resultado de procesamiento</h3>
+
+                                        {% if sync_resultado.exists %}
+                                            <div class="mini-metric-row">
+                                                <div class="mini-metric">
+                                                    <span class="mini-metric__value">{{ sync_resultado.stats.tutores }}</span>
+                                                    <span class="mini-metric__label">Tutores</span>
+                                                </div>
+                                                <div class="mini-metric">
+                                                    <span class="mini-metric__value">{{ sync_resultado.stats.usuarios_unicos }}</span>
+                                                    <span class="mini-metric__label">Usuarios únicos</span>
+                                                </div>
+                                                <div class="mini-metric">
+                                                    <span class="mini-metric__value">{{ sync_resultado.stats.filas_entrada }}</span>
+                                                    <span class="mini-metric__label">Filas entrada</span>
+                                                </div>
+                                                <div class="mini-metric">
+                                                    <span class="mini-metric__value">{{ sync_resultado.stats.filas_salida }}</span>
+                                                    <span class="mini-metric__label">Filas salida</span>
+                                                </div>
+                                            </div>
+
+                                            <p class="sync-resultado__info">
+                                                <strong>Archivo:</strong> {{ sync_resultado.output_file }}<br>
+                                                <strong>Generado:</strong> {{ sync_resultado.timestamp|truncatechars:19 }}
+                                            </p>
+
+                                            <a class="btn-primary-soft"
+                                               href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ sync_codigo_sel }}&download=resultado_xlsx">
+                                                Descargar resultado (.xlsx)
+                                            </a>
+                                        {% else %}
+                                            <p class="module-panel__note">
+                                                No hay resultado procesado para esta capacitación.
+                                                {% if sync_archivos_info.total_entradas > 0 and sync_archivos_info.total_salidas > 0 %}
+                                                    Ve a la pestaña <strong>Archivos</strong> y ejecuta el procesamiento.
+                                                {% else %}
+                                                    Sube archivos de entrada y salida primero.
+                                                {% endif %}
+                                            </p>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <p class="module-panel__note">
+                                    No hay capacitaciones sincrónicas registradas para el año {{ anio_seleccionado }}.
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">
+                        No se encontraron capacitaciones sincrónicas. Registra una capacitación de tipo "Capacitación sincrónica" primero.
+                    </p>
+                {% endif %}
+            {% endif %}
+
             <!-- Vista de placeholder para submenus aun no implementados en detalle. -->
             {% if adapter_kind == "placeholder" %}
                 <p class="module-panel__note">

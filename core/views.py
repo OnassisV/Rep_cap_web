@@ -1,5 +1,7 @@
 ﻿"""Vistas protegidas del modulo core para pantalla inicial y secciones."""
 
+import os
+
 # Tipado para mantener estructura de datos del menu mas clara.
 from typing import Any
 from datetime import datetime, date as _date_type
@@ -228,6 +230,20 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         "imagen": "images/menu/sincronicas_evidencias.svg",
         "modulos": [
             "plantillas_sincronicas_streamlit.py",
+        ],
+        "submenus": [
+            {
+                "slug": "registro-sincronicas",
+                "titulo": "Registro y edición",
+                "descripcion": "Registra y edita archivos de entrada/salida de capacitaciones sincrónicas.",
+                "adapter": "sincronicas_registro",
+            },
+            {
+                "slug": "procesamiento-sincronicas",
+                "titulo": "Procesamiento",
+                "descripcion": "Procesa archivos de sincrónicas y genera plantillas de seguimiento.",
+                "adapter": "sincronicas_procesamiento",
+            },
         ],
     },
     {
@@ -2692,6 +2708,148 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             context["total_sin_estandares"] = sum(
                 1 for fila in filas_estandares if int(fila.get("respuestas_totales", 0)) == 0
             )
+
+    # ── Sección Sincrónicas y Evidencias ──
+    if section_slug == "sincronicas-evidencias":
+        from core.sincronicas_adapters import (
+            obtener_capacitaciones_sincronicas,
+            aplicar_filtro_anio_sync,
+            obtener_info_archivos,
+            guardar_archivos_subidos,
+            eliminar_archivo,
+            procesar_sincronicas,
+            obtener_resultado_procesamiento,
+            _storage_dir as sync_storage_dir,
+        )
+
+        # POST: manejo de archivos y procesamiento.
+        if request.method == "POST":
+            action = str(request.POST.get("action", "")).strip()
+            post_codigo = str(request.POST.get("codigo", "")).strip()
+            post_anio = str(request.POST.get("anio", "")).strip()
+            redirect_params: dict[str, str] = {}
+            if post_anio:
+                redirect_params["anio"] = post_anio
+            if post_codigo:
+                redirect_params["codigo"] = post_codigo
+
+            if action == "upload_sincronica" and post_codigo:
+                from datetime import datetime as _dt_sync
+                ts = _dt_sync.now().strftime("%Y%m%d_%H%M%S")
+                storage = sync_storage_dir(post_codigo)
+                archivos_entrada = request.FILES.getlist("archivos_entrada")
+                archivos_salida = request.FILES.getlist("archivos_salida")
+                total_guardados = 0
+                if archivos_entrada:
+                    guardados = guardar_archivos_subidos(archivos_entrada, "entrada", storage, ts)
+                    total_guardados += len(guardados)
+                if archivos_salida:
+                    guardados = guardar_archivos_subidos(archivos_salida, "salida", storage, ts)
+                    total_guardados += len(guardados)
+                if total_guardados > 0:
+                    messages.success(request, f"{total_guardados} archivo(s) guardado(s) correctamente.")
+                else:
+                    messages.info(request, "No se guardaron archivos nuevos (posibles duplicados).")
+
+            elif action == "delete_archivo_sincronica" and post_codigo:
+                nombre = str(request.POST.get("nombre_archivo", "")).strip()
+                storage = sync_storage_dir(post_codigo)
+                if nombre and eliminar_archivo(storage, nombre):
+                    messages.success(request, f"Archivo '{nombre}' eliminado.")
+                else:
+                    messages.error(request, "No se pudo eliminar el archivo.")
+
+            elif action == "procesar_sincronica" and post_codigo:
+                resultado = procesar_sincronicas(post_codigo)
+                if resultado.get("ok"):
+                    if resultado.get("reutilizado"):
+                        messages.info(request, "Los insumos no cambiaron. Se reutilizó el resultado previo.")
+                    else:
+                        stats = resultado.get("stats", {})
+                        messages.success(
+                            request,
+                            f"Procesamiento completado: {stats.get('tutores', 0)} tutores, "
+                            f"{stats.get('usuarios_unicos', 0)} usuarios únicos.",
+                        )
+                    redirect_params["tab"] = "resultado"
+                else:
+                    messages.error(request, resultado.get("error", "Error en el procesamiento."))
+
+            return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
+
+        # GET: cargar datos para ambos submenus.
+        sync_caps = obtener_capacitaciones_sincronicas(
+            role_effective=str(user_context.get("role_effective", "")),
+            display_name=str(user_context.get("display_name", "")),
+            username=str(request.user.username),
+        )
+        sync_anios, sync_anio_sel, sync_filtradas = aplicar_filtro_anio_sync(sync_caps, anio_param)
+        context["anios_disponibles"] = sync_anios
+        context["anio_seleccionado"] = sync_anio_sel
+        context["capacitaciones"] = sync_filtradas
+
+        # Codigo seleccionado y tab activo
+        codigo_param = str(request.GET.get("codigo", "")).strip()
+        codigos_visibles = [str(f.get("codigo", "")).strip() for f in sync_filtradas]
+        sync_codigo_sel = codigo_param if codigo_param in codigos_visibles else (codigos_visibles[0] if codigos_visibles else "")
+
+        tab_param = str(request.GET.get("tab", "archivos")).strip().lower()
+        sync_tabs = [
+            {"slug": "archivos", "titulo": "Archivos"},
+            {"slug": "resultado", "titulo": "Resultado"},
+        ]
+        tabs_validos = {t["slug"] for t in sync_tabs}
+        sync_tab_activo = tab_param if tab_param in tabs_validos else "archivos"
+
+        # Info de archivos para el codigo seleccionado
+        sync_archivos_info = obtener_info_archivos(sync_codigo_sel) if sync_codigo_sel else {
+            "entradas": [], "salidas": [], "total_entradas": 0, "total_salidas": 0,
+            "procesado": False, "output_file": "",
+        }
+
+        # Descargar resultado procesado
+        download_kind = str(request.GET.get("download", "")).strip().lower()
+        if download_kind == "resultado_xlsx" and sync_codigo_sel:
+            res = obtener_resultado_procesamiento(sync_codigo_sel)
+            if res.get("exists") and os.path.exists(str(res.get("output_path", ""))):
+                with open(str(res["output_path"]), "rb") as f:
+                    content = f.read()
+                response = HttpResponse(
+                    content,
+                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+                response["Content-Disposition"] = f'attachment; filename="{res.get("output_file", "resultado.xlsx")}"'
+                return response
+            messages.warning(request, "No se encontró el resultado procesado.")
+
+        # Construir cards de sidebar
+        sync_cards: list[dict[str, Any]] = []
+        for fila in sync_filtradas:
+            cod = str(fila.get("codigo", "")).strip()
+            info = obtener_info_archivos(cod) if cod else {}
+            card_params = {"anio": sync_anio_sel, "codigo": cod, "tab": sync_tab_activo}
+            sync_cards.append({
+                **fila,
+                "url": _build_submenu_url(section_slug, submenu_slug, card_params),
+                "is_active": cod == sync_codigo_sel,
+                "total_entradas": info.get("total_entradas", 0),
+                "total_salidas": info.get("total_salidas", 0),
+                "procesado": info.get("procesado", False),
+            })
+
+        # Resultado de procesamiento previo
+        sync_resultado = {}
+        if sync_codigo_sel:
+            sync_resultado = obtener_resultado_procesamiento(sync_codigo_sel)
+
+        context.update({
+            "sync_tabs": sync_tabs,
+            "sync_tab_activo": sync_tab_activo,
+            "sync_codigo_sel": sync_codigo_sel,
+            "sync_archivos_info": sync_archivos_info,
+            "sync_cards": sync_cards,
+            "sync_resultado": sync_resultado,
+        })
 
     if section_slug == "reporte-indicadores" and submenu_slug == "dashboard-kpi":
         download_kind = str(request.GET.get("download", "")).strip().lower()
