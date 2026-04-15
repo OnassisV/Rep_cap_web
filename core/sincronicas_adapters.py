@@ -747,11 +747,24 @@ def _crear_reportes_dinamicos(df_tutor: pd.DataFrame) -> list[tuple[str, pd.Data
     return reportes
 
 
+def _sanitizar_df_para_excel(df: pd.DataFrame) -> pd.DataFrame:
+    """Reemplaza todo tipo de NA/NaN/pd.NA por cadena vacia para openpyxl."""
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].fillna("").infer_objects()
+        out[col] = out[col].apply(lambda v: "" if pd.isna(v) is True else v)
+    return out
+
+
 def _generar_excel(df_tutor: pd.DataFrame, df_usuarios: pd.DataFrame, codigo: str) -> bytes:
     """Genera bytes de un Excel con pestanas BBDD TUTOR, REPORTES, ASISTENCIA."""
     from openpyxl import Workbook
     from openpyxl.worksheet.table import Table, TableStyleInfo
     from openpyxl.utils import get_column_letter
+
+    # Sanitizar DataFrames para evitar pd.NA que openpyxl no soporta
+    df_tutor = _sanitizar_df_para_excel(df_tutor)
+    df_usuarios = _sanitizar_df_para_excel(df_usuarios)
 
     buf = BytesIO()
     wb = Workbook()
@@ -769,6 +782,7 @@ def _generar_excel(df_tutor: pd.DataFrame, df_usuarios: pd.DataFrame, codigo: st
     for i, (titulo, df_rep) in enumerate(reportes):
         ws_rep.cell(row=fila_actual, column=1, value=titulo)
         fila_actual += 1
+        df_rep = _sanitizar_df_para_excel(df_rep)
         _escribir_df_a_sheet(ws_rep, df_rep, f"Reporte{i + 1}", estilos[i % len(estilos)], start_row=fila_actual)
         fila_actual += len(df_rep) + 3
 
