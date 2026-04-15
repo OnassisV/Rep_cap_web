@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from io import BytesIO
 from typing import Any
+import re
 
 import pandas as pd
 
@@ -44,6 +45,12 @@ COUNT_COLUMNS = {
     "Total DRE/GRE",
     "Total UGEL",
     "Capacitaciones",
+}
+
+_IGED_NAME_ALIASES = {
+    "ugel paucar de sarasara": "UGEL PAUCAR DEL SARA SARA",
+    "ugel paucar del sarasara": "UGEL PAUCAR DEL SARA SARA",
+    "ugel paucar de sara sara": "UGEL PAUCAR DEL SARA SARA",
 }
 
 
@@ -128,6 +135,28 @@ def _normalize_iged_type(series: pd.Series) -> pd.Series:
     return series.fillna("").astype(str).str.strip().str.upper().str.replace(" ", "", regex=False)
 
 
+def _normalize_iged_name(series: pd.Series) -> pd.Series:
+    cleaned = (
+        series.fillna("")
+        .astype(str)
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)
+    )
+    normalized_key = (
+        cleaned
+        .str.lower()
+        .str.normalize("NFKD")
+        .str.encode("ascii", errors="ignore")
+        .str.decode("ascii")
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+    result = cleaned.copy()
+    for alias, canonical in _IGED_NAME_ALIASES.items():
+        result.loc[normalized_key == alias] = canonical
+    return result
+
+
 def _normalize_gender(series: pd.Series) -> pd.Series:
     normalized = (
         series.fillna("")
@@ -208,7 +237,7 @@ def _filter_offer(
 def _filter_participants(bbdd: pd.DataFrame, selected_regions: list[str], selected_igeds: list[str]) -> pd.DataFrame:
     filtered = bbdd.copy()
     filtered.loc[:, "region_text"] = filtered.get("region", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
-    filtered.loc[:, "iged_text"] = filtered.get("nombre_iged", pd.Series(index=filtered.index, dtype=object)).fillna("").astype(str).str.strip()
+    filtered.loc[:, "iged_text"] = _normalize_iged_name(filtered.get("nombre_iged", pd.Series(index=filtered.index, dtype=object)))
 
     if selected_regions:
         filtered = filtered[filtered["region_text"].isin(selected_regions)]
@@ -221,7 +250,7 @@ def _national_iged_totals(iged: pd.DataFrame) -> tuple[int, int]:
     if iged.empty:
         return 0, 0
     tipo = _normalize_iged_type(iged.get("tipo IGED", pd.Series(dtype=str)))
-    nombre = iged.get("NOMBRE IGED", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
+    nombre = _normalize_iged_name(iged.get("NOMBRE IGED", pd.Series(dtype=str)))
     total_dre = int(nombre[tipo == "DRE/GRE"].nunique())
     total_ugel = int(nombre[tipo == "UGEL"].nunique())
     return total_dre, total_ugel
@@ -244,6 +273,8 @@ def _calculate_base_kpis(
         if _text_col in merged.columns:
             merged[_text_col] = merged[_text_col].fillna("").astype(str).str.strip()
             merged.loc[merged[_text_col].str.lower() == "none", _text_col] = ""
+    if "nombre_iged" in merged.columns:
+        merged["nombre_iged"] = _normalize_iged_name(merged["nombre_iged"])
     merged["estado_num"] = pd.to_numeric(merged.get("estado"), errors="coerce")
     merged["compromiso_num"] = pd.to_numeric(merged.get("compromiso"), errors="coerce")
     merged["aprobados_certificados_flag"] = _to_flag(merged.get("aprobados_certificados", pd.Series(dtype=object)))
@@ -439,7 +470,7 @@ def _calculate_region_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, ig
 
     iged_copy = iged.copy()
     iged_copy["tipo_norm"] = _normalize_iged_type(iged_copy.get("tipo IGED", pd.Series(dtype=str)))
-    iged_copy["nombre_norm"] = iged_copy.get("NOMBRE IGED", pd.Series(dtype=str)).fillna("").astype(str).str.strip()
+    iged_copy["nombre_norm"] = _normalize_iged_name(iged_copy.get("NOMBRE IGED", pd.Series(dtype=str)))
     total_dre = iged_copy[iged_copy["tipo_norm"] == "DRE/GRE"].groupby("region")["nombre_norm"].nunique()
     total_ugel = iged_copy[iged_copy["tipo_norm"] == "UGEL"].groupby("region")["nombre_norm"].nunique()
     capacidades = merged.groupby("region")["codigo"].nunique()

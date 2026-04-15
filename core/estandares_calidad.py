@@ -17,6 +17,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from accounts.db import get_connection
+from core.indicadores_adapters import _normalize_iged_name
 
 ANIO_VIGENTE = datetime.now().year
 
@@ -432,12 +433,13 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
 
         # Cobertura DRE/UGEL participantes
         if "nombre_iged" in merged.columns and "tipo_iged" in merged.columns:
+            nombres_iged = _normalize_iged_name(merged["nombre_iged"])
             tipo_norm = merged["tipo_iged"].astype(str).str.upper().str.replace(" ", "", regex=False)
             dre_cob = int(
-                merged.loc[base_participa & (tipo_norm == "DRE/GRE"), "nombre_iged"].nunique()
+                nombres_iged[base_participa & (tipo_norm == "DRE/GRE")].nunique()
             )
             ugel_cob = int(
-                merged.loc[base_participa & (tipo_norm == "UGEL"), "nombre_iged"].nunique()
+                nombres_iged[base_participa & (tipo_norm == "UGEL")].nunique()
             )
             kpi["kpi_cobertura_participantes_dual"] = f"{dre_cob} DRE/GRE, {ugel_cob} UGEL"
         else:
@@ -445,12 +447,13 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
 
         # Cobertura DRE/UGEL aprobados
         if "nombre_iged" in merged.columns and "tipo_iged" in merged.columns:
+            nombres_iged = _normalize_iged_name(merged["nombre_iged"])
             tipo_norm = merged["tipo_iged"].astype(str).str.upper().str.replace(" ", "", regex=False)
             dre_fort = int(
-                merged.loc[base_participa & (tipo_norm == "DRE/GRE") & aprobados_flag, "nombre_iged"].nunique()
+                nombres_iged[base_participa & (tipo_norm == "DRE/GRE") & aprobados_flag].nunique()
             )
             ugel_fort = int(
-                merged.loc[base_participa & (tipo_norm == "UGEL") & aprobados_flag, "nombre_iged"].nunique()
+                nombres_iged[base_participa & (tipo_norm == "UGEL") & aprobados_flag].nunique()
             )
             kpi["kpi_cobertura_aprobados_dual"] = f"{dre_fort} DRE/GRE, {ugel_fort} UGEL"
         else:
