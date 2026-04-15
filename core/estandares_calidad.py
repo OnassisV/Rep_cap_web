@@ -397,7 +397,13 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
         else:
             kpi["kpi_matriculaciones_pct"] = str(matriculaciones)
 
-        participaciones = int(((merged["estado"] == 2) & (merged["compromiso"] == 20)).sum())
+        estado_num = pd.to_numeric(merged.get("estado"), errors="coerce")
+        compromiso_num = pd.to_numeric(merged.get("compromiso"), errors="coerce")
+        aprobados_flag = pd.to_numeric(merged.get("aprobados_certificados"), errors="coerce").fillna(0) >= 1
+        desaprobado_perm_flag = pd.to_numeric(merged.get("desaprobado_permanente"), errors="coerce").fillna(0) >= 1
+        base_participa = (estado_num == 2) & (compromiso_num.isin([20, 1]))
+
+        participaciones = int(base_participa.sum())
 
         if matriculaciones > 0:
             pct_part = round(participaciones / matriculaciones * 100, 1)
@@ -406,8 +412,7 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
             kpi["kpi_participaciones_pct"] = str(participaciones)
 
         merged["Finalizados"] = (
-            (merged.get("aprobados_certificados", pd.Series(dtype="int")) == 1)
-            | (merged.get("desaprobado_permanente", pd.Series(dtype="int")) == 1)
+            base_participa & (aprobados_flag | desaprobado_perm_flag)
         ).astype(int)
         finalizaciones = int((merged["Finalizados"] == 1).sum())
 
@@ -417,9 +422,7 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
         else:
             kpi["kpi_finalizaciones_pct"] = str(finalizaciones)
 
-        certificaciones = int(
-            (merged.get("aprobados_certificados", pd.Series(dtype="int")) == 1).sum()
-        )
+        certificaciones = int((base_participa & aprobados_flag).sum())
 
         if finalizaciones > 0:
             pct_cert = round(certificaciones / finalizaciones * 100, 1)
@@ -431,10 +434,10 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
         if "nombre_iged" in merged.columns and "tipo_iged" in merged.columns:
             tipo_norm = merged["tipo_iged"].astype(str).str.upper().str.replace(" ", "", regex=False)
             dre_cob = int(
-                merged.loc[(merged["estado"] == 2) & (tipo_norm == "DRE/GRE"), "nombre_iged"].nunique()
+                merged.loc[base_participa & (tipo_norm == "DRE/GRE"), "nombre_iged"].nunique()
             )
             ugel_cob = int(
-                merged.loc[(merged["estado"] == 2) & (tipo_norm == "UGEL"), "nombre_iged"].nunique()
+                merged.loc[base_participa & (tipo_norm == "UGEL"), "nombre_iged"].nunique()
             )
             kpi["kpi_cobertura_participantes_dual"] = f"{dre_cob} DRE/GRE, {ugel_cob} UGEL"
         else:
@@ -442,13 +445,12 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
 
         # Cobertura DRE/UGEL aprobados
         if "nombre_iged" in merged.columns and "tipo_iged" in merged.columns:
-            aprobado_mask = merged.get("aprobados_certificados", pd.Series(dtype="int")) == 1
             tipo_norm = merged["tipo_iged"].astype(str).str.upper().str.replace(" ", "", regex=False)
             dre_fort = int(
-                merged.loc[(merged["estado"] == 2) & (tipo_norm == "DRE/GRE") & aprobado_mask, "nombre_iged"].nunique()
+                merged.loc[base_participa & (tipo_norm == "DRE/GRE") & aprobados_flag, "nombre_iged"].nunique()
             )
             ugel_fort = int(
-                merged.loc[(merged["estado"] == 2) & (tipo_norm == "UGEL") & aprobado_mask, "nombre_iged"].nunique()
+                merged.loc[base_participa & (tipo_norm == "UGEL") & aprobados_flag, "nombre_iged"].nunique()
             )
             kpi["kpi_cobertura_aprobados_dual"] = f"{dre_fort} DRE/GRE, {ugel_fort} UGEL"
         else:
