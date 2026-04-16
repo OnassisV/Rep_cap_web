@@ -2555,6 +2555,123 @@ def _obtener_dnis_matriculados_aula(codigo: str) -> list[str]:
     return dnis
 
 
+def _enriquecer_filas_con_sidi(filas_por_dni: dict[str, dict[str, Any]]) -> None:
+    """Completa datos demograficos desde uvw_usuarios_detalle_completo (SIDI en Railway).
+
+    Solo actualiza campos que estan vacios/None en la fila existente.
+    Replica la logica de obtener_datos_sidi() de la app original.
+    """
+    # Identificar DNIs con datos incompletos (sin apellidos ni nombres).
+    dnis_incompletos = [
+        dni for dni, fila in filas_por_dni.items()
+        if _valor_vacio(fila.get("apellidos")) and _valor_vacio(fila.get("nombres"))
+    ]
+    if not dnis_incompletos:
+        return
+
+    query = """
+        SELECT
+            CASE WHEN id_tipo_documento = 1 THEN 'DNI' ELSE 'OTROS' END AS tipo_documento,
+            nro_documento AS dni,
+            genero,
+            CONCAT(COALESCE(apellido_paterno,''), ' ', COALESCE(apellido_materno,'')) AS apellidos,
+            nombres,
+            DATE_FORMAT(fecha_nacimiento, '%%Y-%%m-%%d') AS fecha_nacimiento,
+            email,
+            telefono_celular,
+            telefono_fijo,
+            CASE
+                WHEN fec_modifica < DATE_SUB(CURDATE(), INTERVAL 6 MONTH) THEN 'No'
+                ELSE 'Si'
+            END AS actualizo_datos,
+            SUBSTRING(descripcion_id_dre_gre, 5, 100) AS region,
+            CASE
+                WHEN REPLACE(descripcion_tipo_entidad, ' ', '') = 'DRE/GRE' THEN 'DRE / GRE'
+                ELSE descripcion_tipo_entidad
+            END AS tipo_iged,
+            CASE
+                WHEN REPLACE(descripcion_tipo_entidad, ' ', '') = 'DRE/GRE' THEN descripcion_id_dre_gre
+                WHEN descripcion_tipo_entidad = 'UGEL' THEN descripcion_id_ugel
+                ELSE NULL
+            END AS nombre_iged,
+            descripcion_nivel_puesto AS nivel_puesto,
+            descripcion_puesto AS nombre_puesto,
+            descripcion_regimen_laboral AS regimen_laboral
+        FROM uvw_usuarios_detalle_completo
+        WHERE nro_documento IN ({placeholders})
+    """
+    placeholders = ", ".join(["%s"] * len(dnis_incompletos))
+    query = query.format(placeholders=placeholders)
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, dnis_incompletos)
+                rows_sidi = list(cur.fetchall())
+    except Exception:
+        logger.exception("Error consultando uvw_usuarios_detalle_completo")
+        return
+
+    # Indexar por DNI normalizado.
+    sidi_por_dni: dict[str, dict[str, Any]] = {}
+    for row in rows_sidi:
+        dni = _normalizar_dni(row.get("dni"))
+        if dni:
+            sidi_por_dni[dni] = row
+
+    # Obtener codigo_iged desde iged_s3.
+    codigos_iged = _obtener_mapa_codigo_iged()
+
+    campos_sidi = [
+        "tipo_documento", "genero", "apellidos", "nombres", "fecha_nacimiento",
+        "email", "telefono_celular", "telefono_fijo", "actualizo_datos",
+        "region", "tipo_iged", "nombre_iged", "nivel_puesto", "nombre_puesto",
+        "regimen_laboral",
+    ]
+
+    for dni in dnis_incompletos:
+        sidi = sidi_por_dni.get(dni)
+        if not sidi:
+            continue
+        fila = filas_por_dni[dni]
+        for campo in campos_sidi:
+            if _valor_vacio(fila.get(campo)):
+                valor = sidi.get(campo)
+                if not _valor_vacio(valor):
+                    fila[campo] = valor
+        # codigo_iged: buscar en mapa iged_s3 por region + nombre_iged.
+        if _valor_vacio(fila.get("codigo_iged")):
+            region = str(fila.get("region") or "").strip()
+            nombre_iged = str(fila.get("nombre_iged") or "").strip()
+            clave = (_normalizar_texto(region), _normalizar_texto(nombre_iged))
+            fila["codigo_iged"] = codigos_iged.get(clave)
+
+    logger.info(
+        "_enriquecer_filas_con_sidi: %d/%d DNIs enriquecidos con datos SIDI",
+        len(sidi_por_dni), len(dnis_incompletos),
+    )
+
+
+def _obtener_mapa_codigo_iged() -> dict[tuple[str, str], str]:
+    """Retorna mapa (region_norm, nombre_iged_norm) -> codigo_iged desde iged_s3."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT region, nombre_iged, codigo_iged FROM iged_s3")
+                rows = list(cur.fetchall())
+    except Exception:
+        return {}
+
+    mapa: dict[tuple[str, str], str] = {}
+    for row in rows:
+        region = _normalizar_texto(str(row.get("region") or "").strip())
+        nombre = _normalizar_texto(str(row.get("nombre_iged") or "").strip())
+        codigo = str(row.get("codigo_iged") or "").strip()
+        if region and nombre and codigo:
+            mapa[(region, nombre)] = codigo
+    return mapa
+
+
 def _obtener_filas_bbdd_por_codigo_y_dnis(codigo: str, dnis: list[str]) -> list[dict[str, Any]]:
     """Obtiene filas base de bbdd_difoca para el codigo y DNI seleccionados."""
     codigo = str(codigo or "").strip()
@@ -4443,6 +4560,9 @@ def generar_plantilla_seguimiento(
 
     if not filas_por_dni:
         return {"ok": False, "error": "No se pudo construir el universo de participantes."}
+
+    # Completa datos demograficos desde SIDI para DNIs sin informacion previa.
+    _enriquecer_filas_con_sidi(filas_por_dni)
 
     _aplicar_estado_matricula_y_retiros(codigo, filas_por_dni)
     actividades_export = _aplicar_actividades_a_filas(codigo, estructura, filas_por_dni)
