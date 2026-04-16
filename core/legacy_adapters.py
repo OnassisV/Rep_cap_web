@@ -4354,15 +4354,20 @@ def generar_plantilla_seguimiento(
     nominal_config = obtener_config_nominal_reporte(codigo, estructura)
     postulantes_info = obtener_postulantes_excel_info(codigo)
 
-    # Prioriza lista de postulantes cargada; si no existe, usa matriculados de bbdd_difoca.
+    # Prioriza lista de postulantes cargada; si no existe, combina bbdd_difoca + Chamilo.
     dnis_objetivo: list[str] = []
     if postulantes_info.get("exists"):
         dnis_objetivo = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
     if not dnis_objetivo:
-        dnis_objetivo = _obtener_dnis_matriculados_por_codigo(codigo)
-    # Fallback: consultar Chamilo directamente (course_rel_user + user).
-    if not dnis_objetivo:
-        dnis_objetivo = _obtener_dnis_matriculados_aula(codigo)
+        # Combina matriculados de bbdd_difoca con los de Chamilo para capturar
+        # tanto los existentes como los recien matriculados en el aula virtual.
+        dnis_bbdd = _obtener_dnis_matriculados_por_codigo(codigo)
+        dnis_aula = _obtener_dnis_matriculados_aula(codigo)
+        vistos: set[str] = set()
+        for dni in dnis_bbdd + dnis_aula:
+            if dni not in vistos:
+                vistos.add(dni)
+                dnis_objetivo.append(dni)
 
     filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, dnis_objetivo)
     if not filas_bbdd and not dnis_objetivo:
