@@ -377,21 +377,26 @@ def procesar_archivo_individual(df: pd.DataFrame, nombre_archivo: str | None = N
 # ---------------------------------------------------------------------------
 
 def _normalizar_texto_ascii_upper(s: pd.Series) -> pd.Series:
-    """Convierte a MAYUSCULAS ASCII (sin acentos)."""
+    """Convierte a MAYUSCULAS quitando tildes vocalicas (conserva Ñ)."""
     result = s.fillna("").astype(str).str.strip().str.upper()
-    for orig, repl in [("Á", "A"), ("É", "E"), ("Í", "I"), ("Ó", "O"), ("Ú", "U"), ("Ü", "U"), ("Ñ", "N")]:
+    for orig, repl in [("Á", "A"), ("É", "E"), ("Í", "I"), ("Ó", "O"), ("Ú", "U"), ("Ü", "U")]:
         result = result.str.replace(orig, repl, regex=False)
     return result
 
 
 def _obtener_catalogo_iged() -> pd.DataFrame:
-    """Lee catalogo iged_s3 desde MySQL."""
+    """Lee catalogo iged_s3 desde MySQL y normaliza para match."""
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('SELECT region, `NOMBRE IGED` AS nombre_iged, `tipo IGED` AS tipo_iged, CODIGO_R AS codigo_iged FROM iged_s3')
                 rows = cur.fetchall()
-        return pd.DataFrame(list(rows or []))
+        df = pd.DataFrame(list(rows or []))
+        if not df.empty:
+            # Normalizar region y nombre_iged igual que df_usuarios para match
+            df["region"] = _normalizar_texto_ascii_upper(df["region"])
+            df["nombre_iged"] = _normalizar_texto_ascii_upper(df["nombre_iged"])
+        return df
     except Exception:
         logger.exception("Error leyendo iged_s3")
         return pd.DataFrame(columns=["region", "nombre_iged", "tipo_iged", "codigo_iged"])
@@ -530,6 +535,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
         df_usuarios["region"] = df_usuarios["region"].str.replace(r"^LIMA PROVINCIA$", "LIMA PROVINCIAS", regex=True)
     if "nombre_iged" in df_usuarios.columns:
         df_usuarios["nombre_iged"] = _normalizar_texto_ascii_upper(df_usuarios["nombre_iged"])
+        df_usuarios["nombre_iged"] = df_usuarios["nombre_iged"].str.replace(r"^DRE LIMA PROVINCIA$", "DRE LIMA PROVINCIAS", regex=True)
         df_usuarios["nombre_iged"] = df_usuarios["nombre_iged"].replace(["", "NAN"], pd.NA)
 
     # Merge con iged_s3
@@ -843,6 +849,19 @@ def _escribir_df_a_sheet(
     tbl = Table(displayName=table_name, ref=ref)
     tbl.tableStyleInfo = TableStyleInfo(name=style, showFirstColumn=False, showLastColumn=False, showRowStripes=True)
     ws.add_table(tbl)
+
+    # Ajustar ancho de columnas automaticamente
+    for i, col_cells in enumerate(ws.iter_cols(min_row=start_row, max_row=end_row, min_col=1, max_col=len(df.columns)), 1):
+        max_length = 0
+        col_letter = get_column_letter(i)
+        for cell in col_cells:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except Exception:
+                pass
+        adjusted_width = min(max_length + 2, 100)
+        ws.column_dimensions[col_letter].width = adjusted_width
 
 
 # ---------------------------------------------------------------------------
