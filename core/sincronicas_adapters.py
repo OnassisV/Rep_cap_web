@@ -677,6 +677,9 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     output_path.write_bytes(output_bytes)
     logger.info("procesar_sincronicas: archivo guardado en %s (%d bytes)", output_path, len(output_bytes))
 
+    # Insertar en bbdd_2026 para que la VIEW bbdd_difoca refleje los datos
+    _insertar_en_bbdd_2026(df_tutor, codigo)
+
     # Actualizar manifest
     stats = {
         "filas_entrada": len(df_entrada),
@@ -704,6 +707,97 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
         "output_file": output_file,
         "stats": stats,
     }
+
+
+# ---------------------------------------------------------------------------
+# Insercion en bbdd_2026 (alimenta la VIEW bbdd_difoca)
+# ---------------------------------------------------------------------------
+
+# Mapeo de columnas BBDD TUTOR -> columnas bbdd_2026
+_TUTOR_TO_BBDD = {
+    "N\u00b0": "numero",
+    "codigo": "codigo",
+    "tipo_documento": "tipo_documento",
+    "dni": "dni",
+    "nombres": "nombres",
+    "apellidos": "apellidos",
+    "email": "email",
+    "telefono_celular": "telefono_celular",
+    "region": "region",
+    "tipo_iged": "tipo_iged",
+    "codigo_iged": "codigo_iged",
+    "nombre_iged": "nombre_iged",
+    "nivel_puesto": "nivel_puesto",
+    "nombre_puesto": "nombre_puesto",
+    "estado": "estado",
+    "compromiso": "compromiso",
+    "%_avance_certificacion": "avance_curso_certificacion",
+    "promedio_final_general": "promedio_final_general",
+    "promedio_final_condicion": "promedio_final_condicion",
+    "situacion_del_participante": "situacion_participante",
+    "Aprobados/Certificados": "aprobados_certificados",
+    "Desaprobado/Permanente": "desaprobado_permanente",
+    "Desaprobado/Abandono": "desaprobado_abandono",
+    "cuestionario entrada": "cuestionario_entrada",
+    "cuestionario salida": "cuestionario_salida",
+    "ev_progreso_aprendizaje": "ev_progreso_aprendizaje",
+    "mantuvo_o_progres\u00f3": "mantuvo_o_progreso",
+    "progres\u00f3": "progreso",
+    "Nivel C. Entrada": "nivel_c_entrada",
+    "Nivel C. Salida": "nivel_c_salida",
+}
+
+
+def _insertar_en_bbdd_2026(df_tutor: pd.DataFrame, codigo: str) -> None:
+    """Inserta df_tutor en bbdd_2026. Si ya existen registros del mismo codigo, los reemplaza."""
+    try:
+        df = df_tutor.copy()
+        # Renombrar columnas al esquema de bbdd_2026
+        df = df.rename(columns=_TUTOR_TO_BBDD)
+        # Solo conservar columnas que existen en bbdd_2026
+        cols_bbdd = list(_TUTOR_TO_BBDD.values())
+        for c in cols_bbdd:
+            if c not in df.columns:
+                df[c] = None
+        df = df[cols_bbdd]
+        # Reemplazar strings vacios y "nan" por None para MySQL
+        df = df.where(df.notnull(), None)
+        df = df.replace({"": None, "nan": None, "NaN": None})
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Borrar registros previos del mismo codigo
+                cur.execute("DELETE FROM bbdd_2026 WHERE codigo = %s", (codigo,))
+                deleted = cur.rowcount
+                if deleted:
+                    logger.info("_insertar_en_bbdd_2026: eliminados %d registros previos de %s", deleted, codigo)
+
+                # Insertar nuevos registros
+                placeholders = ", ".join(["%s"] * len(cols_bbdd))
+                col_names = ", ".join(f"`{c}`" for c in cols_bbdd)
+                sql = f"INSERT INTO bbdd_2026 ({col_names}) VALUES ({placeholders})"
+
+                def _safe(v):
+                    """Convierte NaN/NA/pd.NA a None para MySQL."""
+                    if v is None:
+                        return None
+                    try:
+                        if pd.isna(v):
+                            return None
+                    except (ValueError, TypeError):
+                        pass
+                    if isinstance(v, float) and (v != v):  # NaN check
+                        return None
+                    s = str(v)
+                    if s in ("", "nan", "NaN", "<NA>"):
+                        return None
+                    return v
+
+                rows = [tuple(_safe(row[c]) for c in cols_bbdd) for _, row in df.iterrows()]
+                cur.executemany(sql, rows)
+                logger.info("_insertar_en_bbdd_2026: insertados %d registros para %s", len(rows), codigo)
+    except Exception:
+        logger.exception("Error insertando en bbdd_2026 para codigo=%s", codigo)
 
 
 # ---------------------------------------------------------------------------
