@@ -2481,6 +2481,49 @@ def _obtener_dnis_matriculados_por_codigo(codigo: str) -> list[str]:
     return dnis
 
 
+def _obtener_dnis_matriculados_aula(codigo: str) -> list[str]:
+    """Obtiene DNIs de matriculados directamente de Chamilo (course_rel_user + user).
+
+    Replica la logica de obtener_lista_matriculados() de la app original.
+    status=5 = matriculado en Chamilo, is_tutor IS NULL = excluye tutores.
+    """
+    curso_id = extraer_id_capacitacion(codigo)
+    if not curso_id:
+        return []
+    try:
+        curso_id_num = int(curso_id)
+    except (ValueError, TypeError):
+        return []
+
+    query = """
+        SELECT DISTINCT u.official_code AS dni
+        FROM course_rel_user cru
+        LEFT JOIN user u ON cru.user_id = u.user_id
+        WHERE cru.c_id = %s
+          AND cru.status = 5
+          AND cru.is_tutor IS NULL
+        ORDER BY u.official_code ASC
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (curso_id_num,))
+                rows = list(cur.fetchall())
+    except Exception:
+        logger.exception("Error obteniendo matriculados de Chamilo para codigo=%s (c_id=%s)", codigo, curso_id)
+        return []
+
+    dnis: list[str] = []
+    vistos: set[str] = set()
+    for row in rows:
+        dni = _normalizar_dni(row.get("dni"))
+        if not dni or dni in vistos:
+            continue
+        vistos.add(dni)
+        dnis.append(dni)
+    return dnis
+
+
 def _obtener_filas_bbdd_por_codigo_y_dnis(codigo: str, dnis: list[str]) -> list[dict[str, Any]]:
     """Obtiene filas base de bbdd_difoca para el codigo y DNI seleccionados."""
     codigo = str(codigo or "").strip()
@@ -4311,12 +4354,15 @@ def generar_plantilla_seguimiento(
     nominal_config = obtener_config_nominal_reporte(codigo, estructura)
     postulantes_info = obtener_postulantes_excel_info(codigo)
 
-    # Prioriza lista de postulantes cargada; si no existe, usa matriculados.
+    # Prioriza lista de postulantes cargada; si no existe, usa matriculados de bbdd_difoca.
     dnis_objetivo: list[str] = []
     if postulantes_info.get("exists"):
         dnis_objetivo = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
     if not dnis_objetivo:
         dnis_objetivo = _obtener_dnis_matriculados_por_codigo(codigo)
+    # Fallback: consultar Chamilo directamente (course_rel_user + user).
+    if not dnis_objetivo:
+        dnis_objetivo = _obtener_dnis_matriculados_aula(codigo)
 
     filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, dnis_objetivo)
     if not filas_bbdd and not dnis_objetivo:
@@ -4326,7 +4372,7 @@ def generar_plantilla_seguimiento(
     if not filas_bbdd and not dnis_objetivo:
         return {
             "ok": False,
-            "error": "No hay datos en bbdd_difoca para generar la plantilla seleccionada.",
+            "error": "No hay datos en bbdd_difoca ni matriculados en el aula virtual para este codigo.",
         }
 
     # Construye mapa base por DNI y asegura presencia de todos los DNIs objetivo.
