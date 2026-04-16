@@ -2481,6 +2481,37 @@ def _obtener_dnis_matriculados_por_codigo(codigo: str) -> list[str]:
     return dnis
 
 
+def _obtener_todos_dnis_por_codigo(codigo: str) -> list[str]:
+    """Retorna todos los DNI en bbdd_difoca para un codigo (cualquier estado)."""
+    codigo = str(codigo or "").strip()
+    if not codigo:
+        return []
+
+    query = """
+        SELECT DISTINCT dni
+        FROM bbdd_difoca
+        WHERE codigo = %s
+        ORDER BY dni ASC
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, (codigo,))
+                rows = list(cursor.fetchall())
+    except Exception:
+        rows = []
+
+    dnis: list[str] = []
+    vistos: set[str] = set()
+    for row in rows:
+        dni = _normalizar_dni(row.get("dni"))
+        if not dni or dni in vistos:
+            continue
+        vistos.add(dni)
+        dnis.append(dni)
+    return dnis
+
+
 def _obtener_dnis_matriculados_aula(codigo: str) -> list[str]:
     """Obtiene DNIs de matriculados directamente de Chamilo (course_rel_user + user).
 
@@ -4359,9 +4390,9 @@ def generar_plantilla_seguimiento(
     if postulantes_info.get("exists"):
         dnis_objetivo = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
     if not dnis_objetivo:
-        # Combina matriculados de bbdd_difoca con los de Chamilo para capturar
-        # tanto los existentes como los recien matriculados en el aula virtual.
-        dnis_bbdd = _obtener_dnis_matriculados_por_codigo(codigo)
+        # Combina TODOS los DNIs de bbdd_difoca (cualquier estado, incluyendo retirados)
+        # con los matriculados actuales de Chamilo para capturar nuevas altas.
+        dnis_bbdd = _obtener_todos_dnis_por_codigo(codigo)
         dnis_aula = _obtener_dnis_matriculados_aula(codigo)
         vistos: set[str] = set()
         for dni in dnis_bbdd + dnis_aula:
