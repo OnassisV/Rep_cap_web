@@ -12,6 +12,7 @@ import csv
 import io
 import json
 import ast
+import logging
 from pathlib import Path
 import pymysql
 
@@ -19,6 +20,8 @@ import pymysql
 from accounts.db import get_connection
 # Importa settings para resolver rutas absolutas del proyecto Django.
 from django.conf import settings
+
+logger = logging.getLogger("core")
 
 # Lista heredada de DNIs que no deben entrar a reportes operativos.
 DNIS_EXCLUIDOS_PLANTILLA = {
@@ -4196,11 +4199,11 @@ def _crear_excel_cumplimiento_iged(
 
 
 # ---------------------------------------------------------------------------
-# Insercion en bbdd_2026 (no sincronicas)
+# Insercion en bbdd_2026 (alimenta la VIEW bbdd_difoca) - no sincronicas
 # ---------------------------------------------------------------------------
 
-# Mapeo de claves de fila (dict) -> columnas de bbdd_2026
-_FILA_TO_BBDD_2026 = {
+# Mapeo de claves de filas_por_dni -> columnas bbdd_2026
+_PLANTILLA_TO_BBDD = {
     "tipo_documento": "tipo_documento",
     "dni": "dni",
     "apellidos": "apellidos",
@@ -4228,8 +4231,6 @@ _FILA_TO_BBDD_2026 = {
     "aprobados/certificados": "aprobados_certificados",
     "desaprobado/permanente": "desaprobado_permanente",
     "desaprobado/abandono": "desaprobado_abandono",
-    "cuestionario entrada": "cuestionario_entrada",
-    "cuestionario salida": "cuestionario_salida",
     "ev_progreso_aprendizaje": "ev_progreso_aprendizaje",
     "mantuvo_o_progreso": "mantuvo_o_progreso",
     "progreso": "progreso",
@@ -4237,41 +4238,63 @@ _FILA_TO_BBDD_2026 = {
     "nivel_c._salida": "nivel_c_salida",
     "obs": "obs",
     "retiros": "retiros",
+    "cuestionario entrada": "cuestionario_entrada",
+    "cuestionario salida": "cuestionario_salida",
 }
 
 
-def _insertar_filas_en_bbdd_2026(filas: list[dict[str, Any]], codigo: str) -> None:
-    """Inserta filas (list[dict]) en bbdd_2026. Si ya existen registros del mismo codigo, los reemplaza."""
+def _insertar_plantilla_en_bbdd_2026(filas: list[dict[str, Any]], codigo: str) -> None:
+    """Inserta filas procesadas de plantilla no-sincronica en bbdd_2026.
+
+    Si ya existen registros del mismo codigo, los reemplaza (DELETE + INSERT).
+    """
     if not filas or not codigo:
         return
+
+    cols_bbdd = ["codigo"] + list(_PLANTILLA_TO_BBDD.values())
+
+    def _safe(v: Any) -> Any:
+        if v is None:
+            return None
+        try:
+            import math
+            if isinstance(v, float) and math.isnan(v):
+                return None
+        except (ValueError, TypeError):
+            pass
+        s = str(v)
+        if s in ("", "nan", "NaN", "None", "none", "null", "<NA>"):
+            return None
+        return v
+
     try:
-        cols_bbdd = ["codigo"] + list(_FILA_TO_BBDD_2026.values())
-
-        def _safe(v):
-            if v is None:
-                return None
-            s = str(v).strip()
-            if s in ("", "None", "nan", "NaN", "<NA>"):
-                return None
-            return v
-
-        rows = []
+        rows_to_insert = []
         for fila in filas:
-            vals = [codigo]
-            for fila_key, _bbdd_col in _FILA_TO_BBDD_2026.items():
-                vals.append(_safe(fila.get(fila_key)))
-            rows.append(tuple(vals))
+            row_vals = [codigo]  # primera columna: codigo
+            for key_plantilla, col_bbdd in _PLANTILLA_TO_BBDD.items():
+                row_vals.append(_safe(fila.get(key_plantilla)))
+            rows_to_insert.append(tuple(row_vals))
 
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM bbdd_2026 WHERE codigo = %s", (codigo,))
+                deleted = cur.rowcount
+                if deleted:
+                    logger.info(
+                        "_insertar_plantilla_en_bbdd_2026: eliminados %d registros previos de %s",
+                        deleted, codigo,
+                    )
+
                 placeholders = ", ".join(["%s"] * len(cols_bbdd))
                 col_names = ", ".join(f"`{c}`" for c in cols_bbdd)
                 sql = f"INSERT INTO bbdd_2026 ({col_names}) VALUES ({placeholders})"
-                cur.executemany(sql, rows)
+                cur.executemany(sql, rows_to_insert)
+                logger.info(
+                    "_insertar_plantilla_en_bbdd_2026: insertados %d registros para %s",
+                    len(rows_to_insert), codigo,
+                )
     except Exception:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error insertando plantilla en bbdd_2026 para codigo=%s", codigo)
 
 
 def generar_plantilla_seguimiento(
@@ -4300,7 +4323,7 @@ def generar_plantilla_seguimiento(
         # Fallback final cuando no hay postulantes/matriculados: usa todo el codigo.
         filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, [])
 
-    if not filas_bbdd and not dnis_objetivo:
+    if not filas_bbdd:
         return {
             "ok": False,
             "error": "No hay datos en bbdd_difoca para generar la plantilla seleccionada.",
@@ -4308,7 +4331,7 @@ def generar_plantilla_seguimiento(
 
     # Construye mapa base por DNI y asegura presencia de todos los DNIs objetivo.
     filas_por_dni: dict[str, dict[str, Any]] = {}
-    for row in (filas_bbdd or []):
+    for row in filas_bbdd:
         fila = _fila_base_plantilla_desde_bbdd(row)
         dni = _normalizar_dni(fila.get("dni"))
         if not dni:
@@ -4337,10 +4360,6 @@ def generar_plantilla_seguimiento(
     _recalcular_avance_certificacion(estructura, filas)
     _aplicar_formula_promedio(codigo, filas)
     _aplicar_campos_derivados(filas)
-
-    # Insertar en bbdd_2026 (solo columnas que corresponden)
-    _insertar_filas_en_bbdd_2026(filas, codigo)
-
     filas_ordenadas = _ordenar_filas_exportacion(filas)
 
     columnas_plantilla = _columnas_exportacion(actividades_export)
@@ -4417,6 +4436,9 @@ def generar_plantilla_seguimiento(
         "files": files_meta,
     }
     _guardar_metadata_plantilla_generada(codigo, payload)
+
+    # Insertar datos procesados en bbdd_2026 (alimenta la VIEW bbdd_difoca)
+    _insertar_plantilla_en_bbdd_2026(filas_ordenadas, codigo)
 
     return {
         "ok": True,
