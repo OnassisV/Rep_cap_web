@@ -546,6 +546,19 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     iged_cat = _obtener_catalogo_iged()
     if not iged_cat.empty:
         df_usuarios = df_usuarios.merge(iged_cat, on=["region", "nombre_iged"], how="left")
+
+        # Fallback: si no matcheó por region+nombre_iged, corregir region con la BD
+        sin_codigo = df_usuarios["codigo_iged"].isna() & df_usuarios["nombre_iged"].notna()
+        if sin_codigo.any():
+            cat_by_nombre = iged_cat.drop_duplicates(subset=["nombre_iged"])
+            for idx in df_usuarios.index[sin_codigo]:
+                nombre = df_usuarios.at[idx, "nombre_iged"]
+                match = cat_by_nombre[cat_by_nombre["nombre_iged"] == nombre]
+                if len(match) == 1:
+                    df_usuarios.at[idx, "region"] = match.iloc[0]["region"]
+                    df_usuarios.at[idx, "tipo_iged"] = match.iloc[0]["tipo_iged"]
+                    df_usuarios.at[idx, "codigo_iged"] = match.iloc[0]["codigo_iged"]
+
         if "codigo_iged" in df_usuarios.columns:
             def _fmt_cod(x):
                 if pd.isnull(x):
