@@ -255,14 +255,14 @@ def obtener_info_archivos(codigo: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _limpiar_respuestas_preguntas(df: pd.DataFrame) -> pd.DataFrame:
-    """Elimina prefijos tipo 'Pregunta: ' y puntos finales de columnas de texto."""
-    for col in df.columns:
-        if df[col].dtype == object:
-            df[col] = df[col].astype(str).str.replace(
-                r"^(?:Pregunta|Respuesta|Opci[oó]n)\s*:\s*", "", regex=True
-            )
-            df[col] = df[col].str.rstrip(".")
-    return df
+    """Limpia las respuestas de preguntas eliminando prefijos y puntos finales."""
+    df_limpio = df.copy()
+    for col in df_limpio.columns:
+        if df_limpio[col].dtype == object:
+            df_limpio[col] = df_limpio[col].astype(str).str.replace(r'^.*?:\s*', '', regex=True)
+            df_limpio[col] = df_limpio[col].str.strip()
+            df_limpio[col] = df_limpio[col].str.rstrip('.')
+    return df_limpio
 
 
 def procesar_archivo_individual(df: pd.DataFrame, nombre_archivo: str | None = None) -> pd.DataFrame:
@@ -460,7 +460,8 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
 
     df_entrada = pd.concat(dfs_entrada, ignore_index=True)
     df_salida = pd.concat(dfs_salida, ignore_index=True)
-    logger.info("procesar_sincronicas: df_entrada=%d filas, df_salida=%d filas", len(df_entrada), len(df_salida))
+    logger.info("procesar_sincronicas: df_entrada=%d filas, cols=%s", len(df_entrada), list(df_entrada.columns))
+    logger.info("procesar_sincronicas: df_salida=%d filas, cols=%s", len(df_salida), list(df_salida.columns))
 
     # Crear df_usuarios
     dnis_e = set(df_entrada["DNI"].dropna().astype(str)) if "DNI" in df_entrada.columns else set()
@@ -515,6 +516,11 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     for col in ("nombres", "apellidos"):
         if col in df_usuarios.columns:
             df_usuarios[col] = df_usuarios[col].apply(_norm_nombre)
+
+    logger.info("procesar_sincronicas: df_usuarios cols=%s", list(df_usuarios.columns))
+    logger.info("procesar_sincronicas: nombres no vacios=%d, apellidos no vacios=%d",
+                (df_usuarios.get("nombres", pd.Series(dtype=str)).astype(str).str.strip() != "").sum(),
+                (df_usuarios.get("apellidos", pd.Series(dtype=str)).astype(str).str.strip() != "").sum())
 
     # Agregar codigo
     df_usuarios["codigo"] = codigo
@@ -767,6 +773,7 @@ def _generar_excel(df_tutor: pd.DataFrame, df_usuarios: pd.DataFrame, codigo: st
     from openpyxl import Workbook
     from openpyxl.worksheet.table import Table, TableStyleInfo
     from openpyxl.utils import get_column_letter
+    from openpyxl.styles import Font, Alignment
 
     # Sanitizar DataFrames para evitar pd.NA que openpyxl no soporta
     df_tutor = _sanitizar_df_para_excel(df_tutor)
@@ -778,7 +785,11 @@ def _generar_excel(df_tutor: pd.DataFrame, df_usuarios: pd.DataFrame, codigo: st
     # --- Pestaña BBDD TUTOR ---
     ws_tutor = wb.active
     ws_tutor.title = "BBDD TUTOR"
-    _escribir_df_a_sheet(ws_tutor, df_tutor, "TablaTutor", "TableStyleLight8")
+    # Ordenar por region/nombre_iged como el original
+    df_tutor_export = df_tutor.copy()
+    if "region" in df_tutor_export.columns and "nombre_iged" in df_tutor_export.columns:
+        df_tutor_export = df_tutor_export.sort_values(["region", "nombre_iged"])
+    _escribir_df_a_sheet(ws_tutor, df_tutor_export, "TablaTutor", "TableStyleLight8")
 
     # --- Pestaña REPORTES ---
     ws_rep = wb.create_sheet("REPORTES")
@@ -794,19 +805,41 @@ def _generar_excel(df_tutor: pd.DataFrame, df_usuarios: pd.DataFrame, codigo: st
 
     # --- Pestaña ASISTENCIA ---
     ws_asis = wb.create_sheet("ASISTENCIA")
+
+    # Agregar tipo_documento a df_usuarios si no existe
+    df_asis = df_usuarios.copy()
+    if "tipo_documento" not in df_asis.columns:
+        def _tipo_doc(dni):
+            if pd.isna(dni):
+                return "OTROS"
+            s = str(dni).strip()
+            return "DNI" if s.isdigit() and len(s) == 8 else "OTROS"
+        df_asis["tipo_documento"] = df_asis.get("dni", pd.Series(dtype=str)).apply(_tipo_doc)
+
+    # Limpiar valores NA/nan/None para Excel
+    for col in df_asis.columns:
+        df_asis[col] = df_asis[col].apply(
+            lambda v: "" if pd.isna(v) else ("" if isinstance(v, str) and v.strip().lower() in ("nan", "none", "<na>", "nat") else v)
+        )
+
+    # Orden de columnas del original
     cols_asis = [
+        "codigo", "tipo_documento", "codigo_iged", "region", "tipo_iged",
+        "nombre_iged", "Entidad Pública a la que pertenece:", "Entidad Pública",
         "dni", "nombres", "apellidos", "email", "telefono_celular",
-        "region", "tipo_iged", "codigo_iged", "nombre_iged",
         "nivel_puesto", "nombre_puesto",
-        "Entidad Pública a la que pertenece:", "Entidad Pública",
         "cuestionario entrada", "cuestionario salida",
-        "codigo",
     ]
-    cols_exist = [c for c in cols_asis if c in df_usuarios.columns]
-    df_asis = df_usuarios[cols_exist].copy()
+    for col_faltante in [c for c in cols_asis if c not in df_asis.columns]:
+        df_asis[col_faltante] = ""
+    df_asis = df_asis[cols_asis]
+
+    # Ordenar filas
     sort_cols = [c for c in ["Entidad Pública a la que pertenece:", "region", "nombre_iged"] if c in df_asis.columns]
     if sort_cols:
-        df_asis = df_asis.sort_values(sort_cols)
+        df_asis = df_asis.sort_values(sort_cols, kind="mergesort", na_position="last").reset_index(drop=True)
+
+    df_asis = _sanitizar_df_para_excel(df_asis)
     _escribir_df_a_sheet(ws_asis, df_asis, "TablaAsistencia", "TableStyleLight9")
 
     wb.save(buf)
@@ -820,14 +853,18 @@ def _escribir_df_a_sheet(
     """Escribe un DataFrame en una hoja openpyxl con formato de tabla."""
     from openpyxl.worksheet.table import Table, TableStyleInfo
     from openpyxl.utils import get_column_letter
+    from openpyxl.styles import Font, Alignment
 
     if df.empty:
         ws.cell(row=start_row, column=1, value="Sin datos")
         return
 
-    # Headers
+    # Headers — mayusculas y _ → espacio (como el original)
     for c_idx, col_name in enumerate(df.columns, 1):
-        ws.cell(row=start_row, column=c_idx, value=str(col_name))
+        header_text = str(col_name).upper().replace("_", " ")
+        cell = ws.cell(row=start_row, column=c_idx, value=header_text)
+        cell.font = Font(color="FFFFFF")
+        cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
     # Data
     for r_idx, row in enumerate(df.itertuples(index=False), start_row + 1):
