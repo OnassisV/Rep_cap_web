@@ -4323,7 +4323,7 @@ def generar_plantilla_seguimiento(
         # Fallback final cuando no hay postulantes/matriculados: usa todo el codigo.
         filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, [])
 
-    if not filas_bbdd:
+    if not filas_bbdd and not dnis_objetivo:
         return {
             "ok": False,
             "error": "No hay datos en bbdd_difoca para generar la plantilla seleccionada.",
