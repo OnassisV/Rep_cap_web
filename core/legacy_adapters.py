@@ -3001,28 +3001,36 @@ def _aplicar_estado_matricula_y_retiros(
     codigo: str,
     filas_por_dni: dict[str, dict[str, Any]],
 ) -> None:
-    """Actualiza estado/compromiso/retiros en filas base segun matricula y registro manual."""
-    matriculados = set(_obtener_dnis_matriculados_por_codigo(codigo))
+    """Actualiza estado/compromiso/retiros segun Chamilo y retiros manuales.
+
+    Reglas:
+    - En Chamilo (matriculado)           -> estado=2
+    - No en Chamilo                      -> estado=1
+    - En retiros manuales (siempre gana) -> estado=3, retiros=1
+    """
+    matriculados_aula = set(_obtener_dnis_matriculados_aula(codigo))
     retiros_manual = set(leer_retiros_manual(codigo))
 
     for dni, fila in filas_por_dni.items():
-        estado_actual = _a_int(fila.get("estado"))
-        # Si no hay estado valido, inicializa desde lista de matriculados.
-        if estado_actual <= 0:
-            estado_actual = 2 if dni in matriculados else 1
+        # Chamilo es fuente de verdad para matricula.
+        if dni in matriculados_aula:
+            estado = 2
+        else:
+            estado = 1
 
+        # Retiros manuales siempre ganan.
         if dni in retiros_manual:
-            estado_actual = 3
+            estado = 3
             fila["retiros"] = 1
 
-        fila["estado"] = estado_actual
-        if estado_actual == 2 and _valor_vacio(fila.get("compromiso")):
+        fila["estado"] = estado
+        if estado == 2 and _valor_vacio(fila.get("compromiso")):
             fila["compromiso"] = 20
         # Normalizacion legacy: compromiso 1 o 20 se exporta como 20.
         compromiso_num = _a_float_nullable(fila.get("compromiso"))
         if compromiso_num in {1.0, 20.0}:
             fila["compromiso"] = 20
-        if estado_actual != 3 and _valor_vacio(fila.get("desaprobado/abandono")):
+        if estado != 3 and _valor_vacio(fila.get("desaprobado/abandono")):
             # Limpia ruido de estados antiguos cuando no corresponde a retiro manual.
             fila["desaprobado/abandono"] = None
 
