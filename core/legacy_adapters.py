@@ -4194,6 +4194,86 @@ def _crear_excel_cumplimiento_iged(
         except Exception:
             pass
 
+
+# ---------------------------------------------------------------------------
+# Insercion en bbdd_2026 (no sincronicas)
+# ---------------------------------------------------------------------------
+
+# Mapeo de claves de fila (dict) -> columnas de bbdd_2026
+_FILA_TO_BBDD_2026 = {
+    "tipo_documento": "tipo_documento",
+    "dni": "dni",
+    "apellidos": "apellidos",
+    "nombres": "nombres",
+    "genero": "genero",
+    "fecha_nacimiento": "fecha_nacimiento",
+    "email": "email",
+    "telefono_celular": "telefono_celular",
+    "telefono_fijo": "telefono_fijo",
+    "actualizo_datos": "actualizo_datos",
+    "region": "region",
+    "tipo_iged": "tipo_iged",
+    "codigo_iged": "codigo_iged",
+    "nombre_iged": "nombre_iged",
+    "nivel_puesto": "nivel_puesto",
+    "nombre_puesto": "nombre_puesto",
+    "regimen_laboral": "regimen_laboral",
+    "ultima conexion": "ultimo_acceso_curso",
+    "estado": "estado",
+    "compromiso": "compromiso",
+    "%_avance_certificacion": "avance_curso_certificacion",
+    "promedio_final_general": "promedio_final_general",
+    "promedio_final_condicion": "promedio_final_condicion",
+    "situacion_del_participante": "situacion_participante",
+    "aprobados/certificados": "aprobados_certificados",
+    "desaprobado/permanente": "desaprobado_permanente",
+    "desaprobado/abandono": "desaprobado_abandono",
+    "cuestionario entrada": "cuestionario_entrada",
+    "cuestionario salida": "cuestionario_salida",
+    "ev_progreso_aprendizaje": "ev_progreso_aprendizaje",
+    "mantuvo_o_progreso": "mantuvo_o_progreso",
+    "progreso": "progreso",
+    "nivel_c._entrada": "nivel_c_entrada",
+    "nivel_c._salida": "nivel_c_salida",
+    "obs": "obs",
+    "retiros": "retiros",
+}
+
+
+def _insertar_filas_en_bbdd_2026(filas: list[dict[str, Any]], codigo: str) -> None:
+    """Inserta filas (list[dict]) en bbdd_2026. Si ya existen registros del mismo codigo, los reemplaza."""
+    if not filas or not codigo:
+        return
+    try:
+        cols_bbdd = ["codigo"] + list(_FILA_TO_BBDD_2026.values())
+
+        def _safe(v):
+            if v is None:
+                return None
+            s = str(v).strip()
+            if s in ("", "None", "nan", "NaN", "<NA>"):
+                return None
+            return v
+
+        rows = []
+        for fila in filas:
+            vals = [codigo]
+            for fila_key, _bbdd_col in _FILA_TO_BBDD_2026.items():
+                vals.append(_safe(fila.get(fila_key)))
+            rows.append(tuple(vals))
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM bbdd_2026 WHERE codigo = %s", (codigo,))
+                placeholders = ", ".join(["%s"] * len(cols_bbdd))
+                col_names = ", ".join(f"`{c}`" for c in cols_bbdd)
+                sql = f"INSERT INTO bbdd_2026 ({col_names}) VALUES ({placeholders})"
+                cur.executemany(sql, rows)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+
 def generar_plantilla_seguimiento(
     codigo: str,
     anio: int | None = None,
@@ -4257,6 +4337,10 @@ def generar_plantilla_seguimiento(
     _recalcular_avance_certificacion(estructura, filas)
     _aplicar_formula_promedio(codigo, filas)
     _aplicar_campos_derivados(filas)
+
+    # Insertar en bbdd_2026 (solo columnas que corresponden)
+    _insertar_filas_en_bbdd_2026(filas, codigo)
+
     filas_ordenadas = _ordenar_filas_exportacion(filas)
 
     columnas_plantilla = _columnas_exportacion(actividades_export)
