@@ -33,7 +33,7 @@ Admite variantes especiales para origen institucional y decisiones binarias.
         </div>
     </article>
 {% else %}
-    <label class="registro-field{% if field.tipo == 'text_long' or field.is_origin_selector %} registro-field--full{% endif %}{% if field.is_external_only %} registro-field--external{% endif %}{% if field.is_iged_only %} registro-field--iged{% endif %}{% if field.is_external_only and not registro_origen_externo %} is-hidden{% endif %}{% if field.is_iged_only and registro_origen_actual != 'IGED' %} is-hidden{% endif %}{% if solicitud_mode %} registro-field--question{% endif %}"{% if field.is_external_only %} data-origin-dependent="external"{% endif %}{% if field.is_iged_only %} data-origin-dependent="iged"{% endif %}{% if solicitud_mode %} data-question-item{% endif %}>
+    <label class="registro-field{% if field.tipo == 'text_long' or field.is_origin_selector %} registro-field--full{% endif %}{% if field.is_external_only %} registro-field--external{% endif %}{% if field.is_iged_only %} registro-field--iged{% endif %}{% if field.is_convocatoria_abierta_only %} registro-field--conv-abierta{% endif %}{% if field.is_external_only and not registro_origen_externo %} is-hidden{% endif %}{% if field.is_iged_only and registro_origen_actual != 'IGED' %} is-hidden{% endif %}{% if field.is_convocatoria_abierta_only and registro_convocatoria_actual != 'Abierta' %} is-hidden{% endif %}{% if solicitud_mode %} registro-field--question{% endif %}"{% if field.is_external_only %} data-origin-dependent="external"{% endif %}{% if field.is_iged_only %} data-origin-dependent="iged"{% endif %}{% if field.is_convocatoria_abierta_only %} data-convocatoria-dependent{% endif %}{% if solicitud_mode %} data-question-item{% endif %}>
         <span class="registro-field__head">
             <span class="registro-question-title">
                 {% if solicitud_mode %}
@@ -99,7 +99,7 @@ Admite variantes especiales para origen institucional y decisiones binarias.
         {% elif field.tipo == "decimal" or field.tipo == "currency" %}
             <input type="number" step="0.01" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
         {% elif field.tipo == "date" %}
-            <input type="date" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
+            <input type="date" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %} {% if field.is_convocatoria_abierta_only and registro_convocatoria_actual != 'Abierta' %}disabled{% endif %}>
         {% else %}
             <input type="text" name="{{ field.codigo }}" value="{{ field.valor }}" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>
         {% endif %}

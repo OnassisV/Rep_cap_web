@@ -105,6 +105,10 @@ class Capacitacion(models.Model):
 
     # -- Plan de trabajo (Paso 4) --------------------------------------------
     pt_fecha_desarrollo = models.DateField(null=True, blank=True)
+    pt_convocatoria_inicio = models.DateField(null=True, blank=True)
+    pt_convocatoria_fin = models.DateField(null=True, blank=True)
+    pt_implementacion_inicio = models.DateField(null=True, blank=True)
+    pt_implementacion_fin = models.DateField(null=True, blank=True)
     pt_horas = models.IntegerField(null=True, blank=True)
     pt_modalidad = models.CharField(max_length=80, blank=True, default="")
     pt_tipo_convocatoria = models.CharField(max_length=60, blank=True, default="")

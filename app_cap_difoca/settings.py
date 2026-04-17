@@ -135,8 +135,7 @@ SECRET_KEY = os.getenv(
 )
 
 # Interruptor de desarrollo. Usa "0" en .env para comportamiento tipo produccion.
-# TODO: volver a env_bool despues de depurar el 500
-DEBUG = True  # TEMPORAL para diagnostico
+DEBUG = env_bool("DJANGO_DEBUG", default=True)
 
 # Hosts permitidos para servir esta aplicacion.
 # Incluye "testserver" para que el cliente de pruebas de Django funcione sin ajustes extra.

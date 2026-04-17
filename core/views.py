@@ -595,6 +595,7 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
         "is_decision": codigo in campos_decision,
         "is_external_only": codigo in campos_externos,
         "is_iged_only": codigo in campos_iged,
+        "is_convocatoria_abierta_only": codigo == "pt_convocatoria_fin",
     }
 
 
@@ -2110,6 +2111,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "Unidad orgánica",
             }
             origen_actual = str(valores_form.get("sol_origen_institucional", "")).strip()
+            convocatoria_actual = str(valores_form.get("pt_tipo_convocatoria", "")).strip()
 
             # Admin: lista de usuarios para asignar creador
             role_eff_reg = str(user_context.get("role_effective", ""))
@@ -2138,6 +2140,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_iged_regiones": regiones_iged,
                     "registro_origen_actual": origen_actual,
                     "registro_origen_externo": origen_externo,
+                    "registro_convocatoria_actual": convocatoria_actual,
                     "registro_campos_total": campos_totales,
                     "registro_campos_obligatorios": campos_obligatorios,
                     "is_admin_registro": is_admin_reg,
@@ -3058,6 +3061,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             ]
             origen_actual = str(valores_form.get("sol_origen_institucional", "")).strip()
             origen_externo = origen_actual in {"IGED", "Unidad orgánica"}
+            convocatoria_actual = str(valores_form.get("pt_tipo_convocatoria", "")).strip()
 
             context.update({
                 "valores_form": valores_form,
@@ -3074,6 +3078,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "registro_iged_regiones": regiones_iged,
                 "registro_origen_actual": origen_actual,
                 "registro_origen_externo": origen_externo,
+                "registro_convocatoria_actual": convocatoria_actual,
                 "registro_campos_total": campos_totales,
                 "registro_campos_obligatorios": campos_obligatorios,
             })

@@ -3231,6 +3231,25 @@
                 regionSelect.addEventListener("change", fillIgedOptions);
             }
 
+            /* --- Visibilidad condicional: Fin de convocatoria solo con Abierta --- */
+            var convocatoriaSelect = form.querySelector("select[name='pt_tipo_convocatoria']");
+            var convocatoriaFields = form.querySelectorAll("[data-convocatoria-dependent]");
+
+            var syncConvocatoriaFields = function () {
+                var showFin = convocatoriaSelect && String(convocatoriaSelect.value || "") === "Abierta";
+                convocatoriaFields.forEach(function (wrapper) {
+                    wrapper.classList.toggle("is-hidden", !showFin);
+                    wrapper.querySelectorAll("input, select, textarea").forEach(function (control) {
+                        control.disabled = !showFin;
+                    });
+                });
+            };
+
+            if (convocatoriaSelect) {
+                convocatoriaSelect.addEventListener("change", syncConvocatoriaFields);
+                syncConvocatoriaFields();
+            }
+
             var sustentoHub = form.querySelector("[data-sustento-hub]");
             var sustentoBanner = form.querySelector("[data-sustento-banner]");
             var expedienteFlow = form.querySelector("[data-expediente-flow]");
