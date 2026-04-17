@@ -472,8 +472,9 @@ def leer_retiros_manual(codigo: str) -> list[str]:
                     "SELECT dni FROM cap_retiros_manual WHERE codigo = %s ORDER BY dni",
                     [codigo],
                 )
-                return [row[0] for row in cursor.fetchall()]
+                return [row["dni"] for row in cursor.fetchall()]
     except Exception:
+        logger.exception("Error leyendo retiros manuales para %s", codigo)
         return []
 
 
@@ -501,6 +502,7 @@ def agregar_retiros_manual(codigo: str, dnis_raw: list[str]) -> tuple[bool, int]
             connection.commit()
         return True, insertados
     except Exception:
+        logger.exception("Error agregando retiros manuales para %s", codigo)
         return False, 0
 
 
@@ -521,6 +523,7 @@ def eliminar_retiro_manual(codigo: str, dni: str) -> bool:
             connection.commit()
         return True
     except Exception:
+        logger.exception("Error eliminando retiro manual %s/%s", codigo, dni)
         return False
 
 
@@ -539,6 +542,7 @@ def limpiar_retiros_manual(codigo: str) -> bool:
             connection.commit()
         return True
     except Exception:
+        logger.exception("Error limpiando retiros manuales para %s", codigo)
         return False
 
 
