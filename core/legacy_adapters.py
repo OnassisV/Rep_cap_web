@@ -460,92 +460,86 @@ def _normalizar_dni(valor: Any) -> str:
     return digitos
 
 
-def _ruta_retiros_json(codigo: str) -> Path:
-    """Construye ruta de archivo JSON de retiros manuales por capacitacion."""
-    id_simple = extraer_id_capacitacion(codigo)
-    return _core_config_dir(crear=True) / f"retiros_{id_simple}.json"
-
-
 def leer_retiros_manual(codigo: str) -> list[str]:
-    """Lee lista de DNIs de retiros manuales almacenados en JSON local."""
-    ruta = _ruta_retiros_json(codigo)
-    if not ruta.exists():
+    """Lee lista de DNIs de retiros manuales desde cap_retiros_manual en MySQL."""
+    codigo = str(codigo or "").strip()
+    if not codigo:
         return []
-
     try:
-        # Usa utf-8-sig para tolerar archivos con BOM creados desde Windows.
-        data = json.loads(ruta.read_text(encoding="utf-8-sig"))
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT dni FROM cap_retiros_manual WHERE codigo = %s ORDER BY dni",
+                    [codigo],
+                )
+                return [row[0] for row in cursor.fetchall()]
     except Exception:
         return []
-
-    # Soporta lista de diccionarios legacy ({dni: ...}) y lista de strings.
-    dnis: set[str] = set()
-    if isinstance(data, dict):
-        # Tolera archivos JSON con un solo objeto { "dni": "..." }.
-        dni = _normalizar_dni(data.get("dni"))
-        if dni:
-            dnis.add(dni)
-    if isinstance(data, list):
-        for item in data:
-            if isinstance(item, dict):
-                dni = _normalizar_dni(item.get("dni"))
-            else:
-                dni = _normalizar_dni(item)
-            if dni:
-                dnis.add(dni)
-
-    return sorted(dnis)
-
-
-def _guardar_retiros_manual(codigo: str, dnis: list[str]) -> bool:
-    """Persiste lista de DNIs manuales en JSON de configuracion local."""
-    ruta = _ruta_retiros_json(codigo)
-    payload = [{"dni": dni} for dni in sorted(set(dnis))]
-    try:
-        ruta.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        return True
-    except Exception:
-        return False
 
 
 def agregar_retiros_manual(codigo: str, dnis_raw: list[str]) -> tuple[bool, int]:
-    """Agrega DNIs al JSON manual de retiros y retorna cantidad nueva insertada."""
+    """Agrega DNIs a cap_retiros_manual y retorna cantidad nueva insertada."""
     codigo = str(codigo or "").strip()
     if not codigo:
         return False, 0
 
-    existentes = set(leer_retiros_manual(codigo))
     nuevos = {_normalizar_dni(dni) for dni in dnis_raw}
     nuevos = {dni for dni in nuevos if dni}
     if not nuevos:
         return True, 0
 
-    combinados = sorted(existentes | nuevos)
-    if not _guardar_retiros_manual(codigo, combinados):
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                insertados = 0
+                for dni in sorted(nuevos):
+                    cursor.execute(
+                        "INSERT IGNORE INTO cap_retiros_manual (codigo, dni) VALUES (%s, %s)",
+                        [codigo, dni],
+                    )
+                    insertados += cursor.rowcount
+            connection.commit()
+        return True, insertados
+    except Exception:
         return False, 0
-    return True, len(combinados) - len(existentes)
 
 
 def eliminar_retiro_manual(codigo: str, dni: str) -> bool:
-    """Elimina un DNI puntual del JSON manual de retiros."""
+    """Elimina un DNI puntual de cap_retiros_manual."""
     codigo = str(codigo or "").strip()
     dni = _normalizar_dni(dni)
     if not codigo or not dni:
         return False
 
-    existentes = [item for item in leer_retiros_manual(codigo) if item != dni]
-    return _guardar_retiros_manual(codigo, existentes)
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM cap_retiros_manual WHERE codigo = %s AND dni = %s",
+                    [codigo, dni],
+                )
+            connection.commit()
+        return True
+    except Exception:
+        return False
 
 
 def limpiar_retiros_manual(codigo: str) -> bool:
-    """Elimina todos los DNIs del JSON manual de retiros."""
+    """Elimina todos los retiros manuales de un codigo."""
     codigo = str(codigo or "").strip()
     if not codigo:
         return False
-    return _guardar_retiros_manual(codigo, [])
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM cap_retiros_manual WHERE codigo = %s",
+                    [codigo],
+                )
+            connection.commit()
+        return True
+    except Exception:
+        return False
 
 
 def obtener_metricas_seguimiento(codigo: str) -> dict[str, Any]:
