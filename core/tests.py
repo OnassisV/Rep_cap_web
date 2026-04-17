@@ -10,11 +10,16 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from core.indicadores_adapters import _compose_course_code
 from core.models import Capacitacion
 from core.views import _auto_actualizar_estado, _valor_por_defecto_registro_capacitacion
 
 
 class EstadoCapacitacionTests(TestCase):
+    def test_codigo_compuesto_para_kpi_usa_id_curso(self):
+        self.assertEqual(_compose_course_code("25022I", "311"), "25022I-311")
+        self.assertEqual(_compose_course_code("26001X", ""), "26001X")
+
     def test_valor_inicial_usa_formulada(self):
         valores = _valor_por_defecto_registro_capacitacion()
         self.assertEqual(valores["cap_estado"], "Formulada")

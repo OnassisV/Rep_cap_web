@@ -90,11 +90,22 @@ def _fetch_dataframe(table_name: str, columns: list[str]) -> pd.DataFrame:
     return frame
 
 
+def _compose_course_code(codigo_base: Any, id_curso: Any) -> str:
+    """Construye el código completo del curso para cruzar con bbdd_difoca."""
+    codigo = str(codigo_base or "").strip()
+    curso = str(id_curso or "").strip()
+    if not codigo:
+        return ""
+    if "-" in codigo or not curso:
+        return codigo
+    return f"{codigo}-{curso}"
+
+
 def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Carga las tablas base necesarias para el dashboard."""
     # Lee capacitaciones desde cap_capacitaciones con aliases compatibles.
     oferta_sql = (
-        "SELECT cap_codigo AS codigo, cap_anio AS anio, cap_estado AS condicion,"
+        "SELECT cap_codigo AS codigo_base, cap_id_curso AS id_curso, cap_anio AS anio, cap_estado AS condicion,"
         " cap_tipo AS tipo_proceso_formativo, cap_nombre AS denominacion_proceso_formativo,"
         " creado_nombre AS especialista_cargo, mi_objetivo_capacitacion AS objetivo_capacitacion,"
         " pt_implementacion_fin AS implementacion_final"
@@ -113,6 +124,12 @@ def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Da
         oferta = pd.DataFrame(list(rows or []))
         if oferta.empty:
             oferta = pd.DataFrame(columns=oferta_columns)
+        else:
+            oferta["codigo"] = oferta.apply(
+                lambda row: _compose_course_code(row.get("codigo_base"), row.get("id_curso")),
+                axis=1,
+            )
+            oferta = oferta[oferta_columns]
     except Exception:
         oferta = pd.DataFrame(columns=oferta_columns)
     bbdd = _fetch_dataframe(
