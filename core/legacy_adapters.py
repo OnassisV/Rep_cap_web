@@ -3632,7 +3632,11 @@ def _agregar_hoja_reportes_legacy(
 
         certificados = _contar_dni_unicos(
             filas_region,
-            lambda x: (_a_float_nullable(x.get("aprobados/certificados")) or 0) == 1.0,
+            lambda x: (
+                _a_int(x.get("estado")) == 2
+                and _a_float_nullable(x.get("compromiso")) in {1.0, 20.0}
+                and (_a_float_nullable(x.get("aprobados/certificados")) or 0) == 1.0
+            ),
         )
         pct_cert = round((certificados / participantes) * 100, 1) if participantes > 0 else 0
         fila_out.extend([certificados, pct_cert])
