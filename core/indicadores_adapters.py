@@ -92,19 +92,29 @@ def _fetch_dataframe(table_name: str, columns: list[str]) -> pd.DataFrame:
 
 def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Carga las tablas base necesarias para el dashboard."""
-    oferta = _fetch_dataframe(
-        "oferta_formativa_difoca",
-        [
-            "codigo",
-            "anio",
-            "condicion",
-            "tipo_proceso_formativo",
-            "denominacion_proceso_formativo",
-            "especialista_cargo",
-            "objetivo_capacitacion",
-            "implementacion_final",
-        ],
+    # Lee capacitaciones desde cap_capacitaciones con aliases compatibles.
+    oferta_sql = (
+        "SELECT cap_codigo AS codigo, cap_anio AS anio, cap_estado AS condicion,"
+        " cap_tipo AS tipo_proceso_formativo, cap_nombre AS denominacion_proceso_formativo,"
+        " creado_nombre AS especialista_cargo, mi_objetivo_capacitacion AS objetivo_capacitacion,"
+        " pt_fecha_desarrollo AS implementacion_final"
+        " FROM cap_capacitaciones"
     )
+    oferta_columns = [
+        "codigo", "anio", "condicion", "tipo_proceso_formativo",
+        "denominacion_proceso_formativo", "especialista_cargo",
+        "objetivo_capacitacion", "implementacion_final",
+    ]
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(oferta_sql)
+                rows = cursor.fetchall()
+        oferta = pd.DataFrame(list(rows or []))
+        if oferta.empty:
+            oferta = pd.DataFrame(columns=oferta_columns)
+    except Exception:
+        oferta = pd.DataFrame(columns=oferta_columns)
     bbdd = _fetch_dataframe(
         "bbdd_difoca",
         [

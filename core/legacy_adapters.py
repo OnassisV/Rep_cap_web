@@ -207,37 +207,19 @@ def _parsear_anio(valor: Any) -> int | None:
 
 
 def obtener_filas_oferta_formativa() -> list[dict[str, Any]]:
-    """Obtiene filas base de oferta_formativa_difoca con columnas disponibles."""
-    # Columnas clave usadas por la UI adaptada desde modulos legacy.
-    columnas_objetivo = [
-        "codigo",
-        "anio",
-        "condicion",
-        "especialista_cargo",
-        "tipo_proceso_formativo",
-        "denominacion_proceso_formativo",
-    ]
-
+    """Obtiene filas de capacitaciones desde cap_capacitaciones con aliases compatibles."""
+    query = (
+        "SELECT cap_codigo AS codigo, cap_anio AS anio, cap_estado AS condicion,"
+        " creado_nombre AS especialista_cargo, cap_tipo AS tipo_proceso_formativo,"
+        " cap_nombre AS denominacion_proceso_formativo"
+        " FROM cap_capacitaciones"
+    )
     try:
-        # Abre conexion y cursor con cierre automatico.
         with get_connection() as connection:
             with connection.cursor() as cursor:
-                # Detecta columnas reales para tolerar esquemas legacy cambiantes.
-                cursor.execute("SHOW COLUMNS FROM `oferta_formativa_difoca`")
-                columnas_disponibles = [str(row.get("Field", "")).strip() for row in cursor.fetchall()]
-                columnas_validas = [col for col in columnas_objetivo if col in columnas_disponibles]
-
-                # Si no hay columnas esperadas, no se puede construir la vista.
-                if not columnas_validas:
-                    return []
-
-                # Arma SELECT explicito (sin SELECT *) para mayor control.
-                columnas_sql = ", ".join([f"`{col}`" for col in columnas_validas])
-                query = f"SELECT {columnas_sql} FROM `oferta_formativa_difoca`"
                 cursor.execute(query)
                 return list(cursor.fetchall())
     except Exception:
-        # Si la base no responde o la tabla no existe, retorna vacio controlado.
         return []
 
 
@@ -3501,12 +3483,12 @@ def _nombre_archivo_plantilla(codigo: str) -> str:
     """Construye nombre de archivo amigable usando metadatos de oferta formativa."""
     query = """
         SELECT
-            codigo,
-            especialista_cargo,
-            tipo_proceso_formativo,
-            denominacion_proceso_formativo
-        FROM oferta_formativa_difoca
-        WHERE codigo = %s
+            cap_codigo AS codigo,
+            creado_nombre AS especialista_cargo,
+            cap_tipo AS tipo_proceso_formativo,
+            cap_nombre AS denominacion_proceso_formativo
+        FROM cap_capacitaciones
+        WHERE cap_codigo = %s
         LIMIT 1
     """
     row: dict[str, Any] = {}
