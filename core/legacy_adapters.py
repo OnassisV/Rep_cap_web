@@ -3395,6 +3395,10 @@ def _aplicar_campos_derivados(filas: list[dict[str, Any]]) -> None:
 
         # Regla legacy: aprueba si nota final aprobada y avance completo.
         aprueba = fila["promedio_final_condicion"] == "Aprobado" and avance > 0.99
+        # Retirados no pueden certificar.
+        es_retirado = _a_int(fila.get("estado")) == 3
+        if es_retirado:
+            aprueba = False
         fila["situacion_del_participante"] = "Aprueba" if aprueba else "No aprueba"
         fila["aprobados/certificados"] = 1 if aprueba else None
 
