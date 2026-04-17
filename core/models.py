@@ -437,3 +437,33 @@ class CapCronogramaCampo(models.Model):
     class Meta:
         db_table = "cap_cronograma_campos"
         ordering = ["capacitacion", "orden"]
+
+
+class CapSincronicaProcesamiento(models.Model):
+    """Registro persistente de un procesamiento sincrónico ya ejecutado."""
+
+    capacitacion = models.ForeignKey(
+        Capacitacion,
+        on_delete=models.CASCADE,
+        related_name="procesamientos_sincronicos",
+        null=True,
+        blank=True,
+    )
+    codigo = models.CharField(max_length=120, db_index=True)
+    input_hash = models.CharField(max_length=64, db_index=True)
+    status = models.CharField(max_length=20, default="completed")
+    output_file = models.CharField(max_length=255, blank=True, default="")
+    output_blob = models.BinaryField(null=True, blank=True)
+    stats_json = models.TextField(blank=True, default="{}")
+    procesado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "cap_sincronica_procesamiento"
+        ordering = ["-procesado_en"]
+        constraints = [
+            models.UniqueConstraint(fields=["codigo", "input_hash"], name="uniq_sync_codigo_hash"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.codigo} · {self.status}"

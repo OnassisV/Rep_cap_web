@@ -6,6 +6,8 @@ Aqui se pueden agregar casos para:
 """
 
 # Import base de pruebas Django para tests unitarios/integracion futuros.
+from unittest.mock import patch
+
 from django.test import TestCase
 
 from core.models import Capacitacion
@@ -31,7 +33,7 @@ class EstadoCapacitacionTests(TestCase):
 
         self.assertEqual(cap.cap_estado, "En proceso")
 
-    def test_finalizada_2026_con_paso_siete_tambien_vuelve_a_en_proceso(self):
+    def test_2026_con_pasos_completos_pasa_a_por_finalizar(self):
         cap = Capacitacion.objects.create(
             cap_nombre="Gestión de Riesgos - G1",
             cap_anio=2026,
@@ -41,7 +43,24 @@ class EstadoCapacitacionTests(TestCase):
             cap_tipo="Capacitación sincrónica",
         )
 
-        _auto_actualizar_estado(cap)
+        with patch("core.views._cap_tiene_certificados", return_value=False):
+            _auto_actualizar_estado(cap)
         cap.refresh_from_db()
 
-        self.assertEqual(cap.cap_estado, "En proceso")
+        self.assertEqual(cap.cap_estado, "Por finalizar")
+
+    def test_2026_con_certificados_y_pasos_completos_pasa_a_finalizada(self):
+        cap = Capacitacion.objects.create(
+            cap_nombre="Gestión de Riesgos - G2",
+            cap_anio=2026,
+            cap_codigo="26002X",
+            cap_estado="En proceso",
+            paso_actual=7,
+            cap_tipo="Capacitación sincrónica",
+        )
+
+        with patch("core.views._cap_tiene_certificados", return_value=True):
+            _auto_actualizar_estado(cap)
+        cap.refresh_from_db()
+
+        self.assertEqual(cap.cap_estado, "Finalizada")

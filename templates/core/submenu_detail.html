@@ -2891,17 +2891,27 @@
 
                                         <!-- Botón de procesamiento -->
                                         {% if sync_archivos_info.total_entradas > 0 and sync_archivos_info.total_salidas > 0 %}
-                                            <form method="post"
-                                                  action="{% url 'core:submenu_detail' section.slug submenu.slug %}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="procesar_sincronica">
-                                                <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
-                                                <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
-                                                <button type="submit" class="btn-primary-soft sync-btn-procesar"
-                                                        onclick="return confirm('¿Procesar archivos de entrada y salida?')">
-                                                    Procesar y generar plantilla
-                                                </button>
-                                            </form>
+                                            {% if sync_archivos_info.procesado %}
+                                                <p class="module-panel__note">
+                                                    Esta combinación de archivos ya fue procesada y cargada a la base. Si subes nuevos insumos, se habilitará un nuevo procesamiento.
+                                                </p>
+                                                <a class="btn-primary-soft"
+                                                   href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&codigo={{ sync_codigo_sel }}&download=resultado_xlsx">
+                                                    Descargar resultado (.xlsx)
+                                                </a>
+                                            {% else %}
+                                                <form method="post"
+                                                      action="{% url 'core:submenu_detail' section.slug submenu.slug %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="procesar_sincronica">
+                                                    <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
+                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                    <button type="submit" class="btn-primary-soft sync-btn-procesar"
+                                                            onclick="return confirm('¿Procesar archivos de entrada y salida?')">
+                                                        Procesar y generar plantilla
+                                                    </button>
+                                                </form>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 {% endif %}

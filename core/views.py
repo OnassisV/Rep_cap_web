@@ -348,8 +348,10 @@ def _auto_actualizar_estado(cap_obj) -> None:
 
     - Sin código ni ID curso → Formulada
     - Con código o ID curso → En proceso
-    - Paso 7 + código (año < 2026) → Finalizada
-    - Año 2026 o mayor → se mantiene en En proceso hasta cierre manual
+    - Año 2026 o mayor:
+        * pasos completos O certificados → Por finalizar
+        * pasos completos Y certificados → Finalizada
+    - Años previos a 2026: paso 7 + código → Finalizada
     No toca registros Cancelados.
     """
     from core.models import Capacitacion
@@ -364,9 +366,16 @@ def _auto_actualizar_estado(cap_obj) -> None:
         nuevo = Capacitacion.Estado.FORMULADA
     else:
         nuevo = Capacitacion.Estado.EN_PROCESO
+        pasos_completos = int(cap_obj.paso_actual or 0) >= 7
+        tiene_certificados = _cap_tiene_certificados(cap_obj)
+        anio = int(cap_obj.cap_anio or 0)
 
-        # Solo años previos a 2026 pasan automáticamente a finalizada.
-        if (cap_obj.cap_anio or 0) < 2026 and cap_obj.paso_actual >= 7 and tiene_codigo:
+        if anio >= 2026:
+            if pasos_completos and tiene_certificados:
+                nuevo = Capacitacion.Estado.FINALIZADA
+            elif pasos_completos or tiene_certificados:
+                nuevo = Capacitacion.Estado.POR_FINALIZAR
+        elif pasos_completos and tiene_codigo:
             nuevo = Capacitacion.Estado.FINALIZADA
 
     if cap_obj.cap_estado != nuevo:
@@ -374,13 +383,10 @@ def _auto_actualizar_estado(cap_obj) -> None:
         cap_obj.save(update_fields=["cap_estado", "actualizado_en"])
 
 
-def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
-    """Verifica si la capacitación tiene fórmula de promedio registrada
-    y al menos un participante con certificado determinado."""
-    from core.legacy_adapters import obtener_formulas_promedio
+def _cap_tiene_certificados(cap_obj) -> bool:
+    """Verifica si la capacitación ya tiene participantes certificados."""
     from accounts.db import get_connection
 
-    # Construye código completo: "XXXXX-YYY"
     codigo_completo = cap_obj.cap_codigo or ""
     if cap_obj.cap_id_curso:
         codigo_completo = f"{cap_obj.cap_codigo}-{cap_obj.cap_id_curso}"
@@ -388,12 +394,6 @@ def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
     if not codigo_completo.strip():
         return False
 
-    # 1. Verificar fórmula de promedio registrada.
-    formulas = obtener_formulas_promedio(codigo_completo)
-    if not formulas:
-        return False
-
-    # 2. Verificar al menos un participante con aprobados_certificados = 1.
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
@@ -401,12 +401,15 @@ def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
                     "SELECT 1 FROM bbdd_difoca WHERE codigo = %s AND aprobados_certificados = 1 LIMIT 1",
                     (codigo_completo,),
                 )
-                if not cursor.fetchone():
-                    return False
+                return bool(cursor.fetchone())
     except Exception:
+        logger.exception("No se pudo verificar certificados para %s", codigo_completo)
         return False
 
-    return True
+
+def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
+    """Compatibilidad retroactiva con lógica anterior."""
+    return _cap_tiene_certificados(cap_obj)
 
 
 def _serializar_capacitacion_valores(cap_obj) -> dict[str, str]:
@@ -3279,9 +3282,14 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             download_kind = str(request.GET.get("download", "")).strip().lower()
             if download_kind == "resultado_xlsx" and sync_codigo_sel:
                 res = obtener_resultado_procesamiento(sync_codigo_sel)
-                if res.get("exists") and os.path.exists(str(res.get("output_path", ""))):
+                content = b""
+                if res.get("output_content"):
+                    content = res.get("output_content", b"")
+                elif res.get("exists") and os.path.exists(str(res.get("output_path", ""))):
                     with open(str(res["output_path"]), "rb") as f:
                         content = f.read()
+
+                if content:
                     response = HttpResponse(
                         content,
                         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

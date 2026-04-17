@@ -114,6 +114,74 @@ def _obtener_run_completado(manifest: dict, input_hash: str) -> dict | None:
     return None
 
 
+def _bytes_desde_blob(blob: Any) -> bytes:
+    if blob is None:
+        return b""
+    if isinstance(blob, memoryview):
+        return blob.tobytes()
+    if isinstance(blob, (bytes, bytearray)):
+        return bytes(blob)
+    try:
+        return bytes(blob)
+    except Exception:
+        return b""
+
+
+def _obtener_run_db(codigo: str, input_hash: str | None = None) -> dict | None:
+    """Lee el último procesamiento persistido en MySQL."""
+    try:
+        from core.models import CapSincronicaProcesamiento
+
+        qs = CapSincronicaProcesamiento.objects.filter(
+            codigo=str(codigo).strip(),
+            status="completed",
+        )
+        if input_hash:
+            qs = qs.filter(input_hash=input_hash)
+        run = qs.order_by("-procesado_en").first()
+        if not run:
+            return None
+        return {
+            "status": run.status,
+            "timestamp": run.procesado_en.isoformat() if run.procesado_en else "",
+            "input_hash": run.input_hash,
+            "output_path": "",
+            "output_file": run.output_file,
+            "output_content": _bytes_desde_blob(run.output_blob),
+            "stats": json.loads(run.stats_json or "{}"),
+        }
+    except Exception:
+        logger.exception("Error leyendo procesamiento persistido de %s", codigo)
+        return None
+
+
+def _guardar_run_db(
+    codigo: str,
+    input_hash: str,
+    output_file: str,
+    output_bytes: bytes,
+    stats: dict[str, Any],
+) -> None:
+    """Guarda el resultado procesado en MySQL para reutilización y descarga."""
+    try:
+        from core.models import Capacitacion, CapSincronicaProcesamiento
+
+        cap = Capacitacion.objects.filter(cap_codigo=str(codigo).strip()).order_by("-cap_anio", "-actualizado_en").first()
+        CapSincronicaProcesamiento.objects.update_or_create(
+            codigo=str(codigo).strip(),
+            input_hash=input_hash,
+            defaults={
+                "capacitacion": cap,
+                "status": "completed",
+                "output_file": str(output_file or "").strip(),
+                "output_blob": output_bytes,
+                "stats_json": json.dumps(stats or {}, ensure_ascii=False),
+            },
+        )
+    except Exception:
+        logger.exception("Error guardando procesamiento persistido de %s", codigo)
+
+
 # ---------------------------------------------------------------------------
 # Guardar archivos subidos (evitar duplicados por contenido)
 # ---------------------------------------------------------------------------
@@ -231,15 +299,19 @@ def obtener_info_archivos(codigo: str) -> dict[str, Any]:
     manifest = _cargar_manifest(storage) if storage.is_dir() else {}
     procesado = False
     output_file = ""
+    run_db = _obtener_run_db(codigo)
     if entradas and salidas:
         try:
             ih = _calcular_hash_insumos(storage, entradas, salidas)
-            run = _obtener_run_completado(manifest, ih)
+            run = _obtener_run_completado(manifest, ih) or _obtener_run_db(codigo, ih)
             if run:
                 procesado = True
                 output_file = run.get("output_file", "")
         except Exception:
-            pass
+            logger.exception("Error calculando estado de procesamiento para %s", codigo)
+    elif run_db:
+        procesado = True
+        output_file = str(run_db.get("output_file", ""))
     return {
         "entradas": entradas,
         "salidas": salidas,
@@ -440,7 +512,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
     # Idempotencia
     input_hash = _calcular_hash_insumos(storage, entradas, salidas)
     manifest = _cargar_manifest(storage)
-    run_prev = _obtener_run_completado(manifest, input_hash)
+    run_prev = _obtener_run_db(codigo, input_hash) or _obtener_run_completado(manifest, input_hash)
     if run_prev:
         logger.info("procesar_sincronicas: reutilizando run previo")
         return {
@@ -448,6 +520,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
             "reutilizado": True,
             "output_path": run_prev.get("output_path", ""),
             "output_file": run_prev.get("output_file", ""),
+            "output_content": run_prev.get("output_content", b""),
             "stats": run_prev.get("stats", {}),
         }
 
@@ -699,6 +772,7 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
         "rows_df_tutor": len(df_tutor),
     }
     _guardar_manifest(storage, manifest)
+    _guardar_run_db(codigo, input_hash, output_file, output_bytes, stats)
 
     return {
         "ok": True,
@@ -1005,23 +1079,28 @@ def _escribir_df_a_sheet(
 def obtener_resultado_procesamiento(codigo: str) -> dict[str, Any]:
     """Retorna info del ultimo procesamiento exitoso."""
     storage = _storage_dir(codigo, crear=False)
-    if not storage.is_dir():
-        return {"exists": False}
-    entradas, salidas = _listar_archivos(storage)
-    if not entradas or not salidas:
-        return {"exists": False}
-    try:
-        ih = _calcular_hash_insumos(storage, entradas, salidas)
-    except Exception:
-        return {"exists": False}
-    manifest = _cargar_manifest(storage)
-    run = _obtener_run_completado(manifest, ih)
+    run = None
+
+    if storage.is_dir():
+        entradas, salidas = _listar_archivos(storage)
+        if entradas and salidas:
+            try:
+                ih = _calcular_hash_insumos(storage, entradas, salidas)
+                run = _obtener_run_completado(_cargar_manifest(storage), ih) or _obtener_run_db(codigo, ih)
+            except Exception:
+                logger.exception("Error leyendo resultado local de %s", codigo)
+
+    if not run:
+        run = _obtener_run_db(codigo)
+
     if not run:
         return {"exists": False}
+
     return {
         "exists": True,
         "output_path": run.get("output_path", ""),
         "output_file": run.get("output_file", ""),
+        "output_content": run.get("output_content", b""),
         "stats": run.get("stats", {}),
         "timestamp": run.get("timestamp", ""),
     }
