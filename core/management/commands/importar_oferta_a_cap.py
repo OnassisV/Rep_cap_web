@@ -117,6 +117,8 @@ class Command(BaseCommand):
             # Mapea condicion → estado.
             condicion = _norm(fila.get("condicion")).lower()
             cap_estado = CONDICION_A_ESTADO.get(condicion, Capacitacion.Estado.FORMULADA)
+            if cap_anio >= 2026:
+                cap_estado = Capacitacion.Estado.EN_PROCESO
 
             # Nombre.
             cap_nombre = _norm(fila.get("denominacion_proceso_formativo")) or f"Capacitación {codigo_raw}"

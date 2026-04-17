@@ -349,8 +349,7 @@ def _auto_actualizar_estado(cap_obj) -> None:
     - Sin código ni ID curso → Formulada
     - Con código o ID curso → En proceso
     - Paso 7 + código (año < 2026) → Finalizada
-    - Paso 7 + código (año >= 2026) → Por finalizar
-    - Paso 7 + código + fórmula + certificados (año >= 2026) → Finalizada
+    - Año 2026 o mayor → se mantiene en En proceso hasta cierre manual
     No toca registros Cancelados.
     """
     from core.models import Capacitacion
@@ -366,16 +365,9 @@ def _auto_actualizar_estado(cap_obj) -> None:
     else:
         nuevo = Capacitacion.Estado.EN_PROCESO
 
-        # ¿Completó todo el flujo? paso_actual >= 7 indica que recorrió los 7 pasos.
-        if cap_obj.paso_actual >= 7 and tiene_codigo:
-            anio = cap_obj.cap_anio or 0
-            if anio >= 2026:
-                # 2026+: verificar fórmula de promedio y certificados para Finalizada.
-                nuevo = Capacitacion.Estado.POR_FINALIZAR
-                if _cap_tiene_formula_y_certificados(cap_obj):
-                    nuevo = Capacitacion.Estado.FINALIZADA
-            else:
-                nuevo = Capacitacion.Estado.FINALIZADA
+        # Solo años previos a 2026 pasan automáticamente a finalizada.
+        if (cap_obj.cap_anio or 0) < 2026 and cap_obj.paso_actual >= 7 and tiene_codigo:
+            nuevo = Capacitacion.Estado.FINALIZADA
 
     if cap_obj.cap_estado != nuevo:
         cap_obj.cap_estado = nuevo

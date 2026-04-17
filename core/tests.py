@@ -30,3 +30,18 @@ class EstadoCapacitacionTests(TestCase):
         cap.refresh_from_db()
 
         self.assertEqual(cap.cap_estado, "En proceso")
+
+    def test_finalizada_2026_con_paso_siete_tambien_vuelve_a_en_proceso(self):
+        cap = Capacitacion.objects.create(
+            cap_nombre="Gestión de Riesgos - G1",
+            cap_anio=2026,
+            cap_codigo="26001X",
+            cap_estado="Finalizada",
+            paso_actual=7,
+            cap_tipo="Capacitación sincrónica",
+        )
+
+        _auto_actualizar_estado(cap)
+        cap.refresh_from_db()
+
+        self.assertEqual(cap.cap_estado, "En proceso")
