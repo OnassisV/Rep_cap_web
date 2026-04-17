@@ -338,20 +338,19 @@ def _valor_por_defecto_registro_capacitacion() -> dict[str, str]:
     return {
         # Se sugiere año actual para agilizar carga inicial.
         "cap_anio": str(datetime.now().year),
-        # Flujo arranca en borrador por defecto.
-        "cap_estado": "Borrador",
+        # Flujo arranca en estado formulada por defecto.
+        "cap_estado": "Formulada",
     }
 
 
 def _auto_actualizar_estado(cap_obj) -> None:
     """Actualiza cap_estado según reglas automáticas.
 
-    - Sin código ni ID curso → Borrador
-    - Con código o ID curso  → En proceso (mínimo)
+    - Sin código ni ID curso → Formulada
+    - Con código o ID curso → En proceso
     - Paso 7 + código (año < 2026) → Finalizada
     - Paso 7 + código (año >= 2026) → Por finalizar
     - Paso 7 + código + fórmula + certificados (año >= 2026) → Finalizada
-    No degrada: si ya está Finalizada no baja a estados anteriores.
     No toca registros Cancelados.
     """
     from core.models import Capacitacion
@@ -363,30 +362,20 @@ def _auto_actualizar_estado(cap_obj) -> None:
     tiene_id = bool(cap_obj.cap_id_curso and cap_obj.cap_id_curso.strip())
 
     if not tiene_codigo and not tiene_id:
-        if cap_obj.cap_estado != Capacitacion.Estado.BORRADOR:
-            return  # no degradar
-        return  # ya es Borrador
+        nuevo = Capacitacion.Estado.FORMULADA
+    else:
+        nuevo = Capacitacion.Estado.EN_PROCESO
 
-    # Tiene código o ID → al menos En proceso.
-    nuevo = Capacitacion.Estado.EN_PROCESO
-
-    # ¿Completó todo el flujo? paso_actual >= 7 indica que recorrió los 7 pasos.
-    if cap_obj.paso_actual >= 7 and tiene_codigo:
-        anio = cap_obj.cap_anio or 0
-        if anio >= 2026:
-            # 2026+: verificar fórmula de promedio y certificados para Finalizada.
-            nuevo = Capacitacion.Estado.POR_FINALIZAR
-            if _cap_tiene_formula_y_certificados(cap_obj):
+        # ¿Completó todo el flujo? paso_actual >= 7 indica que recorrió los 7 pasos.
+        if cap_obj.paso_actual >= 7 and tiene_codigo:
+            anio = cap_obj.cap_anio or 0
+            if anio >= 2026:
+                # 2026+: verificar fórmula de promedio y certificados para Finalizada.
+                nuevo = Capacitacion.Estado.POR_FINALIZAR
+                if _cap_tiene_formula_y_certificados(cap_obj):
+                    nuevo = Capacitacion.Estado.FINALIZADA
+            else:
                 nuevo = Capacitacion.Estado.FINALIZADA
-        else:
-            nuevo = Capacitacion.Estado.FINALIZADA
-
-    # No degradar desde Finalizada.
-    if cap_obj.cap_estado == Capacitacion.Estado.FINALIZADA and nuevo != Capacitacion.Estado.FINALIZADA:
-        return
-    # No degradar desde Por finalizar a En proceso.
-    if cap_obj.cap_estado == Capacitacion.Estado.POR_FINALIZAR and nuevo == Capacitacion.Estado.EN_PROCESO:
-        return
 
     if cap_obj.cap_estado != nuevo:
         cap_obj.cap_estado = nuevo
@@ -1518,7 +1507,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             errores, payload_tipado = _validar_registro_capacitacion(
                 payload_raw, secciones_validas=SECCIONES_PASO_1,
             )
-            payload_tipado["cap_estado"] = "Borrador"
+            payload_tipado["cap_estado"] = "Formulada"
 
             if errores:
                 # Conserva borrador para no perder avance al corregir campos.
@@ -1554,8 +1543,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     request.session.pop(draft_key, None)
                     messages.success(
                         request,
-                        "Capacitacion registrada como borrador. "
-                        "Puedes continuar la edicion desde el modulo Editar capacitacion.",
+                        "Capacitación registrada como formulada. "
+                        "Puedes continuar la edición desde el módulo Editar capacitación.",
                     )
                 else:
                     request.session[draft_key] = payload_raw
@@ -2186,7 +2175,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
                 from django.db.models import Case, When, Value, IntegerField as _IntF
                 _estado_orden = Case(
-                    When(cap_estado="Borrador", then=Value(1)),
+                    When(cap_estado__in=["Formulada", "Borrador"], then=Value(1)),
                     When(cap_estado="En proceso", then=Value(2)),
                     When(cap_estado="Por finalizar", then=Value(3)),
                     When(cap_estado="Finalizada", then=Value(4)),
@@ -2779,7 +2768,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     )
                     # Forzar tipo sincrónica
                     payload_tipado["cap_tipo"] = "Capacitación sincrónica"
-                    payload_tipado["cap_estado"] = "Borrador"
+                    payload_tipado["cap_estado"] = "Formulada"
 
                     if errores:
                         request.session[draft_key] = payload_raw
@@ -2816,7 +2805,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             request.session.pop(draft_key, None)
                             messages.success(
                                 request,
-                                f"Capacitación sincrónica registrada como borrador. Código: {resultado.get('cap_codigo', '')}.",
+                                f"Capacitación sincrónica registrada como formulada. Código: {resultado.get('cap_codigo', '')}.",
                             )
                         else:
                             request.session[draft_key] = payload_raw
@@ -3134,7 +3123,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 qs_filtrado = qs.filter(cap_anio=_ed_anio) if _ed_anio else qs
                 from django.db.models import Case, When, Value, IntegerField as _IntF
                 _estado_orden = Case(
-                    When(cap_estado="Borrador", then=Value(1)),
+                    When(cap_estado__in=["Formulada", "Borrador"], then=Value(1)),
                     When(cap_estado="En proceso", then=Value(2)),
                     When(cap_estado="Por finalizar", then=Value(3)),
                     When(cap_estado="Finalizada", then=Value(4)),

@@ -8,7 +8,7 @@ Reglas:
   - condicion se mapea a cap_estado:
       Cerrado               → Finalizada
       En implementacion     → En proceso
-      (otros)               → Borrador
+      (otros)               → Formulada
   - Todos los importados entran con paso_actual=7 (ya pasaron el flujo completo).
   - Si ya existe un registro con el mismo cap_codigo + cap_id_curso + cap_anio, se omite.
 """
@@ -116,7 +116,7 @@ class Command(BaseCommand):
 
             # Mapea condicion → estado.
             condicion = _norm(fila.get("condicion")).lower()
-            cap_estado = CONDICION_A_ESTADO.get(condicion, Capacitacion.Estado.BORRADOR)
+            cap_estado = CONDICION_A_ESTADO.get(condicion, Capacitacion.Estado.FORMULADA)
 
             # Nombre.
             cap_nombre = _norm(fila.get("denominacion_proceso_formativo")) or f"Capacitación {codigo_raw}"

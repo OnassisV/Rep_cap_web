@@ -15,6 +15,7 @@ class Capacitacion(models.Model):
     """Registro maestro de una capacitacion."""
 
     class Estado(models.TextChoices):
+        FORMULADA = "Formulada"
         BORRADOR = "Borrador"
         EN_PROCESO = "En proceso"
         POR_FINALIZAR = "Por finalizar"
@@ -49,7 +50,7 @@ class Capacitacion(models.Model):
     cap_estado = models.CharField(
         max_length=30,
         choices=Estado.choices,
-        default=Estado.BORRADOR,
+        default=Estado.FORMULADA,
     )
     paso_actual = models.PositiveSmallIntegerField(default=1)
 

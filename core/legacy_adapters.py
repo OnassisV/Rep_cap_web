@@ -187,7 +187,7 @@ def crear_registro_capacitacion(
             pob_tipo=_str("pob_tipo", 120),
             pob_ambito=_str("pob_ambito", 120),
             # Estado
-            cap_estado=Capacitacion.Estado.BORRADOR,
+            cap_estado=Capacitacion.Estado.FORMULADA,
             paso_actual=1,
             # Metadata
             creado_por=str(creado_por or "").strip() or "sistema",
