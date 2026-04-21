@@ -3079,15 +3079,24 @@ h1 {
     width: 100%;
 }
 
-/* Tabla ancha de 5 columnas */
+/* Tabla ancha de 5 columnas (Dimensión / Subdimensión / Indicador / Ítems / Alternativas).
+   Al heredar las anchuras base (dim 28% + sub 32% + ind 34% = 94%) las columnas
+   Ítems/Alternativas quedaban comprimidas al minimo. Aqui redistribuimos los
+   anchos para la variante --wide y aumentamos el min-width para que el wrap
+   active el scroll horizontal solo cuando realmente falte espacio. */
 .matrix-outline-table--wide {
-    min-width: 800px;
+    min-width: 1100px;
+    table-layout: fixed;
 }
 
-.matrix-outline-table__col--items,
-.matrix-outline-table__col--alt {
+.matrix-outline-table--wide .matrix-outline-table__col--dim { width: 18%; }
+.matrix-outline-table--wide .matrix-outline-table__col--sub { width: 18%; }
+.matrix-outline-table--wide .matrix-outline-table__col--ind { width: 26%; }
+.matrix-outline-table--wide .matrix-outline-table__col--items,
+.matrix-outline-table--wide .matrix-outline-table__col--alt {
     width: 18%;
 }
+.matrix-outline-table--wide .matrix-outline-table__col--act { width: 2.4rem; }
 
 .sustento-modal__panel {
     padding: 1rem;
