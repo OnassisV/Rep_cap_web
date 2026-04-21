@@ -3435,7 +3435,10 @@
                     });
 
                 form.querySelectorAll("[data-problem-select]").forEach(function (select) {
-                    var currentValue = String(select.value || "");
+                    // Fallback a data-current-value para sobrevivir a re-sincronizaciones
+                    // entre addRow y addRow sucesivos, cuando select.value se pierde al
+                    // reconstruir las <option> de filas ya insertadas.
+                    var currentValue = String(select.value || select.getAttribute("data-current-value") || "");
                     select.innerHTML = "";
 
                     var placeholder = document.createElement("option");
@@ -3451,6 +3454,7 @@
                     });
 
                     select.value = options.indexOf(currentValue) >= 0 ? currentValue : "";
+                    select.setAttribute("data-current-value", String(select.value || ""));
                 });
             };
 
@@ -4226,7 +4230,14 @@
                         var row = {};
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
-                            var rawValue = String(field.value || "").trim();
+                            // Para SELECT, si field.value quedo vacio por reconstruccion
+                            // de opciones todavia en curso, usamos data-current-value.
+                            var rawValue = "";
+                            if (field.tagName === "SELECT") {
+                                rawValue = String(field.value || field.getAttribute("data-current-value") || "").trim();
+                            } else {
+                                rawValue = String(field.value || "").trim();
+                            }
                             row[key] = field.hasAttribute("data-multiline-list") ? fromLines(rawValue) : rawValue;
                         });
                         return row;
@@ -4273,6 +4284,10 @@
                                     tmp.textContent = stringValue;
                                     field.appendChild(tmp);
                                 }
+                                // Guardamos el valor tambien como atributo para que los
+                                // syncXxxSelects posteriores puedan recuperarlo si el DOM
+                                // pierde select.value al reconstruir las opciones.
+                                field.setAttribute("data-current-value", stringValue);
                             }
                             field.value = stringValue;
                             field.addEventListener("input", syncField);
