@@ -4392,13 +4392,28 @@
             syncSustentoAccess();
             syncReplicaState();
 
+            // ── Marca el modal completo como "sucio" cuando el usuario edita
+            //     cualquiera de sus campos. Sirve para resolver duplicados de
+            //     name entre los modales de matriz y diagnostico cuando ambas
+            //     copias tienen valor (porque comparten valores precargados). ──
+            form.querySelectorAll("[data-sustento-modal]").forEach(function (modal) {
+                var marcarModal = function (event) {
+                    // Ignora cambios programáticos sin trusted (suelen venir de
+                    // syncField del builder al inicializar). Algunos navegadores
+                    // antiguos no soportan isTrusted; en ese caso aceptamos.
+                    if (event && event.isTrusted === false) { return; }
+                    modal.setAttribute("data-sustento-dirty", "1");
+                };
+                modal.addEventListener("input", marcarModal);
+                modal.addEventListener("change", marcarModal);
+            });
+
             // ── Pre-submit: elimina inputs duplicados entre modales Matriz y Diagnóstico ──
             // Ambos modales comparten pasos de origen (diagnostico-paso-1..5), por lo que
             // generan inputs con el MISMO name. Al enviar el formulario, Django se queda
             // con el último valor, sobrescribiendo lo que el usuario escribió en el modal
-            // que SÍ completó. Este handler recorre los pares duplicados y conserva la
-            // copia con contenido (o la del modal activo si ambas están vacías/llenas),
-            // desactivando el name del resto para que no pisen el valor correcto.
+            // que SÍ completó. Este handler recorre los pares duplicados y decide qué
+            // copia conservar, desactivando el name del resto.
             var normalizarSi = function (valor) {
                 var v = String(valor || "").trim().toLowerCase();
                 return v === "si" || v === "sí";
@@ -4474,6 +4489,8 @@
                 };
 
                 // Para cada name presente en ambos modales decide qué copia se envía.
+                var matrizDirty = modalMatriz && modalMatriz.getAttribute("data-sustento-dirty") === "1";
+                var diagDirty = modalDiag && modalDiag.getAttribute("data-sustento-dirty") === "1";
                 Object.keys(mapaMatriz).forEach(function (nombre) {
                     if (!mapaDiag[nombre]) { return; }
                     var enMatriz = mapaMatriz[nombre];
@@ -4482,10 +4499,17 @@
                     var diagConDato = enDiag.some(tieneValor);
 
                     var conservar;
-                    if (matrizConDato && !diagConDato) {
+                    // Prioridad 1: el modal donde el usuario realmente editó.
+                    if (matrizDirty && !diagDirty) {
+                        conservar = "matriz";
+                    } else if (!matrizDirty && diagDirty) {
+                        conservar = "diagnostico";
+                    // Prioridad 2: la única copia que tenga datos.
+                    } else if (matrizConDato && !diagConDato) {
                         conservar = "matriz";
                     } else if (!matrizConDato && diagConDato) {
                         conservar = "diagnostico";
+                    // Prioridad 3: el modal activo (preferido).
                     } else {
                         conservar = preferido;
                     }

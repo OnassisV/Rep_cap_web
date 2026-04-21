@@ -2967,6 +2967,20 @@ h1 {
     width: min(1800px, calc(100vw - 2rem));
 }
 
+/* Override del width base de .actividad-modal (880px) para los modales de
+   matriz de sustento y diagnostico. Necesita mayor especificidad porque
+   .actividad-modal aparece despues en el CSS y empata en especificidad. */
+.actividad-modal.sustento-modal {
+    width: min(1800px, calc(100vw - 2rem));
+    max-width: min(1800px, calc(100vw - 2rem));
+}
+
+.actividad-modal.sustento-modal .sustento-modal__panel,
+.actividad-modal.sustento-modal .actividad-modal__panel {
+    width: 100%;
+    max-width: 100%;
+}
+
 /* ── Pestañas de perfil ── */
 .profile-tab-bar {
     display: flex;
