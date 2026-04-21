@@ -501,8 +501,38 @@ def _coercer_valor_registro_capacitacion(tipo: str, valor_raw: str) -> Any:
         except Exception:
             return None
 
+    # Lista multiple: normaliza a "op1, op2, op3" sin vacios ni duplicados.
+    if tipo == "list_multi":
+        items: list[str] = []
+        for parte in valor.replace(";", ",").split(","):
+            parte = parte.strip()
+            if parte and parte not in items:
+                items.append(parte)
+        return ", ".join(items) if items else None
+
     # Fecha/lista/texto se conservan como string limpio.
     return valor
+
+
+def _leer_post_campo_registro(request, codigo: str, tipo: str) -> str:
+    """Obtiene el valor crudo del POST respetando el tipo del campo.
+
+    Para campos list_multi devolvemos la union de todos los valores marcados
+    (checkboxes con el mismo name) separados por ", ". Para hidden_json no
+    aplicamos strip() para conservar el JSON intacto. Para el resto
+    devolvemos el valor simple con strip().
+    """
+    if tipo == "list_multi":
+        valores = request.POST.getlist(codigo)
+        items: list[str] = []
+        for parte in valores:
+            parte = str(parte or "").strip()
+            if parte and parte not in items:
+                items.append(parte)
+        return ", ".join(items)
+    if tipo == "hidden_json":
+        return str(request.POST.get(codigo, ""))
+    return str(request.POST.get(codigo, "")).strip()
 
 
 def _contar_estado_bloque_registro(campos: list[dict[str, Any]]) -> dict[str, int | bool]:
@@ -571,9 +601,17 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
         elif codigo in campos_iged and origen_actual == "IGED":
             es_obligatorio = True
 
+    valor_actual = str(valores_form.get(codigo, "")).strip()
+    valor_lista = [
+        v.strip()
+        for v in valor_actual.replace(";", ",").split(",")
+        if v.strip()
+    ]
+
     return {
         **campo,
-        "valor": str(valores_form.get(codigo, "")).strip(),
+        "valor": valor_actual,
+        "valor_lista": valor_lista,
         "obligatorio": es_obligatorio,
         "is_origin_selector": codigo == "sol_origen_institucional",
         "is_decision": codigo in campos_decision,
@@ -1183,8 +1221,15 @@ def _validar_registro_capacitacion(
             continue
 
         # Regla de opciones validas para listas desplegables.
-        if valor_raw and opciones and valor_raw not in opciones:
+        if valor_raw and opciones and tipo != "list_multi" and valor_raw not in opciones:
             errores.append(f"Valor no valido en: {etiqueta}.")
+
+        # Regla de opciones para listas multiples (separadas por coma).
+        if valor_raw and opciones and tipo == "list_multi":
+            seleccionados = [p.strip() for p in valor_raw.split(",") if p.strip()]
+            invalidos = [s for s in seleccionados if s not in opciones]
+            if invalidos:
+                errores.append(f"Valor no valido en: {etiqueta}.")
 
         valor_tipado = _coercer_valor_registro_capacitacion(tipo, valor_raw)
 
@@ -1496,7 +1541,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 payload_raw: dict[str, str] = {}
                 for campo in iterar_campos_registro_capacitacion(secciones_filtro=SECCIONES_PASO_1):
                     codigo = str(campo.get("codigo", "")).strip()
-                    payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
+                    tipo = str(campo.get("tipo", "")).strip()
+                    payload_raw[codigo] = _leer_post_campo_registro(request, codigo, tipo)
 
             # Valida solo campos obligatorios del paso 1.
             errores, payload_tipado = _validar_registro_capacitacion(
@@ -1618,10 +1664,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if codigo in _CAMPOS_EXCLUIDOS_SAVE:
                         continue
                     tipo = str(campo.get("tipo", "")).strip()
-                    if tipo == "hidden_json":
-                        raw_val = str(request.POST.get(codigo, ""))
-                    else:
-                        raw_val = str(request.POST.get(codigo, "")).strip()
+                    raw_val = _leer_post_campo_registro(request, codigo, tipo)
                     if not hasattr(cap_obj, codigo):
                         continue
                     coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
@@ -2756,7 +2799,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     payload_raw: dict[str, str] = {}
                     for campo in iterar_campos_registro_capacitacion(secciones_filtro=SECCIONES_PASO_1):
                         codigo = str(campo.get("codigo", "")).strip()
-                        payload_raw[codigo] = str(request.POST.get(codigo, "")).strip()
+                        tipo = str(campo.get("tipo", "")).strip()
+                        payload_raw[codigo] = _leer_post_campo_registro(request, codigo, tipo)
 
                     errores, payload_tipado = _validar_registro_capacitacion(
                         payload_raw, secciones_validas=SECCIONES_PASO_1,
@@ -2847,10 +2891,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         if codigo_campo in _CAMPOS_EXCLUIDOS_SAVE:
                             continue
                         tipo = str(campo.get("tipo", "")).strip()
-                        if tipo == "hidden_json":
-                            raw_val = str(request.POST.get(codigo_campo, ""))
-                        else:
-                            raw_val = str(request.POST.get(codigo_campo, "")).strip()
+                        raw_val = _leer_post_campo_registro(request, codigo_campo, tipo)
                         if not hasattr(cap_obj, codigo_campo):
                             continue
                         coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)

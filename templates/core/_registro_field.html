@@ -92,6 +92,22 @@ Admite variantes especiales para origen institucional y decisiones binarias.
                     <option value="{{ opcion }}" {% if field.valor == opcion %}selected{% endif %}>{{ opcion }}</option>
                 {% endfor %}
             </select>
+        {% elif field.tipo == "list_multi" %}
+            <div class="multi-checkbox-group" role="group" aria-label="{{ field.pregunta }}" data-multi-checkbox-group="{{ field.codigo }}">
+                {% for opcion in field.opciones %}
+                    <label class="multi-checkbox-pill">
+                        <input
+                            type="checkbox"
+                            name="{{ field.codigo }}"
+                            value="{{ opcion }}"
+                            {% if opcion in field.valor_lista %}checked{% endif %}
+                        >
+                        <span>{{ opcion }}</span>
+                    </label>
+                {% endfor %}
+                {# Hidden centinela para que getlist devuelva al menos cadena vacia y se respete el "no seleccion". #}
+                <input type="hidden" name="{{ field.codigo }}" value="">
+            </div>
         {% elif field.tipo == "text_long" %}
             <textarea name="{{ field.codigo }}" rows="3" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>{{ field.valor }}</textarea>
         {% elif field.tipo == "integer" %}

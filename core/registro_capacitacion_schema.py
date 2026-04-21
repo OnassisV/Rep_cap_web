@@ -72,7 +72,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("sol_archivo_oficio", "Link de oficio", "text_short", False, None, "Pega el enlace al oficio digitalizado para conservar el sustento dentro del registro.", "left"),
             _campo("sol_region_iged", "Region", "list", False, None, "Primero elige la region para filtrar las IGED disponibles.", "left"),
             _campo("sol_iged_nombre", "IGED", "list", False, None, "La lista se actualiza segun la region seleccionada.", "left"),
-            _campo("pob_tipo", "Publico objetivo", "list", True, ["Docente", "Directivo", "Especialista DRE", "Especialista UGEL", "Acompañante pedagogico", "Formador", "Otro"], "Perfil principal al que estara dirigida la intervencion.", "left"),
+            _campo("pob_tipo", "Publico objetivo", "list_multi", True, ["Docente", "Directivo", "Especialista DRE", "Especialista UGEL", "Acompañante pedagogico", "Formador", "Otro"], "Selecciona uno o varios perfiles a los que estara dirigida la intervencion.", "left"),
             _campo("pob_ambito", "Ambito territorial", "list", True, ["Nacional", "Macroregional", "Regional", "Provincial", "Local"], "Nivel geografico esperado para esta solicitud.", "left"),
             _campo("cap_nombre", "Nombre de la capacitacion", "text_short", True, None, "Titulo preliminar con el que se abrira el proceso.", "left"),
             _campo("cap_anio", "Año de la intervención", "integer", True, None, "Se propone automáticamente según el año vigente.", "left"),
