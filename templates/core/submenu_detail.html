@@ -4414,7 +4414,24 @@
                 if (el.type === "checkbox" || el.type === "radio") {
                     return !!el.checked;
                 }
-                return String(el.value || "").trim() !== "";
+                var raw = String(el.value || "").trim();
+                if (raw === "") { return false; }
+                // Para campos hidden_json (JSON serializado) tratamos
+                // arreglos/objetos vacios como SIN datos. De lo contrario,
+                // un "[]" del modal inactivo gana frente al JSON real del
+                // modal activo cuando ambos modales renderizan el mismo name.
+                if (el.tagName === "INPUT" && el.type === "hidden") {
+                    var compact = raw.replace(/\s+/g, "");
+                    if (compact === "[]" || compact === "{}" || compact === "null") {
+                        return false;
+                    }
+                    try {
+                        var parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed) && parsed.length === 0) { return false; }
+                        if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0) { return false; }
+                    } catch (err) { /* texto plano: ya validado arriba */ }
+                }
+                return true;
             };
 
             form.addEventListener("submit", function () {
