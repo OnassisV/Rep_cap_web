@@ -100,7 +100,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
         "campos": [
             _campo("diag_base_normativa", "Base normativa", "text_long", True),
             _campo("diag_servicio_territorial", "Servicio o producto que contribuye con la gestion del servicio educativo en territorio", "text_long", True),
-            _campo("diag_dre_modelo", "La DRE/UGEL esta de acuerdo con el modelo de capacitacion", "list", True, ["Si", "No"]),
+            _campo("diag_dre_modelo", "La Unidad Solicitante esta de acuerdo con el modelo de capacitacion", "list", True, ["Si", "No"]),
             _campo("diag_problemas_json", "Problemas priorizados del proceso", "hidden_json"),
         ],
     },
