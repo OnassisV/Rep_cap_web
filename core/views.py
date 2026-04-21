@@ -743,7 +743,17 @@ def _construir_timeline_registro(
         total_required_done = sum(int(item.get("required_done", 0) or 0) for item in secciones_etapa)
 
         is_skipped = not bool(secciones_etapa)
-        is_complete = bool(secciones_etapa) and all(bool(item.get("is_complete")) for item in secciones_etapa)
+        # Una etapa se considera completa cuando se cumplen todos los
+        # obligatorios sumados (o, si no hay obligatorios, cuando se ha
+        # llenado al menos un campo). Antes exigiamos que TODOS los
+        # subbloques fueran is_complete, pero los subbloques sin
+        # obligatorios quedan incompletos mientras esten vacios, lo que
+        # dejaba la etapa como "En curso" aunque el usuario ya cumpliera
+        # todos los campos obligatorios visibles.
+        is_complete = bool(secciones_etapa) and (
+            (total_required > 0 and total_required_done >= total_required)
+            or (total_required == 0 and total_filled > 0)
+        )
         is_started = total_filled > 0
 
         timeline.append(
