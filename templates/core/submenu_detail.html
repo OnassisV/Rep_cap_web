@@ -4194,7 +4194,24 @@
                         card.querySelectorAll("[data-field]").forEach(function (field) {
                             var key = String(field.getAttribute("data-field") || "");
                             var value = data && Object.prototype.hasOwnProperty.call(data, key) ? data[key] : "";
-                            field.value = field.hasAttribute("data-multiline-list") ? toLines(value) : String(value || "");
+                            var stringValue = field.hasAttribute("data-multiline-list") ? toLines(value) : String(value || "");
+                            // En SELECTs cuyas opciones se generan despues (ej. [data-problem-select],
+                            // [data-dimension-select], [data-profile-select]), la asignacion field.value = X
+                            // se ignora si la <option> aun no existe. Insertamos un option temporal para
+                            // que el valor previo sobreviva hasta que el syncXxxSelects() correspondiente
+                            // reemplace las opciones (que conservan currentValue si coincide).
+                            if (field.tagName === "SELECT" && stringValue) {
+                                var hasOption = Array.prototype.some.call(field.options, function (opt) {
+                                    return opt.value === stringValue;
+                                });
+                                if (!hasOption) {
+                                    var tmp = document.createElement("option");
+                                    tmp.value = stringValue;
+                                    tmp.textContent = stringValue;
+                                    field.appendChild(tmp);
+                                }
+                            }
+                            field.value = stringValue;
                             field.addEventListener("input", syncField);
                             field.addEventListener("change", syncField);
                             if (field.hasAttribute("data-dimension-select")) {
