@@ -2786,7 +2786,7 @@ h1 {
 
 .matrix-outline-table td {
     padding: 0.35rem 0.45rem;
-    vertical-align: middle;
+    vertical-align: top;
     border-bottom: 1px solid #e8eef5;
 }
 
@@ -2794,24 +2794,58 @@ h1 {
     transition: background-color 120ms ease;
 }
 
-.matrix-outline-table__row input {
+.matrix-outline-table__row input,
+.matrix-outline-table__row textarea {
     width: 100%;
     border: 1px solid transparent;
     border-radius: 0.4rem;
     padding: 0.42rem 0.52rem;
     font-size: 0.86rem;
+    font-family: inherit;
     background: transparent;
     transition: border-color 140ms ease, background 140ms ease;
 }
 
-.matrix-outline-table__row input:focus {
+.matrix-outline-table__row textarea {
+    resize: vertical;
+    min-height: 2.2rem;
+    line-height: 1.35;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.matrix-outline-table__row input:focus,
+.matrix-outline-table__row textarea:focus {
     border-color: var(--brand-blue-mid);
     background: #ffffff;
     outline: none;
 }
 
-.matrix-outline-table__row input:hover {
+.matrix-outline-table__row input:hover,
+.matrix-outline-table__row textarea:hover {
     background: rgba(255,255,255,0.7);
+}
+
+/* Manija de arrastre para reordenar filas. */
+.matrix-outline-table__drag {
+    width: 1.4rem;
+    cursor: grab;
+    color: #94a3b8;
+    user-select: none;
+    text-align: center;
+    font-size: 1rem;
+    line-height: 2rem;
+    letter-spacing: -2px;
+}
+
+.matrix-outline-table__drag:active {
+    cursor: grabbing;
+}
+
+.matrix-outline-table__row.is-dragging {
+    opacity: 0.55;
+    background: rgba(59, 130, 246, 0.08);
 }
 
 .matrix-outline-table__actions {
@@ -3089,8 +3123,9 @@ h1 {
     table-layout: fixed;
 }
 
-.matrix-outline-table--wide .matrix-outline-table__col--dim { width: 18%; }
-.matrix-outline-table--wide .matrix-outline-table__col--sub { width: 18%; }
+.matrix-outline-table--wide .matrix-outline-table__col--drag { width: 1.4rem; }
+.matrix-outline-table--wide .matrix-outline-table__col--dim { width: 17%; }
+.matrix-outline-table--wide .matrix-outline-table__col--sub { width: 17%; }
 .matrix-outline-table--wide .matrix-outline-table__col--ind { width: 26%; }
 .matrix-outline-table--wide .matrix-outline-table__col--items,
 .matrix-outline-table--wide .matrix-outline-table__col--alt {

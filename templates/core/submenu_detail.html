@@ -691,6 +691,7 @@
                                                                         <table class="matrix-outline-table matrix-outline-table--wide">
                                                                             <thead>
                                                                                 <tr>
+                                                                                    <th class="matrix-outline-table__col--drag" aria-hidden="true"></th>
                                                                                     <th class="matrix-outline-table__col--dim">Dimensión</th>
                                                                                     <th class="matrix-outline-table__col--sub">Subdimensión</th>
                                                                                     <th class="matrix-outline-table__col--ind">Indicador</th>
@@ -706,11 +707,12 @@
                                                             </template>
                                                             <template data-profile-row-template>
                                                                 <tr class="matrix-outline-table__row" data-matrix-flat-row>
-                                                                    <td><input type="text" data-field="dimension" placeholder="Ej.: Gestión institucional"></td>
-                                                                    <td><input type="text" data-field="subdimension" placeholder="Subdimensión vinculada"></td>
-                                                                    <td><input type="text" data-field="indicador" placeholder="Indicador asociado"></td>
-                                                                    <td><input type="text" data-field="items" placeholder="Ítem o pregunta"></td>
-                                                                    <td><input type="text" data-field="alternativas" placeholder="Siempre, A veces, Nunca"></td>
+                                                                    <td class="matrix-outline-table__drag" data-profile-row-drag title="Arrastra para reordenar">⋮⋮</td>
+                                                                    <td><textarea rows="1" data-field="dimension" data-autogrow placeholder="Ej.: Gestión institucional"></textarea></td>
+                                                                    <td><textarea rows="1" data-field="subdimension" data-autogrow placeholder="Subdimensión vinculada"></textarea></td>
+                                                                    <td><textarea rows="1" data-field="indicador" data-autogrow placeholder="Indicador asociado"></textarea></td>
+                                                                    <td><textarea rows="1" data-field="items" data-autogrow placeholder="Ítem o pregunta"></textarea></td>
+                                                                    <td><textarea rows="1" data-field="alternativas" data-autogrow placeholder="Siempre, A veces, Nunca"></textarea></td>
                                                                     <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-remove-profile-row title="Quitar fila">&times;</button></td>
                                                                 </tr>
                                                             </template>
@@ -2314,6 +2316,7 @@
                                                                     <table class="matrix-outline-table matrix-outline-table--wide">
                                                                         <thead>
                                                                             <tr>
+                                                                                <th class="matrix-outline-table__col--drag" aria-hidden="true"></th>
                                                                                 <th class="matrix-outline-table__col--dim">Dimensión</th>
                                                                                 <th class="matrix-outline-table__col--sub">Subdimensión</th>
                                                                                 <th class="matrix-outline-table__col--ind">Indicador</th>
@@ -2329,11 +2332,12 @@
                                                         </template>
                                                         <template data-profile-row-template>
                                                             <tr class="matrix-outline-table__row" data-matrix-flat-row>
-                                                                <td><input type="text" data-field="dimension" placeholder="Ej.: Gestión institucional"></td>
-                                                                <td><input type="text" data-field="subdimension" placeholder="Subdimensión vinculada"></td>
-                                                                <td><input type="text" data-field="indicador" placeholder="Indicador asociado"></td>
-                                                                <td><input type="text" data-field="items" placeholder="Ítem o pregunta"></td>
-                                                                <td><input type="text" data-field="alternativas" placeholder="Siempre, A veces, Nunca"></td>
+                                                                <td class="matrix-outline-table__drag" data-profile-row-drag title="Arrastra para reordenar">⋮⋮</td>
+                                                                <td><textarea rows="1" data-field="dimension" data-autogrow placeholder="Ej.: Gestión institucional"></textarea></td>
+                                                                <td><textarea rows="1" data-field="subdimension" data-autogrow placeholder="Subdimensión vinculada"></textarea></td>
+                                                                <td><textarea rows="1" data-field="indicador" data-autogrow placeholder="Indicador asociado"></textarea></td>
+                                                                <td><textarea rows="1" data-field="items" data-autogrow placeholder="Ítem o pregunta"></textarea></td>
+                                                                <td><textarea rows="1" data-field="alternativas" data-autogrow placeholder="Siempre, A veces, Nunca"></textarea></td>
                                                                 <td class="matrix-outline-table__actions"><button type="button" class="btn-secondary-soft btn--icon-only" data-remove-profile-row title="Quitar fila">&times;</button></td>
                                                             </tr>
                                                         </template>
@@ -4028,6 +4032,57 @@
                             syncProfileSelects();
                         };
 
+                        var autogrow = function (el) {
+                            if (!el || el.tagName !== "TEXTAREA") { return; }
+                            el.style.height = "auto";
+                            el.style.height = (el.scrollHeight + 2) + "px";
+                        };
+
+                        var draggedRow = null;
+                        var bindRowDrag = function (tr, tbody) {
+                            var handle = tr.querySelector("[data-profile-row-drag]");
+                            if (!handle) { return; }
+                            handle.addEventListener("mousedown", function () { tr.setAttribute("draggable", "true"); });
+                            handle.addEventListener("mouseup", function () { tr.removeAttribute("draggable"); });
+                            handle.addEventListener("touchstart", function () { tr.setAttribute("draggable", "true"); }, { passive: true });
+                            tr.addEventListener("dragstart", function (ev) {
+                                draggedRow = tr;
+                                tr.classList.add("is-dragging");
+                                if (ev.dataTransfer) {
+                                    ev.dataTransfer.effectAllowed = "move";
+                                    try { ev.dataTransfer.setData("text/plain", "row"); } catch (e) {}
+                                }
+                            });
+                            tr.addEventListener("dragend", function () {
+                                tr.classList.remove("is-dragging");
+                                tr.removeAttribute("draggable");
+                                draggedRow = null;
+                                if (tbody) {
+                                    tbody.querySelectorAll(".is-drop-target").forEach(function (n) {
+                                        n.classList.remove("is-drop-target");
+                                    });
+                                }
+                                syncProfileTabData();
+                            });
+                            tr.addEventListener("dragover", function (ev) {
+                                if (!draggedRow || draggedRow === tr) { return; }
+                                ev.preventDefault();
+                                if (ev.dataTransfer) { ev.dataTransfer.dropEffect = "move"; }
+                                var rect = tr.getBoundingClientRect();
+                                var before = (ev.clientY - rect.top) < (rect.height / 2);
+                                if (tbody) {
+                                    if (before) {
+                                        tbody.insertBefore(draggedRow, tr);
+                                    } else {
+                                        tbody.insertBefore(draggedRow, tr.nextSibling);
+                                    }
+                                }
+                            });
+                            tr.addEventListener("drop", function (ev) {
+                                ev.preventDefault();
+                            });
+                        };
+
                         var addProfileRow = function (panel, data) {
                             var tbody = panel.querySelector("[data-profile-rows]");
                             if (!tbody || !rowTemplate) { return; }
@@ -4037,8 +4092,13 @@
                             tr.querySelectorAll("[data-field]").forEach(function (f) {
                                 var key = String(f.getAttribute("data-field") || "");
                                 f.value = (data && data[key]) || "";
-                                f.addEventListener("input", syncProfileTabData);
+                                f.addEventListener("input", function () {
+                                    autogrow(f);
+                                    syncProfileTabData();
+                                });
                                 f.addEventListener("change", syncProfileTabData);
+                                // Ajuste inicial tras insertar en el DOM.
+                                requestAnimationFrame(function () { autogrow(f); });
                             });
                             var removeBtn = tr.querySelector("[data-remove-profile-row]");
                             if (removeBtn) {
@@ -4048,6 +4108,9 @@
                                 });
                             }
                             tbody.appendChild(fragment);
+                            // bindRowDrag debe ejecutarse sobre el <tr> ya en el DOM.
+                            var inserted = tbody.lastElementChild;
+                            if (inserted) { bindRowDrag(inserted, tbody); }
                         };
 
                         var switchProfileTab = function (index) {
