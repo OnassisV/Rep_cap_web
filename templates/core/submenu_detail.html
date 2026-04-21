@@ -3434,10 +3434,18 @@
                         return label.length > 0;
                     });
 
+                // Recolectamos valores actualmente seleccionados (o guardados en
+                // data-current-value) para que sobrevivan aunque no esten en
+                // diag_problemas_json (por ejemplo si paso 1 aun no se ha
+                // editado o si el label se registro con otra normalizacion).
                 form.querySelectorAll("[data-problem-select]").forEach(function (select) {
-                    // Fallback a data-current-value para sobrevivir a re-sincronizaciones
-                    // entre addRow y addRow sucesivos, cuando select.value se pierde al
-                    // reconstruir las <option> de filas ya insertadas.
+                    var existing = String(select.value || select.getAttribute("data-current-value") || "").trim();
+                    if (existing && options.indexOf(existing) === -1) {
+                        options.push(existing);
+                    }
+                });
+
+                form.querySelectorAll("[data-problem-select]").forEach(function (select) {
                     var currentValue = String(select.value || select.getAttribute("data-current-value") || "");
                     select.innerHTML = "";
 
