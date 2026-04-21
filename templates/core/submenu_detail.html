@@ -4392,32 +4392,93 @@
             syncSustentoAccess();
             syncReplicaState();
 
-            // ── Pre-submit: elimina inputs duplicados del modal inactivo ──
-            // Ambos modales (Matriz y Diagnóstico) comparten pasos de origen,
-            // generando inputs duplicados con el mismo name. Django lee el último,
-            // así que se desactivan los inputs del modal que NO está habilitado
-            // para que el formulario solo envíe la copia correcta.
-            form.addEventListener("submit", function () {
-                var tieneMatriz = form.querySelector("[name='sol_tiene_matriz']");
-                var tieneDiag  = form.querySelector("[name='sol_tiene_diagnostico']");
-                var esMatriz = tieneMatriz && tieneMatriz.value === "Sí";
-                var esDiag   = tieneDiag  && tieneDiag.value  === "Sí";
-
-                // Si ambos están activos se respeta el último (diagnóstico).
-                var flowInactivo = esMatriz && !esDiag ? "diagnostico" : (!esMatriz && esDiag ? "matriz" : null);
-                if (!flowInactivo) {
-                    return;
+            // ── Pre-submit: elimina inputs duplicados entre modales Matriz y Diagnóstico ──
+            // Ambos modales comparten pasos de origen (diagnostico-paso-1..5), por lo que
+            // generan inputs con el MISMO name. Al enviar el formulario, Django se queda
+            // con el último valor, sobrescribiendo lo que el usuario escribió en el modal
+            // que SÍ completó. Este handler recorre los pares duplicados y conserva la
+            // copia con contenido (o la del modal activo si ambas están vacías/llenas),
+            // desactivando el name del resto para que no pisen el valor correcto.
+            var normalizarSi = function (valor) {
+                var v = String(valor || "").trim().toLowerCase();
+                return v === "si" || v === "sí";
+            };
+            var getDecisionValor = function (fieldName) {
+                var checked = form.querySelector("input[name='" + fieldName + "']:checked");
+                if (checked) { return String(checked.value || ""); }
+                var plain = form.querySelector("[name='" + fieldName + "']");
+                return plain ? String(plain.value || "") : "";
+            };
+            var tieneValor = function (el) {
+                if (!el) { return false; }
+                if (el.type === "checkbox" || el.type === "radio") {
+                    return !!el.checked;
                 }
+                return String(el.value || "").trim() !== "";
+            };
 
-                var modalInactivo = form.querySelector("[data-sustento-modal='" + flowInactivo + "']");
-                if (modalInactivo) {
-                    modalInactivo.querySelectorAll("input, textarea, select").forEach(function (el) {
-                        if (el.name) {
-                            el.setAttribute("data-removed-name", el.name);
+            form.addEventListener("submit", function () {
+                var modalMatriz = form.querySelector("[data-sustento-modal='matriz']");
+                var modalDiag = form.querySelector("[data-sustento-modal='diagnostico']");
+                if (!modalMatriz && !modalDiag) { return; }
+
+                var esMatriz = normalizarSi(getDecisionValor("sol_tiene_matriz"));
+                var esDiag = normalizarSi(getDecisionValor("sol_tiene_diagnostico"));
+
+                // Preferencia de modal cuando AMBAS copias están vacías o ambas tienen
+                // contenido: priorizamos el modal marcado como activo por el usuario.
+                // Si ninguno está activo (ambos "No"), preferimos matriz por defecto.
+                var preferido = "matriz";
+                if (esDiag && !esMatriz) { preferido = "diagnostico"; }
+
+                var recolectarPorName = function (modal) {
+                    var mapa = {};
+                    if (!modal) { return mapa; }
+                    modal.querySelectorAll("input[name], textarea[name], select[name]").forEach(function (el) {
+                        var nombre = String(el.getAttribute("name") || "");
+                        if (!nombre) { return; }
+                        if (!mapa[nombre]) { mapa[nombre] = []; }
+                        mapa[nombre].push(el);
+                    });
+                    return mapa;
+                };
+
+                var mapaMatriz = recolectarPorName(modalMatriz);
+                var mapaDiag = recolectarPorName(modalDiag);
+
+                var deshabilitarNames = function (lista) {
+                    lista.forEach(function (el) {
+                        var nombre = el.getAttribute("name");
+                        if (nombre) {
+                            el.setAttribute("data-removed-name", nombre);
                             el.removeAttribute("name");
                         }
                     });
-                }
+                };
+
+                // Para cada name presente en ambos modales decide qué copia se envía.
+                Object.keys(mapaMatriz).forEach(function (nombre) {
+                    if (!mapaDiag[nombre]) { return; }
+                    var enMatriz = mapaMatriz[nombre];
+                    var enDiag = mapaDiag[nombre];
+                    var matrizConDato = enMatriz.some(tieneValor);
+                    var diagConDato = enDiag.some(tieneValor);
+
+                    var conservar;
+                    if (matrizConDato && !diagConDato) {
+                        conservar = "matriz";
+                    } else if (!matrizConDato && diagConDato) {
+                        conservar = "diagnostico";
+                    } else {
+                        conservar = preferido;
+                    }
+
+                    if (conservar === "matriz") {
+                        deshabilitarNames(enDiag);
+                    } else {
+                        deshabilitarNames(enMatriz);
+                    }
+                });
             });
         })();
 
