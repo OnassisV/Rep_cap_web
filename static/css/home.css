@@ -1889,17 +1889,22 @@ h1 {
     gap: 0.56rem;
 }
 
-/* Campo individual del registro con etiqueta sobre control. */
+/* Campo individual del registro con etiqueta sobre control.
+   grid-template-rows: 1fr auto hace que la cabecera (label + ayuda)
+   absorba el alto sobrante y el control (select/input/textarea) quede
+   anclado al pie. Asi los desplegables de campos vecinos se alinean
+   horizontalmente aunque sus preguntas tengan distinto numero de lineas. */
 .registro-field {
     display: grid;
+    grid-template-rows: 1fr auto;
     gap: 0.16rem;
-    align-content: start;
 }
 
 /* Cabecera compacta del campo para reducir aire entre titulo, ayuda y control. */
 .registro-field__head {
     display: grid;
     gap: 0.1rem;
+    align-self: end;
 }
 
 /* Etiqueta principal del campo. */
