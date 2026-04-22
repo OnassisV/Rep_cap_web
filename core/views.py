@@ -1137,12 +1137,13 @@ def _construir_flujo_unificado(
     if not sustento_etapa or not bool(sustento_etapa.get("is_enabled")):
         sustento_complete = True
     else:
-        componentes_completos: list[bool] = []
+        algun_componente_activo = False
 
         for clave in ("matriz", "diagnostico"):
             flujo = sustento_etapa.get(clave)
             if not flujo or not bool(flujo.get("is_enabled")):
                 continue
+            algun_componente_activo = True
             pasos_flujo = list(flujo.get("steps", []))
             sustento_req += sum(int(item.get("required_count", 0) or 0) for item in pasos_flujo)
             sustento_done += sum(int(item.get("required_done", 0) or 0) for item in pasos_flujo)
@@ -1151,9 +1152,16 @@ def _construir_flujo_unificado(
                 bool(item.get("is_started")) or bool(item.get("is_complete"))
                 for item in pasos_flujo
             )
-            componentes_completos.append(bool(pasos_flujo) and all(bool(item.get("is_complete")) for item in pasos_flujo))
 
-        sustento_complete = bool(componentes_completos) and all(componentes_completos)
+        # La etapa esta completa cuando se cumplen todos los obligatorios
+        # agregados (o, si no hay obligatorios en toda la etapa, cuando al
+        # menos un campo tiene valor). Antes exigiamos all(is_complete) por
+        # subpaso, lo que dejaba En curso aun con 6/6 obligatorios cumplidos
+        # porque algunos subpasos sin obligatorios estaban vacios.
+        sustento_complete = algun_componente_activo and (
+            (sustento_req > 0 and sustento_done >= sustento_req)
+            or (sustento_req == 0 and sustento_filled > 0)
+        )
 
     pasos.append({
         "slug": "paso-sustento",
