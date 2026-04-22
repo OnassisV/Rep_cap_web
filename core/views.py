@@ -1,4 +1,4 @@
-﻿"""Vistas protegidas del modulo core para pantalla inicial y secciones."""
+"""Vistas protegidas del modulo core para pantalla inicial y secciones."""
 
 import logging
 import os
