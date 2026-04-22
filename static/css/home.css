@@ -2009,67 +2009,118 @@ h1 {
     box-shadow: 0 12px 20px -16px rgba(13, 95, 184, 0.65);
 }
 
-/* Grupo de checkboxes con apariencia de pills (list_multi). */
-.multi-checkbox-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.42rem;
-}
-
-.multi-checkbox-pill {
+/* Dropdown desplegable con seleccion multiple (list_multi). */
+.multi-select-dropdown {
     position: relative;
-    cursor: pointer;
+    width: 100%;
 }
 
-.multi-checkbox-pill input[type="checkbox"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    margin: 0;
-    cursor: pointer;
-}
-
-.multi-checkbox-pill span {
+.multi-select-dropdown__toggle {
+    width: 100%;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    padding: 0.42rem 0.9rem;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.55rem 0.85rem;
     border: 1px solid #cadcef;
-    border-radius: 999px;
+    border-radius: 8px;
     background: #ffffff;
     color: #2f4b64;
-    font-size: 0.82rem;
-    font-weight: 600;
-    transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.multi-checkbox-pill span::before {
-    content: "";
-    display: inline-block;
-    width: 0.72rem;
-    height: 0.72rem;
-    margin-right: 0.42rem;
-    border: 1.5px solid #9fb6cf;
-    border-radius: 3px;
+.multi-select-dropdown__toggle:hover {
+    border-color: var(--brand-blue-mid);
+}
+
+.multi-select-dropdown__toggle:focus-visible {
+    outline: none;
+    border-color: var(--brand-blue-mid);
+    box-shadow: 0 0 0 3px rgba(30, 108, 184, 0.18);
+}
+
+.multi-select-dropdown__summary {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+}
+
+.multi-select-dropdown__summary.is-placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.multi-select-dropdown__caret {
+    flex: 0 0 auto;
+    color: #6b8aa9;
+    transition: transform 160ms ease;
+}
+
+.multi-select-dropdown.is-open .multi-select-dropdown__caret {
+    transform: rotate(180deg);
+}
+
+.multi-select-dropdown.is-open .multi-select-dropdown__toggle {
+    border-color: var(--brand-blue-mid);
+    box-shadow: 0 0 0 3px rgba(30, 108, 184, 0.18);
+}
+
+.multi-select-dropdown__panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    max-height: 260px;
+    overflow-y: auto;
     background: #ffffff;
-    transition: background 140ms ease, border-color 140ms ease;
+    border: 1px solid #cadcef;
+    border-radius: 8px;
+    box-shadow: 0 18px 32px -18px rgba(13, 38, 76, 0.35);
+    padding: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
 }
 
-.multi-checkbox-pill input:checked + span {
-    border-color: var(--brand-blue-mid);
-    background: linear-gradient(135deg, rgba(30, 108, 184, 0.12) 0%, rgba(30, 108, 184, 0.05) 100%);
+.multi-select-dropdown__panel[hidden] {
+    display: none;
+}
+
+.multi-select-dropdown__option {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #2f4b64;
+    font-size: 0.86rem;
+    font-weight: 500;
+    transition: background 120ms ease;
+}
+
+.multi-select-dropdown__option:hover {
+    background: rgba(30, 108, 184, 0.08);
+}
+
+.multi-select-dropdown__option input[type="checkbox"] {
+    width: 0.95rem;
+    height: 0.95rem;
+    accent-color: var(--brand-blue-mid);
+    cursor: pointer;
+    margin: 0;
+}
+
+.multi-select-dropdown__option input:checked + span {
     color: #0f3a66;
-}
-
-.multi-checkbox-pill input:checked + span::before {
-    background: var(--brand-blue-mid);
-    border-color: var(--brand-blue-mid);
-    box-shadow: inset 0 0 0 2px #ffffff;
-}
-
-.multi-checkbox-pill input:focus-visible + span {
-    outline: 2px solid var(--brand-blue-mid);
-    outline-offset: 2px;
+    font-weight: 600;
 }
 
 /* Franja de titulo con numero para mantener la secuencia visual. */

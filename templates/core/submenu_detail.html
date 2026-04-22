@@ -3109,6 +3109,77 @@
                 return;
             }
 
+            // Inicializa los dropdowns de seleccion multiple (list_multi).
+            // Cada dropdown tiene un boton con resumen, un panel con checkboxes
+            // y un input hidden centinela. Mantenemos el resumen sincronizado
+            // con los checkboxes marcados y manejamos abrir/cerrar al hacer
+            // click fuera del dropdown.
+            var initMultiSelectDropdowns = function () {
+                form.querySelectorAll("[data-multi-select-dropdown]").forEach(function (dropdown) {
+                    var toggle = dropdown.querySelector("[data-multi-select-toggle]");
+                    var panel = dropdown.querySelector("[data-multi-select-panel]");
+                    var summary = dropdown.querySelector("[data-multi-select-summary]");
+                    if (!toggle || !panel || !summary) {
+                        return;
+                    }
+
+                    var checkboxes = panel.querySelectorAll('input[type="checkbox"]');
+
+                    var refreshSummary = function () {
+                        var seleccionados = [];
+                        checkboxes.forEach(function (chk) {
+                            if (chk.checked) {
+                                seleccionados.push(chk.value);
+                            }
+                        });
+                        if (seleccionados.length === 0) {
+                            summary.textContent = "Selecciona una o varias opciones";
+                            summary.classList.add("is-placeholder");
+                        } else {
+                            summary.textContent = seleccionados.join(", ");
+                            summary.classList.remove("is-placeholder");
+                        }
+                    };
+
+                    var setOpen = function (open) {
+                        if (open) {
+                            dropdown.classList.add("is-open");
+                            panel.hidden = false;
+                            toggle.setAttribute("aria-expanded", "true");
+                        } else {
+                            dropdown.classList.remove("is-open");
+                            panel.hidden = true;
+                            toggle.setAttribute("aria-expanded", "false");
+                        }
+                    };
+
+                    toggle.addEventListener("click", function (event) {
+                        event.preventDefault();
+                        setOpen(panel.hidden);
+                    });
+
+                    checkboxes.forEach(function (chk) {
+                        chk.addEventListener("change", refreshSummary);
+                    });
+
+                    document.addEventListener("click", function (event) {
+                        if (!dropdown.contains(event.target)) {
+                            setOpen(false);
+                        }
+                    });
+
+                    document.addEventListener("keydown", function (event) {
+                        if (event.key === "Escape" && !panel.hidden) {
+                            setOpen(false);
+                            toggle.focus();
+                        }
+                    });
+
+                    refreshSummary();
+                });
+            };
+            initMultiSelectDropdowns();
+
             var igedCatalogNode = document.getElementById("registro-iged-catalogo");
             var igedCatalog = {};
             if (igedCatalogNode) {
