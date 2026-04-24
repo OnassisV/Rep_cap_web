@@ -776,7 +776,7 @@ def generar_certificados_zip(
                 c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
-                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 18, 10)
+                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 17, 9)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
                 gap_curso = fs_curso * 1.30
@@ -837,13 +837,13 @@ def generar_certificados_zip(
                 qr_size = 1.5 * inch
                 qr_x = ancho - qr_size - 0.25 * inch
                 qr_y = 0.25 * inch
-                if qr_reader:
-                    c.setFont("Helvetica", 7)
-                    c.drawCentredString(qr_x + qr_size / 2, qr_y + qr_size + 1.5, "Verificar legitimidad en:")
-                    c.drawImage(qr_reader, qr_x, qr_y, qr_size, qr_size, mask="auto")
+                                y -= lh * 0.3
 
-                c.setFont("Helvetica", 10)
-                c.drawCentredString(ancho / 2, alto - 7.5 * inch, f"Código del certificado: DIFOCA-{dni}-{curso_codigo}")
+                                # Fecha de emisión: debajo de la descripción, alineada a la derecha
+                                c.setFont("Helvetica", 11)
+                                c.setFillColor(colors.black)
+                                c.drawRightString(ancho - 0.6 * inch, y, f"Fecha de emisión: {fecha_str}")
+                                # No se avanza y: la firma está en posición fija y no se desplaza
 
                 c.save()
 
