@@ -5512,6 +5512,10 @@ h1 {
     overflow-y: auto;
 }
 
+.cert-modal-overlay[hidden] {
+    display: none !important;
+}
+
 .cert-modal {
     background: #fff;
     border-radius: 10px;
