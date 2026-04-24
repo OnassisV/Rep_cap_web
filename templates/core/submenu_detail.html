@@ -145,7 +145,7 @@
                     {% for anio in anios_disponibles %}
                         <a
                             class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
-                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}"
+                            href="{% if adapter_kind == 'emitir_certificados' %}{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}&estado_cert={{ cert_estado_sel|default:'todos' }}{% if cert_codigo_sel %}&codigo={{ cert_codigo_sel }}{% endif %}{% else %}{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}{% endif %}"
                         >
                             {{ anio }}
                         </a>
@@ -2576,15 +2576,103 @@
 
             <!-- Módulo Certificación: generación de PDFs por lote. -->
             {% if adapter_kind == "emitir_certificados" %}
+                {% if cert_lista %}
+                    <h3 class="subsection-title">Capacitaciones del año {{ anio_seleccionado }}</h3>
+                    <p class="module-panel__note">
+                        Primero selecciona una capacitación para revisar su estado y luego generar certificados.
+                        Emitidas: <strong>{{ cert_total_emitidas }}</strong> | Pendientes: <strong>{{ cert_total_pendientes }}</strong>.
+                    </p>
+
+                    <div class="cert-toolbar">
+                        <label class="cert-search" for="cert-list-search">
+                            <span class="cert-search__label">Buscar capacitación</span>
+                            <input
+                                type="search"
+                                id="cert-list-search"
+                                class="cert-input cert-search__input"
+                                placeholder="Busca por código o nombre"
+                                autocomplete="off"
+                            >
+                        </label>
+                    </div>
+
+                    <div class="year-filter" style="margin-bottom:1rem;">
+                        <span class="year-filter__label">Estado:</span>
+                        <a
+                            class="year-filter__item{% if cert_estado_sel == 'todos' %} is-active{% endif %}"
+                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&estado_cert=todos"
+                        >
+                            Todas
+                        </a>
+                        <a
+                            class="year-filter__item{% if cert_estado_sel == 'pendiente' %} is-active{% endif %}"
+                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&estado_cert=pendiente"
+                        >
+                            Solo pendientes
+                        </a>
+                        <a
+                            class="year-filter__item{% if cert_estado_sel == 'emitido' %} is-active{% endif %}"
+                            href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&estado_cert=emitido"
+                        >
+                            Solo emitidas
+                        </a>
+                    </div>
+
+                    <div class="simple-table simple-table--certificaciones">
+                        <div class="simple-table__head">
+                            <span>Código</span>
+                            <span>Capacitación</span>
+                            <span>Estado certificado</span>
+                            <span>Emitidos</span>
+                        </div>
+                        {% for item in cert_lista %}
+                            <a
+                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&estado_cert={{ cert_estado_sel|default:'todos' }}&codigo={{ item.codigo_completo }}"
+                                class="simple-table__row cert-row-item cert-row-item--{{ item.estado_css }}{% if item.codigo_completo == cert_codigo_sel %} is-active{% endif %}"
+                                data-cert-row
+                                data-cert-search="{{ item.codigo_completo|lower }} {{ item.cap_nombre|lower }}"
+                            >
+                                <span>{{ item.codigo_completo }}</span>
+                                <span>{{ item.cap_nombre }}</span>
+                                <span>
+                                    {% if item.estado_css == "emitido" %}
+                                        <strong class="cert-badge cert-badge--emitido">Emitido</strong>
+                                    {% else %}
+                                        <strong class="cert-badge cert-badge--pendiente">Pendiente</strong>
+                                    {% endif %}
+                                </span>
+                                <span>{{ item.certificados_emitidos }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+
+                    <p class="module-panel__note cert-search-empty" data-cert-empty hidden>
+                        No hay coincidencias con la búsqueda actual.
+                    </p>
+                {% else %}
+                    <p class="module-panel__note">
+                        No hay capacitaciones disponibles para el año seleccionado.
+                    </p>
+                {% endif %}
+
                 <h3 class="subsection-title">Emitir certificados por lote</h3>
                 <p class="module-panel__note">
                     Completa los datos del curso, adjunta el Excel de participantes y las
                     imágenes de firma. Recibirás un ZIP con los certificados PDF listos para imprimir.
                 </p>
 
+                {% if cert_cap_sel %}
+                    <p class="module-panel__note" style="margin-top:-.25rem;">
+                        Seleccionado: <strong>{{ cert_cap_sel.codigo_completo }}</strong> - {{ cert_cap_sel.cap_nombre }}
+                    </p>
+                {% endif %}
+
                 <form method="post" enctype="multipart/form-data" class="cert-form" id="cert-form" novalidate>
                     {% csrf_token %}
                     <input type="hidden" name="action" value="generar_certificados">
+                    <input type="hidden" name="anio_ctx" value="{{ anio_seleccionado|default:'' }}">
+                    <input type="hidden" name="codigo_ctx" value="{{ cert_codigo_sel|default:'' }}">
+                    <input type="hidden" name="estado_cert_ctx" value="{{ cert_estado_sel|default:'todos' }}">
 
                     <!-- Fila 1: nombre y código -->
                     <div class="cert-grid-2">
@@ -2594,13 +2682,13 @@
                             </label>
                             <input type="text" id="cert-curso-nombre" name="curso_nombre" class="cert-input"
                                    value="{{ cert_form_curso_nombre|default:'' }}"
-                                   placeholder="Ej. Gestión por Competencias" required>
+                                placeholder="Ej. Gestión por Competencias" required {% if cert_form_disabled %}disabled{% endif %}>
                         </div>
                         <div class="cert-row">
                             <label class="cert-label" for="cert-curso-codigo">Código del curso</label>
                             <input type="text" id="cert-curso-codigo" name="curso_codigo" class="cert-input"
                                    value="{{ cert_form_curso_codigo|default:'' }}"
-                                   placeholder="Ej. CAP-2026-001">
+                                placeholder="Ej. CAP-2026-001" {% if cert_form_disabled %}disabled{% endif %}>
                         </div>
                     </div>
 
@@ -2608,7 +2696,7 @@
                     <div class="cert-row">
                         <label class="cert-label" for="cert-curso-descripcion">Descripción del curso</label>
                         <textarea id="cert-curso-descripcion" name="curso_descripcion" class="cert-textarea" rows="3"
-                                  placeholder="Breve descripción para el anverso del certificado">{{ cert_form_curso_descripcion|default:'' }}</textarea>
+                                  placeholder="Breve descripción para el anverso del certificado" {% if cert_form_disabled %}disabled{% endif %}>{{ cert_form_curso_descripcion|default:'' }}</textarea>
                     </div>
 
                     <!-- Excel -->
@@ -2617,7 +2705,7 @@
                             Excel de participantes (.xlsx) <span class="cert-required">*</span>
                         </label>
                         <input type="file" id="cert-excel" name="excel_participantes" class="gf-file-input"
-                               accept=".xlsx" required>
+                               accept=".xlsx" required {% if cert_form_disabled %}disabled{% endif %}>
                         <span class="cert-hint">
                             Hoja1: columnas <strong>DNI, NOMBRES, APELLIDOS, NOTAS, NOMBRE DE PUESTO, NOMBRE IGED</strong>.
                             Hoja2: tabla de actividades del curso.
@@ -2631,12 +2719,14 @@
                             <label class="cert-radio-label">
                                 <input type="radio" name="n_firmas" value="1"
                                        {% if cert_form_n_firmas != "2" %}checked{% endif %}
+                                       {% if cert_form_disabled %}disabled{% endif %}
                                        onchange="certToggleFirma2(this.value)">
                                 1 firma
                             </label>
                             <label class="cert-radio-label">
                                 <input type="radio" name="n_firmas" value="2"
                                        {% if cert_form_n_firmas == "2" %}checked{% endif %}
+                                       {% if cert_form_disabled %}disabled{% endif %}
                                        onchange="certToggleFirma2(this.value)">
                                 2 firmas
                             </label>
@@ -2650,30 +2740,36 @@
                                 Firma 1 — imagen PNG/JPG <span class="cert-required">*</span>
                             </label>
                             <input type="file" id="cert-firma1" name="firma1" class="gf-file-input"
-                                   accept=".png,.jpg,.jpeg" required>
+                                   accept=".png,.jpg,.jpeg" required {% if cert_form_disabled %}disabled{% endif %}>
                         </div>
                         <div class="cert-row" id="cert-firma2-group"
                              style="{% if cert_form_n_firmas != '2' %}display:none{% endif %}">
                             <label class="cert-label" for="cert-firma2">Firma 2 — imagen PNG/JPG</label>
                             <input type="file" id="cert-firma2" name="firma2" class="gf-file-input"
-                                   accept=".png,.jpg,.jpeg">
+                                   accept=".png,.jpg,.jpeg" {% if cert_form_disabled %}disabled{% endif %}>
                         </div>
                     </div>
 
                     <!-- Ancho tabla -->
                     <div class="cert-row">
                         <label class="cert-label" for="cert-tabla-width">Ancho de la tabla de actividades</label>
-                        <select id="cert-tabla-width" name="tabla_width_pct" class="cert-select" style="max-width:220px">
-                            <option value="0.75">75 % del ancho</option>
-                            <option value="0.85" selected>85 % del ancho</option>
-                            <option value="0.95">95 % del ancho</option>
-                            <option value="1.0">100 % del ancho</option>
+                        <select id="cert-tabla-width" name="tabla_width_pct" class="cert-select" style="max-width:220px" {% if cert_form_disabled %}disabled{% endif %}>
+                            <option value="0.75" {% if cert_form_tabla_width_pct == "0.75" %}selected{% endif %}>75 % del ancho</option>
+                            <option value="0.85" {% if cert_form_tabla_width_pct != "0.75" and cert_form_tabla_width_pct != "0.95" and cert_form_tabla_width_pct != "1.0" %}selected{% endif %}>85 % del ancho</option>
+                            <option value="0.95" {% if cert_form_tabla_width_pct == "0.95" %}selected{% endif %}>95 % del ancho</option>
+                            <option value="1.0" {% if cert_form_tabla_width_pct == "1.0" %}selected{% endif %}>100 % del ancho</option>
                         </select>
                     </div>
 
+                    {% if cert_form_disabled %}
+                        <p class="module-panel__note" style="margin-top:-.25rem;">
+                            Selecciona una capacitación de la lista para habilitar la generación de certificados.
+                        </p>
+                    {% endif %}
+
                     <!-- Botón -->
                     <div class="cert-actions">
-                        <button type="submit" class="gf-btn gf-btn--primary" id="cert-submit-btn">
+                        <button type="submit" class="gf-btn gf-btn--primary" id="cert-submit-btn" {% if cert_form_disabled %}disabled{% endif %}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2698,6 +2794,27 @@
                             btn.disabled = true;
                             btn.innerHTML = "Generando… espera un momento";
                         });
+                    })();
+                    (function () {
+                        var search = document.getElementById("cert-list-search");
+                        if (!search) return;
+                        var rows = Array.prototype.slice.call(document.querySelectorAll("[data-cert-row]"));
+                        var empty = document.querySelector("[data-cert-empty]");
+
+                        function applyFilter() {
+                            var term = (search.value || "").toLowerCase().trim();
+                            var visible = 0;
+                            rows.forEach(function (row) {
+                                var haystack = String(row.getAttribute("data-cert-search") || "");
+                                var match = !term || haystack.indexOf(term) !== -1;
+                                row.hidden = !match;
+                                if (match) visible += 1;
+                            });
+                            if (empty) empty.hidden = visible !== 0;
+                        }
+
+                        search.addEventListener("input", applyFilter);
+                        applyFilter();
                     })();
                 </script>
             {% endif %}

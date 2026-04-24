@@ -412,6 +412,38 @@ def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
     return _cap_tiene_certificados(cap_obj)
 
 
+def _obtener_resumen_certificados_por_codigo(codigos: list[str]) -> dict[str, int]:
+    """Retorna cantidad de certificados emitidos por código de capacitación."""
+    from accounts.db import get_connection
+
+    codigos_limpios = [str(c or "").strip() for c in codigos if str(c or "").strip()]
+    if not codigos_limpios:
+        return {}
+
+    placeholders = ", ".join(["%s"] * len(codigos_limpios))
+    query = f"""
+        SELECT codigo, SUM(CASE WHEN aprobados_certificados = 1 THEN 1 ELSE 0 END) AS total_certificados
+        FROM bbdd_difoca
+        WHERE codigo IN ({placeholders})
+        GROUP BY codigo
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, codigos_limpios)
+                filas = list(cursor.fetchall())
+        resumen: dict[str, int] = {}
+        for fila in filas:
+            codigo = str(fila.get("codigo") or "").strip()
+            if not codigo:
+                continue
+            resumen[codigo] = int(fila.get("total_certificados") or 0)
+        return resumen
+    except Exception:
+        logger.exception("No se pudo construir resumen de certificados por código")
+        return {}
+
+
 def _serializar_capacitacion_valores(cap_obj) -> dict[str, str]:
     """Serializa campos escalares del modelo al formato usado por el formulario."""
     valores: dict[str, str] = {}
@@ -679,7 +711,7 @@ def _construir_pasarela_sustento(
     return {
         "slug": "etapa-sustento",
         "titulo": "Sustento técnico previo",
-        "descripcion": "Despues de la fase preliminar puedes desarrollar la matriz de sustento y el diagnostico en paralelo, cada uno desde su propio modal guiado.",
+        "descripcion": "Despues de la fase preliminar puedes desarrollar la matriz de sustento en linea y el diagnostico desde su modal guiado.",
         "is_enabled": bool((matriz_flujo and matriz_flujo.get("is_enabled")) or (diagnostico_flujo and diagnostico_flujo.get("is_enabled"))),
         "matriz": matriz_flujo,
         "diagnostico": diagnostico_flujo,
@@ -883,7 +915,7 @@ def _construir_flujo_matriz_sustento(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
 ) -> dict[str, Any] | None:
-    """Construye el modal de matriz de sustento inspirado en el flujo de tres pasos."""
+    """Construye el flujo en linea de matriz de sustento inspirado en el recorrido de tres pasos."""
     matriz_activa = _matriz_habilitada(valores_form)
 
     pasos_base = {
@@ -3710,6 +3742,120 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
     # ---- Modulo Certificacion: genera PDFs por lote desde Excel ----
     if section_slug == "certificacion" and submenu_slug == "emitir-certificados":
+        from core.models import Capacitacion
+
+        cert_username = str(request.user.username)
+        cert_display = str(user_context.get("display_name", ""))
+        cert_role = str(user_context.get("role_effective", ""))
+        cert_is_admin = _normalizar_texto(cert_role) in {
+            "administrador", "admin", "superusuario",
+        }
+
+        cert_anio_param = str(request.GET.get("anio", request.POST.get("anio_ctx", ""))).strip()
+        cert_codigo_param = str(request.GET.get("codigo", request.POST.get("codigo_ctx", ""))).strip()
+        cert_estado_param = str(request.GET.get("estado_cert", request.POST.get("estado_cert_ctx", "todos"))).strip().lower()
+
+        cert_qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica")
+        if not cert_is_admin:
+            cert_qs = cert_qs.filter(creado_por__in=[cert_username, cert_display])
+
+        cert_anios = sorted(
+            set(cert_qs.values_list("cap_anio", flat=True)),
+            reverse=True,
+        )
+        cert_anios = [a for a in cert_anios if a]
+
+        try:
+            cert_anio_sel = int(cert_anio_param) if cert_anio_param else None
+        except (ValueError, TypeError):
+            cert_anio_sel = None
+
+        if cert_anio_sel not in cert_anios:
+            _anio_actual = datetime.now().year
+            cert_anio_sel = _anio_actual if _anio_actual in cert_anios else (cert_anios[0] if cert_anios else None)
+
+        cert_qs_filtrado = cert_qs
+        if cert_anio_sel:
+            cert_qs_filtrado = cert_qs_filtrado.filter(cap_anio=cert_anio_sel)
+
+        cert_caps = list(
+            cert_qs_filtrado.order_by("-creado_en").values(
+                "id",
+                "cap_nombre",
+                "cap_codigo",
+                "cap_id_curso",
+                "cap_anio",
+                "cap_estado",
+                "paso_actual",
+            )[:400]
+        )
+
+        cert_codigos_completos: list[str] = []
+        for row in cert_caps:
+            base = str(row.get("cap_codigo") or "").strip()
+            sufijo = str(row.get("cap_id_curso") or "").strip()
+            if not base:
+                continue
+            cert_codigos_completos.append(f"{base}-{sufijo}" if sufijo else base)
+
+        cert_resumen = _obtener_resumen_certificados_por_codigo(cert_codigos_completos)
+
+        cert_lista_completa: list[dict[str, Any]] = []
+        for row in cert_caps:
+            cap_codigo = str(row.get("cap_codigo") or "").strip()
+            cap_id_curso = str(row.get("cap_id_curso") or "").strip()
+            if not cap_codigo:
+                continue
+            codigo_completo = f"{cap_codigo}-{cap_id_curso}" if cap_id_curso else cap_codigo
+            total_emitidos = int(cert_resumen.get(codigo_completo, 0))
+            cert_lista_completa.append(
+                {
+                    "id": int(row.get("id") or 0),
+                    "cap_nombre": str(row.get("cap_nombre") or "").strip(),
+                    "cap_codigo": cap_codigo,
+                    "cap_id_curso": cap_id_curso,
+                    "codigo_completo": codigo_completo,
+                    "cap_anio": row.get("cap_anio"),
+                    "cap_estado": str(row.get("cap_estado") or "").strip(),
+                    "paso_actual": int(row.get("paso_actual") or 0),
+                    "certificados_emitidos": total_emitidos,
+                    "estado_certificacion": "Emitido" if total_emitidos > 0 else "Pendiente",
+                    "estado_css": "emitido" if total_emitidos > 0 else "pendiente",
+                }
+            )
+
+        estados_validos_cert = {"todos", "emitido", "pendiente"}
+        cert_estado_sel = cert_estado_param if cert_estado_param in estados_validos_cert else "todos"
+
+        if cert_estado_sel == "emitido":
+            cert_lista = [item for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) > 0]
+        elif cert_estado_sel == "pendiente":
+            cert_lista = [item for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) == 0]
+        else:
+            cert_lista = cert_lista_completa
+
+        cert_codigos_visibles = [str(item.get("codigo_completo") or "").strip() for item in cert_lista]
+        cert_codigo_sel = cert_codigo_param if cert_codigo_param in cert_codigos_visibles else (
+            cert_codigos_visibles[0] if cert_codigos_visibles else ""
+        )
+        cert_cap_sel = next(
+            (item for item in cert_lista if str(item.get("codigo_completo") or "").strip() == cert_codigo_sel),
+            {},
+        )
+
+        context.update(
+            {
+                "anios_disponibles": cert_anios,
+                "anio_seleccionado": cert_anio_sel,
+                "cert_lista": cert_lista,
+                "cert_codigo_sel": cert_codigo_sel,
+                "cert_cap_sel": cert_cap_sel,
+                "cert_estado_sel": cert_estado_sel,
+                "cert_total_emitidas": sum(1 for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) > 0),
+                "cert_total_pendientes": sum(1 for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) == 0),
+            }
+        )
+
         if request.method == "POST":
             action = str(request.POST.get("action", "")).strip()
             if action == "generar_certificados":
@@ -3779,10 +3925,18 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         # GET o POST con errores: renderiza el formulario.
         context.update({
-            "cert_form_curso_nombre": str(request.POST.get("curso_nombre", "")),
+            "cert_form_curso_nombre": str(
+                request.POST.get("curso_nombre", "")
+                or cert_cap_sel.get("cap_nombre", "")
+            ),
             "cert_form_curso_descripcion": str(request.POST.get("curso_descripcion", "")),
-            "cert_form_curso_codigo": str(request.POST.get("curso_codigo", "")),
+            "cert_form_curso_codigo": str(
+                request.POST.get("curso_codigo", "")
+                or cert_cap_sel.get("codigo_completo", "")
+            ),
             "cert_form_n_firmas": str(request.POST.get("n_firmas", "1")),
+            "cert_form_tabla_width_pct": str(request.POST.get("tabla_width_pct", "0.85")),
+            "cert_form_disabled": not bool(cert_cap_sel),
         })
         return render(request, "core/submenu_detail.html", context)
 
