@@ -11,7 +11,7 @@ import re
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 import openpyxl
@@ -655,6 +655,7 @@ def generar_certificados_zip(
     params: dict[str, Any],
     excel_bytes: bytes,
     firma_bytes_list: list[bytes],
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> tuple[io.BytesIO, int, list[str]]:
     """Genera un ZIP en memoria con los PDFs de certificados.
 
@@ -724,6 +725,19 @@ def generar_certificados_zip(
 
     zip_buf = io.BytesIO()
     n_ok = 0
+    total_filas = int(len(df_alumnos.index))
+    procesadas = 0
+
+    def _reportar_progreso(done: int, total: int, etapa: str) -> None:
+        if not progress_callback:
+            return
+        try:
+            progress_callback(done, total, etapa)
+        except Exception:
+            # El callback es solo informativo para la UI.
+            pass
+
+    _reportar_progreso(0, total_filas, "iniciando")
 
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for _, row in df_alumnos.iterrows():
@@ -794,11 +808,9 @@ def generar_certificados_zip(
                     y -= gap_desc
                 y -= lh * 0.3
 
-                c.setFont("Helvetica", 12)
+                c.setFont("Helvetica", 11)
                 c.setFillColor(colors.black)
-                y_min_fecha = Y_BASE_FIRMAS + BOX_H_FIRMAS + PADDING_FECHA
-                y_fecha = y if y > y_min_fecha else y_min_fecha
-                c.drawCentredString(ancho - 2 * inch, y_fecha, f"Fecha de emisión: {fecha_str}")
+                c.drawRightString(ancho - 0.6 * inch, y, f"Fecha de emisión: {fecha_str}")
 
                 _dibujar_bloque_firmas(
                     c, firmas_readers, ancho,
@@ -837,13 +849,13 @@ def generar_certificados_zip(
                 qr_size = 1.5 * inch
                 qr_x = ancho - qr_size - 0.25 * inch
                 qr_y = 0.25 * inch
-                                y -= lh * 0.3
+                if qr_reader:
+                    c.setFont("Helvetica", 7)
+                    c.drawCentredString(qr_x + qr_size / 2, qr_y + qr_size + 1.5, "Verificar legitimidad en:")
+                    c.drawImage(qr_reader, qr_x, qr_y, qr_size, qr_size, mask="auto")
 
-                                # Fecha de emisión: debajo de la descripción, alineada a la derecha
-                                c.setFont("Helvetica", 11)
-                                c.setFillColor(colors.black)
-                                c.drawRightString(ancho - 0.6 * inch, y, f"Fecha de emisión: {fecha_str}")
-                                # No se avanza y: la firma está en posición fija y no se desplaza
+                c.setFont("Helvetica", 10)
+                c.drawCentredString(ancho / 2, alto - 7.5 * inch, f"Código del certificado: DIFOCA-{dni}-{curso_codigo}")
 
                 c.save()
 
@@ -854,8 +866,13 @@ def generar_certificados_zip(
 
             except Exception as exc:
                 errores.append(f"Error en DNI {row.get('DNI', '?')}: {exc}")
+            finally:
+                procesadas += 1
+                _reportar_progreso(procesadas, total_filas, "generando")
 
+    _reportar_progreso(total_filas, total_filas, "empaquetando")
     zip_buf.seek(0)
+    _reportar_progreso(total_filas, total_filas, "completado")
     return zip_buf, n_ok, errores
 
 

@@ -9,9 +9,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 from datetime import datetime, date as _date_type
 from urllib.parse import urlencode
+from uuid import uuid4
 
 # Error HTTP para retornar 404 cuando una seccion no exista.
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
+from django.core.cache import cache
 # Decorador que exige sesion autenticada activa.
 from django.contrib.auth.decorators import login_required
 # Framework de mensajes para feedback de operaciones CRUD.
@@ -3847,10 +3849,40 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             }
         )
 
+        cert_progress_id = str(request.GET.get("cert_progress_id", "")).strip()
+        if request.method == "GET" and cert_progress_id:
+            progress_key = f"cert_progress:{request.user.id}:{cert_progress_id}"
+            payload = cache.get(progress_key) or {
+                "status": "desconocido",
+                "done": 0,
+                "total": 0,
+                "pct": 0,
+                "message": "Sin datos de progreso.",
+            }
+            return JsonResponse(payload)
+
         if request.method == "POST":
             action = str(request.POST.get("action", "")).strip()
             if action == "generar_certificados":
                 from core.certificados_adapter import generar_certificados_zip, validar_excel_certificados
+
+                cert_progress_id = str(request.POST.get("progress_id", "")).strip() or uuid4().hex
+                progress_key = f"cert_progress:{request.user.id}:{cert_progress_id}"
+
+                def _set_progress(status: str, done: int, total: int, message: str, pct: int) -> None:
+                    cache.set(
+                        progress_key,
+                        {
+                            "status": status,
+                            "done": int(done),
+                            "total": int(total),
+                            "pct": int(max(0, min(100, pct))),
+                            "message": message,
+                        },
+                        timeout=1800,
+                    )
+
+                _set_progress("iniciando", 0, 0, "Preparando generación…", 3)
 
                 excel_file = request.FILES.get("excel_participantes")
                 firma1_file = request.FILES.get("firma1")
@@ -3874,12 +3906,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     errores_form.append("Seleccionaste 2 firmas pero no adjuntaste la Firma 2.")
 
                 if errores_form:
+                    _set_progress("error", 0, 0, "Error de validación del formulario.", 0)
                     for msg in errores_form:
                         messages.error(request, msg)
                 else:
                     excel_bytes = excel_file.read()
+                    _set_progress("validando", 0, 0, "Validando Excel de participantes…", 8)
                     ok, err_msg = validar_excel_certificados(excel_bytes)
                     if not ok:
+                        _set_progress("error", 0, 0, f"Error en Excel: {err_msg}", 0)
                         messages.error(request, f"Error en el Excel: {err_msg}")
                     else:
                         firma_bytes_list: list[bytes] = [firma1_file.read()]
@@ -3895,8 +3930,21 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         }
 
                         try:
+                            def _progress_cb(done: int, total: int, etapa: str) -> None:
+                                total_safe = max(int(total), 1)
+                                avance = int((int(done) / total_safe) * 86)
+                                pct = 8 + max(0, min(86, avance))
+                                if etapa == "iniciando":
+                                    _set_progress("iniciando", done, total, "Preparando certificados…", 10)
+                                elif etapa == "empaquetando":
+                                    _set_progress("empaquetando", done, total, "Empaquetando ZIP final…", 96)
+                                elif etapa == "completado":
+                                    _set_progress("completado", done, total, "Generación finalizada.", 99)
+                                else:
+                                    _set_progress("generando", done, total, f"Generando certificados: {done}/{total}", pct)
+
                             zip_buffer, n_certs, errores_gen = generar_certificados_zip(
-                                params, excel_bytes, firma_bytes_list
+                                params, excel_bytes, firma_bytes_list, progress_callback=_progress_cb
                             )
                             if errores_gen:
                                 for e in errores_gen[:5]:
@@ -3904,6 +3952,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             if n_certs > 0:
                                 zip_buffer.seek(0)
                                 nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
+                                _set_progress("ok", n_certs, n_certs, f"Completado: {n_certs} certificados.", 100)
                                 resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
                                 resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
                                 # Marca el curso como certificado en la BD.
@@ -3911,10 +3960,12 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                     Capacitacion.objects.filter(pk=cert_cap_sel["id"]).update(cert_pdf_emitido=True)
                                 return resp
                             else:
+                                _set_progress("error", 0, 0, "No se generó ningún certificado.", 0)
                                 messages.error(request, "No se generó ningún certificado. Revisa el Excel.")
                         except Exception as exc:
                             import logging as _log
                             _log.getLogger("core.views").exception("Error generando certificados ZIP")
+                            _set_progress("error", 0, 0, f"Error al generar certificados: {exc}", 0)
                             messages.error(request, f"Error al generar certificados: {exc}")
 
         # GET o POST con errores: renderiza el formulario.
