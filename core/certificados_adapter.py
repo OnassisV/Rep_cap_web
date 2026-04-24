@@ -655,7 +655,7 @@ def generar_certificados_zip(
     params: dict[str, Any],
     excel_bytes: bytes,
     firma_bytes_list: list[bytes],
-    progress_callback: Callable[[int, int, str], None] | None = None,
+    progress_callback: Callable[[int, int, int, int, int, str], None] | None = None,
 ) -> tuple[io.BytesIO, int, list[str]]:
     """Genera un ZIP en memoria con los PDFs de certificados.
 
@@ -725,6 +725,7 @@ def generar_certificados_zip(
 
     zip_buf = io.BytesIO()
     n_ok = 0
+    n_omitidos = 0
     total_filas = int(len(df_alumnos.index))
     procesadas = 0
 
@@ -732,7 +733,7 @@ def generar_certificados_zip(
         if not progress_callback:
             return
         try:
-            progress_callback(done, total, etapa)
+            progress_callback(done, total, n_ok, len(errores), n_omitidos, etapa)
         except Exception:
             # El callback es solo informativo para la UI.
             pass
@@ -750,6 +751,7 @@ def generar_certificados_zip(
                 iged = str(row.get("NOMBRE IGED", "")).strip().upper()
 
                 if not dni or not nombres:
+                    n_omitidos += 1
                     continue
 
                 pdf_buf = io.BytesIO()

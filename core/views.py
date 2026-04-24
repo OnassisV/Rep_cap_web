@@ -3930,18 +3930,36 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         }
 
                         try:
-                            def _progress_cb(done: int, total: int, etapa: str) -> None:
+                            def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
                                 total_safe = max(int(total), 1)
                                 avance = int((int(done) / total_safe) * 86)
                                 pct = 8 + max(0, min(86, avance))
                                 if etapa == "iniciando":
                                     _set_progress("iniciando", done, total, "Preparando certificados…", 10)
                                 elif etapa == "empaquetando":
-                                    _set_progress("empaquetando", done, total, "Empaquetando ZIP final…", 96)
+                                    _set_progress(
+                                        "empaquetando",
+                                        done,
+                                        total,
+                                        f"Empaquetando ZIP final… OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
+                                        96,
+                                    )
                                 elif etapa == "completado":
-                                    _set_progress("completado", done, total, "Generación finalizada.", 99)
+                                    _set_progress(
+                                        "completado",
+                                        done,
+                                        total,
+                                        f"Generación finalizada. OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
+                                        99,
+                                    )
                                 else:
-                                    _set_progress("generando", done, total, f"Generando certificados: {done}/{total}", pct)
+                                    _set_progress(
+                                        "generando",
+                                        done,
+                                        total,
+                                        f"Generando certificados: {done}/{total} | OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
+                                        pct,
+                                    )
 
                             zip_buffer, n_certs, errores_gen = generar_certificados_zip(
                                 params, excel_bytes, firma_bytes_list, progress_callback=_progress_cb
@@ -3952,7 +3970,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             if n_certs > 0:
                                 zip_buffer.seek(0)
                                 nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
-                                _set_progress("ok", n_certs, n_certs, f"Completado: {n_certs} certificados.", 100)
+                                _set_progress(
+                                    "ok",
+                                    n_certs,
+                                    n_certs,
+                                    f"Completado: {n_certs} certificados. Errores: {len(errores_gen)}.",
+                                    100,
+                                )
                                 resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
                                 resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
                                 # Marca el curso como certificado en la BD.
