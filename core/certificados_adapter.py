@@ -50,7 +50,7 @@ LOGO_PATH = _RESOURCES_DIR / "logoedutalentos-sinfondo.png"
 
 # Layout del anverso (coincide con Certificados26.py)
 Y_BASE_FIRMAS = 0.10 * inch
-BOX_H_FIRMAS = 2.50 * inch
+BOX_H_FIRMAS = 2.15 * inch
 PADDING_FECHA = 0.35 * inch
 
 
@@ -117,6 +117,11 @@ def _ajustar_texto_sin_limite(
     font_size_min: float = 9,
 ) -> tuple[list[str], float]:
     """Reduce fuente hasta que todas las palabras quepan sin truncar (sin límite de líneas)."""
+    # Intentar primero con el tamaño exacto (puede ser float como 13.5)
+    if font_size_max != int(font_size_max):
+        lineas = _obtener_lineas_ajustadas_max(c, texto, max_ancho, font_name, float(font_size_max), max_lines=None)
+        if lineas:
+            return lineas, float(font_size_max)
     for fs in range(int(font_size_max), int(font_size_min) - 1, -1):
         lineas = _obtener_lineas_ajustadas_max(c, texto, max_ancho, font_name, float(fs), max_lines=None)
         if lineas:
@@ -210,7 +215,7 @@ def _dibujar_bloque_firmas(
     side_margin = 0.60 * inch
     gap = 0.25 * inch
     firma_scale_2 = 0.85
-    firma_scale_1 = 0.65
+    firma_scale_1 = 0.68
 
     n = len(firmas_readers)
 
@@ -792,7 +797,7 @@ def generar_certificados_zip(
                 c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
-                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 15, 8)
+                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
                 gap_curso = fs_curso * 1.30
