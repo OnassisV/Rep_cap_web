@@ -2785,7 +2785,7 @@
                                 </div>
 
                                 <!-- Botón -->
-                                <div class="cert-actions">
+                                <div class="cert-actions" id="cert-actions-wrap">
                                     <button type="submit" class="gf-btn gf-btn--primary" id="cert-submit-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
                                              fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -2795,7 +2795,15 @@
                                         </svg>
                                         Generar certificados ZIP
                                     </button>
-                                    <button type="button" class="gf-btn" onclick="certCerrarModal()">Cancelar</button>
+                                    <button type="button" class="gf-btn" id="cert-cancel-btn" onclick="certCerrarModal()">Cancelar</button>
+                                </div>
+
+                                <!-- Barra de progreso (oculta hasta enviar) -->
+                                <div id="cert-progress-wrap" hidden>
+                                    <div class="cert-progress">
+                                        <div class="cert-progress__bar" id="cert-progress-bar"></div>
+                                    </div>
+                                    <p class="cert-progress__label" id="cert-progress-label">Iniciando…</p>
                                 </div>
                             </form>
                         </div>
@@ -2828,12 +2836,37 @@
                         if (e.key === "Escape") certCerrarModal();
                     });
                     (function () {
-                        var form = document.getElementById("cert-form");
-                        var btn  = document.getElementById("cert-submit-btn");
-                        if (!form || !btn) return;
+                        var form       = document.getElementById("cert-form");
+                        var actWrap    = document.getElementById("cert-actions-wrap");
+                        var progWrap   = document.getElementById("cert-progress-wrap");
+                        var progBar    = document.getElementById("cert-progress-bar");
+                        var progLabel  = document.getElementById("cert-progress-label");
+                        if (!form) return;
+
+                        var pasos = [
+                            { pct: 10, msg: "Leyendo Excel de participantes…",       ms: 300  },
+                            { pct: 28, msg: "Validando datos y notas…",              ms: 900  },
+                            { pct: 48, msg: "Generando PDFs de certificados…",       ms: 1800 },
+                            { pct: 68, msg: "Aplicando firmas digitales…",           ms: 3200 },
+                            { pct: 82, msg: "Insertando tabla de actividades…",      ms: 4800 },
+                            { pct: 93, msg: "Empaquetando archivo ZIP…",             ms: 6200 },
+                        ];
+
+                        function setProgreso(pct, msg) {
+                            if (progBar)   progBar.style.width = pct + "%";
+                            if (progLabel) progLabel.textContent = msg;
+                        }
+
                         form.addEventListener("submit", function () {
-                            btn.disabled = true;
-                            btn.innerHTML = "Generando… espera un momento";
+                            // Ocultar botones, mostrar barra
+                            if (actWrap)  actWrap.hidden  = true;
+                            if (progWrap) progWrap.hidden = false;
+                            setProgreso(0, "Iniciando…");
+
+                            // Avanzar por pasos simulados
+                            pasos.forEach(function (p) {
+                                setTimeout(function () { setProgreso(p.pct, p.msg); }, p.ms);
+                            });
                         });
                     })();
                     (function () {

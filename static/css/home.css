@@ -5644,6 +5644,30 @@ h1 {
     padding-top: .35rem;
 }
 
+/* Barra de progreso de emisi\u00f3n */
+.cert-progress {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: .75rem;
+}
+
+.cert-progress__bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #0ea5e9, #6366f1);
+    border-radius: 999px;
+    transition: width 800ms cubic-bezier(.4, 0, .2, 1);
+}
+
+.cert-progress__label {
+    font-size: .82rem;
+    color: #475569;
+    margin: .45rem 0 0;
+    text-align: center;
+}
+
 /* ═══ Sincrónicas y Evidencias ═══ */
 .sync-archivos h3,
 .sync-resultado h3 {
