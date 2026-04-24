@@ -108,6 +108,23 @@ def _obtener_lineas_ajustadas_max(
     return lineas
 
 
+def _ajustar_texto_sin_limite(
+    c: canvas.Canvas,
+    texto: str,
+    max_ancho: float,
+    font_name: str,
+    font_size_max: float,
+    font_size_min: float = 9,
+) -> tuple[list[str], float]:
+    """Reduce fuente hasta que todas las palabras quepan sin truncar (sin límite de líneas)."""
+    for fs in range(int(font_size_max), int(font_size_min) - 1, -1):
+        lineas = _obtener_lineas_ajustadas_max(c, texto, max_ancho, font_name, float(fs), max_lines=None)
+        if lineas:
+            return lineas, float(fs)
+    lineas = _obtener_lineas_ajustadas_max(c, texto, max_ancho, font_name, font_size_min, max_lines=None)
+    return lineas, font_size_min
+
+
 def _ajustar_texto_a_2_lineas(
     c: canvas.Canvas,
     texto: str,
@@ -759,7 +776,7 @@ def generar_certificados_zip(
                 c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
-                lineas_curso, fs_curso = _ajustar_texto_a_2_lineas(c, curso_nombre, 600, "Helvetica-Bold", 18, 12)
+                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 18, 10)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
                 gap_curso = fs_curso * 1.10
