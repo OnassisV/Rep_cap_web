@@ -2804,6 +2804,9 @@
                                         <div class="cert-progress__bar" id="cert-progress-bar"></div>
                                     </div>
                                     <p class="cert-progress__label" id="cert-progress-label">Iniciando…</p>
+                                    <div style="text-align:center;margin-top:.9rem;">
+                                        <button type="button" id="cert-progress-close" class="gf-btn" hidden onclick="certCerrarModal()">Cerrar</button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -2841,31 +2844,96 @@
                         var progWrap   = document.getElementById("cert-progress-wrap");
                         var progBar    = document.getElementById("cert-progress-bar");
                         var progLabel  = document.getElementById("cert-progress-label");
+                        var closeBtn   = document.getElementById("cert-progress-close");
                         if (!form) return;
 
                         var pasos = [
-                            { pct: 10, msg: "Leyendo Excel de participantes…",       ms: 300  },
-                            { pct: 28, msg: "Validando datos y notas…",              ms: 900  },
-                            { pct: 48, msg: "Generando PDFs de certificados…",       ms: 1800 },
-                            { pct: 68, msg: "Aplicando firmas digitales…",           ms: 3200 },
-                            { pct: 82, msg: "Insertando tabla de actividades…",      ms: 4800 },
-                            { pct: 93, msg: "Empaquetando archivo ZIP…",             ms: 6200 },
+                            { pct: 12, msg: "Leyendo Excel de participantes…",    ms: 400  },
+                            { pct: 28, msg: "Validando datos y notas…",           ms: 1200 },
+                            { pct: 46, msg: "Generando PDFs de certificados…",    ms: 2400 },
+                            { pct: 64, msg: "Aplicando firmas digitales…",        ms: 4000 },
+                            { pct: 80, msg: "Insertando tabla de actividades…",   ms: 6000 },
+                            { pct: 92, msg: "Empaquetando archivo ZIP…",          ms: 8500 },
                         ];
+                        var timers = [];
 
                         function setProgreso(pct, msg) {
                             if (progBar)   progBar.style.width = pct + "%";
                             if (progLabel) progLabel.textContent = msg;
                         }
 
-                        form.addEventListener("submit", function () {
+                        function mostrarExito(nombreArchivo) {
+                            timers.forEach(clearTimeout);
+                            setProgreso(100, "✔ Certificados generados. Descargando " + nombreArchivo + "…");
+                            if (progLabel) progLabel.style.color = "#16a34a";
+                            if (progBar)   progBar.style.background = "linear-gradient(90deg, #16a34a, #22c55e)";
+                            if (closeBtn)  closeBtn.hidden = false;
+                        }
+
+                        function mostrarError(msg) {
+                            timers.forEach(clearTimeout);
+                            setProgreso(0, "");
+                            if (progWrap)  progWrap.hidden = true;
+                            if (actWrap)   actWrap.hidden  = false;
+                            alert(msg || "Error al generar certificados. Verifica el Excel e inténtalo nuevamente.");
+                        }
+
+                        form.addEventListener("submit", function (e) {
+                            e.preventDefault();
+
                             // Ocultar botones, mostrar barra
                             if (actWrap)  actWrap.hidden  = true;
                             if (progWrap) progWrap.hidden = false;
+                            if (closeBtn) closeBtn.hidden = true;
+                            if (progLabel) progLabel.style.color = "";
+                            if (progBar)   progBar.style.background = "";
                             setProgreso(0, "Iniciando…");
 
-                            // Avanzar por pasos simulados
-                            pasos.forEach(function (p) {
-                                setTimeout(function () { setProgreso(p.pct, p.msg); }, p.ms);
+                            // Iniciar simulación de pasos
+                            timers = pasos.map(function (p) {
+                                return setTimeout(function () { setProgreso(p.pct, p.msg); }, p.ms);
+                            });
+
+                            // Enviar via fetch para capturar la respuesta
+                            var fd = new FormData(form);
+                            fetch(window.location.href, {
+                                method: "POST",
+                                body: fd,
+                                credentials: "same-origin",
+                            })
+                            .then(function (resp) {
+                                var ct = resp.headers.get("Content-Type") || "";
+                                if (ct.indexOf("zip") !== -1 || ct.indexOf("octet-stream") !== -1) {
+                                    // Éxito: descargar ZIP y mostrar confirmación
+                                    var cd = resp.headers.get("Content-Disposition") || "";
+                                    var m  = cd.match(/filename="?([^"\n]+)"?/);
+                                    var nombre = m ? m[1] : "certificados.zip";
+                                    return resp.blob().then(function (blob) {
+                                        var url = URL.createObjectURL(blob);
+                                        var a = document.createElement("a");
+                                        a.href = url;
+                                        a.download = nombre;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
+                                        mostrarExito(nombre);
+                                    });
+                                } else {
+                                    // Error del servidor (devuelve HTML con messages)
+                                    return resp.text().then(function (html) {
+                                        var tmp = document.createElement("div");
+                                        tmp.innerHTML = html;
+                                        var msgs = tmp.querySelectorAll(".messages li, .alert, [class*='message']");
+                                        var txt = msgs.length
+                                            ? Array.prototype.map.call(msgs, function(n){ return n.textContent.trim(); }).join(" | ")
+                                            : "Error al generar certificados. Verifica el Excel e inténtalo nuevamente.";
+                                        mostrarError(txt);
+                                    });
+                                }
+                            })
+                            .catch(function () {
+                                mostrarError("Error de conexión. Verifica tu red e inténtalo nuevamente.");
                             });
                         });
                     })();
