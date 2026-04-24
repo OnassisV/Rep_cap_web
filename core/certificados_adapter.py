@@ -243,7 +243,7 @@ def _leer_tabla_excel(
     """Lee tabla desde Hoja2 del workbook ya abierto. Preserva merges, anchos y alineaciones."""
     vacio: dict[str, Any] = {
         "data": None, "excel_spans": [], "has_excel_merges": False,
-        "excel_col_widths": [], "excel_halign": [], "excel_valign": [], "excel_bold": [],
+        "excel_col_widths": [], "excel_halign": [], "excel_valign": [],
     }
     if hoja_nombre not in wb.sheetnames:
         return vacio
@@ -280,13 +280,18 @@ def _leer_tabla_excel(
     if n_cols is not None:
         max_col = min_col + int(n_cols) - 1
     else:
+        # Escanea todas las filas para encontrar la columna más a la derecha con contenido real
         max_col = min_col
-        for j in range(min_col, min_col + max_scan_cols):
-            v = _eff_val(min_row, j)
-            if v is not None and str(v).strip():
-                max_col = j
-            else:
-                break
+        scan_rows_for_col = min(max_scan_rows, 60)  # no necesitamos escanear 200 filas para detectar columnas
+        for i in range(min_row, min_row + scan_rows_for_col):
+            for j in range(min_col, min_col + max_scan_cols):
+                v = _eff_val(i, j)
+                if v is not None and str(v).strip():
+                    if j > max_col:
+                        max_col = j
+                else:
+                    # si hay un hueco en esta fila, no seguir buscando más columnas en ella
+                    break
 
     # Determinar max_row
     last_nonempty = min_row - 1
@@ -329,12 +334,11 @@ def _leer_tabla_excel(
         except Exception:
             excel_col_widths.append(float(default_w))
 
-    # Alineaciones y negrita
+    # Alineaciones
     excel_halign: list[list[str]] = []
     excel_valign: list[list[str]] = []
-    excel_bold: list[list[bool]] = []
     for rr in range(min_row, max_row + 1):
-        row_h, row_v, row_bold = [], [], []
+        row_h, row_v = [], []
         for cc in range(min_col, max_col + 1):
             rr_use, cc_use = rr, cc
             if (rr, cc) in merged_cell_map:
@@ -346,17 +350,10 @@ def _leer_tabla_excel(
                 v = (al.vertical or "") if al else ""
             except Exception:
                 h, v = "", ""
-            try:
-                fnt = ws.cell(row=rr_use, column=cc_use).font
-                is_bold = bool(fnt and fnt.bold)
-            except Exception:
-                is_bold = False
             row_h.append(str(h).lower() if h else "")
             row_v.append(str(v).lower() if v else "")
-            row_bold.append(is_bold)
         excel_halign.append(row_h)
         excel_valign.append(row_v)
-        excel_bold.append(row_bold)
 
     # Leer datos
     reemplazos = {
@@ -385,7 +382,6 @@ def _leer_tabla_excel(
         "excel_col_widths": excel_col_widths,
         "excel_halign": excel_halign,
         "excel_valign": excel_valign,
-        "excel_bold": excel_bold,
     }
 
 
@@ -401,7 +397,6 @@ def _crear_tabla_pdf(
     excel_spans: list[tuple[int, int, int, int]] | None = None,
     excel_col_widths: list[float] | None = None,
     excel_halign: list[list[str]] | None = None,
-    excel_bold: list[list[bool]] | None = None,
     tabla_width_pct: float = 0.92,
 ) -> float | None:
     """Crea tabla de actividades en el PDF del reverso. Retorna y debajo de la tabla."""
@@ -473,11 +468,6 @@ def _crear_tabla_pdf(
     style_cell_center = ParagraphStyle("cell_center", parent=style_cell_left, alignment=TA_CENTER)
     style_cell_right = ParagraphStyle("cell_right", parent=style_cell_left, alignment=TA_RIGHT)
     style_cell_justify = ParagraphStyle("cell_justify", parent=style_cell_left, alignment=TA_JUSTIFY)
-    # Variantes bold
-    style_cell_left_b = ParagraphStyle("cell_left_b", parent=style_cell_left, fontName="Helvetica-Bold")
-    style_cell_center_b = ParagraphStyle("cell_center_b", parent=style_cell_left_b, alignment=TA_CENTER)
-    style_cell_right_b = ParagraphStyle("cell_right_b", parent=style_cell_left_b, alignment=TA_RIGHT)
-    style_cell_justify_b = ParagraphStyle("cell_justify_b", parent=style_cell_left_b, alignment=TA_JUSTIFY)
     style_head_center = ParagraphStyle(
         "head_center", fontName="Helvetica-Bold", fontSize=head_fs,
         leading=head_fs + 1.2, alignment=TA_CENTER, spaceBefore=0, spaceAfter=0,
@@ -499,17 +489,9 @@ def _crear_tabla_pdf(
             return "left"
         return None
 
-    def _pick_style(is_header: bool, halign: str | None, raw: str, bold: bool = False) -> ParagraphStyle:
+    def _pick_style(is_header: bool, halign: str | None, raw: str) -> ParagraphStyle:
         if is_header:
             return style_head_left if halign == "left" else style_head_center
-        if bold:
-            if halign == "center":
-                return style_cell_center_b
-            if halign == "right":
-                return style_cell_right_b
-            if halign == "justify":
-                return style_cell_justify_b
-            return style_cell_left_b
         if halign == "center":
             return style_cell_center
         if halign == "right":
@@ -522,13 +504,13 @@ def _crear_tabla_pdf(
             return style_cell_center
         return style_cell_left
 
-    def _as_para(v: str, is_header: bool = False, halign: str | None = None, bold: bool = False) -> Paragraph:
+    def _as_para(v: str, is_header: bool = False, halign: str | None = None) -> Paragraph:
         raw = "" if v is None else str(v)
         raw = raw.replace("\r\n", "\n").replace("\r", "\n").strip()
         if is_header:
             raw = _norm(raw)
         s = _xml_escape(raw).replace("\n", "<br/>")
-        return Paragraph(s, _pick_style(is_header, halign, raw, bold=bold))
+        return Paragraph(s, _pick_style(is_header, halign, raw))
 
     table_data = []
     for i, row in enumerate(filas):
@@ -536,12 +518,9 @@ def _crear_tabla_pdf(
         out_row = []
         for j, v in enumerate(row):
             h = None
-            b = False
             if excel_halign and i < len(excel_halign) and j < len(excel_halign[i]):
                 h = _map_excel_h(excel_halign[i][j])
-            if not is_h and excel_bold and i < len(excel_bold) and j < len(excel_bold[i]):
-                b = bool(excel_bold[i][j])
-            out_row.append(_as_para(v, is_header=is_h, halign=h, bold=b))
+            out_row.append(_as_para(v, is_header=is_h, halign=h))
         table_data.append(out_row)
 
     # Calcular anchos
@@ -694,16 +673,15 @@ def generar_certificados_zip(
     # Leer tabla de actividades con openpyxl
     excel_buf.seek(0)
     wb = openpyxl.load_workbook(excel_buf, data_only=True)
-    res_tabla = _leer_tabla_excel(wb, "Hoja2", "A2", n_cols=4, n_rows=200)
+    res_tabla = _leer_tabla_excel(wb, "Hoja2", "A2", n_cols=None, n_rows=200)
     if not res_tabla.get("data"):
-        res_tabla = _leer_tabla_excel(wb, "Hoja2", "B2", n_cols=4, n_rows=200)
+        res_tabla = _leer_tabla_excel(wb, "Hoja2", "B2", n_cols=None, n_rows=200)
     wb.close()
 
     datos_tabla = res_tabla.get("data")
     tabla_spans = res_tabla.get("excel_spans", [])
     tabla_col_widths = res_tabla.get("excel_col_widths", [])
     tabla_halign = res_tabla.get("excel_halign", [])
-    tabla_bold  = res_tabla.get("excel_bold", [])
 
     # Cargar recursos del servidor
     fondo_reader = ImageReader(str(FONDO_PATH)) if FONDO_PATH.exists() else None
@@ -828,7 +806,6 @@ def generar_certificados_zip(
                         excel_spans=tabla_spans,
                         excel_col_widths=tabla_col_widths,
                         excel_halign=tabla_halign,
-                        excel_bold=tabla_bold,
                         tabla_width_pct=tabla_width_pct,
                     )
 
