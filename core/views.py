@@ -3741,7 +3741,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         return render(request, "core/gestion_forms.html", context)
 
     # ---- Modulo Certificacion: genera PDFs por lote desde Excel ----
-    if section_slug == "certificacion" and submenu_slug == "emitir-certificados":
+    if section_slug == "gestion-capacitacion" and submenu_slug == "certificacion":
         from core.models import Capacitacion
 
         cert_username = str(request.user.username)
@@ -3756,6 +3756,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         cert_estado_param = str(request.GET.get("estado_cert", request.POST.get("estado_cert_ctx", "todos"))).strip().lower()
 
         cert_qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica")
+        if not cert_is_admin:
+            cert_qs = cert_qs.filter(creado_por__in=[cert_username, cert_display])
 
         cert_anios = sorted(
             set(cert_qs.values_list("cap_anio", flat=True)),
