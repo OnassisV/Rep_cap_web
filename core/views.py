@@ -3756,8 +3756,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         cert_estado_param = str(request.GET.get("estado_cert", request.POST.get("estado_cert_ctx", "todos"))).strip().lower()
 
         cert_qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica")
-        if not cert_is_admin:
-            cert_qs = cert_qs.filter(creado_por__in=[cert_username, cert_display])
 
         cert_anios = sorted(
             set(cert_qs.values_list("cap_anio", flat=True)),
