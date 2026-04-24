@@ -50,7 +50,7 @@ LOGO_PATH = _RESOURCES_DIR / "logoedutalentos-sinfondo.png"
 
 # Layout del anverso (coincide con Certificados26.py)
 Y_BASE_FIRMAS = 0.10 * inch
-BOX_H_FIRMAS = 2.15 * inch
+BOX_H_FIRMAS = 2.50 * inch
 PADDING_FECHA = 0.35 * inch
 
 
@@ -209,8 +209,8 @@ def _dibujar_bloque_firmas(
 
     side_margin = 0.60 * inch
     gap = 0.25 * inch
-    firma_scale_2 = 0.70
-    firma_scale_1 = 0.50
+    firma_scale_2 = 0.85
+    firma_scale_1 = 0.65
 
     n = len(firmas_readers)
 
@@ -792,7 +792,7 @@ def generar_certificados_zip(
                 c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
-                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 17, 9)
+                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 15, 8)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
                 gap_curso = fs_curso * 1.30
