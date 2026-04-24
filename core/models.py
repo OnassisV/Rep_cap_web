@@ -151,6 +151,12 @@ class Capacitacion(models.Model):
     ed_fecha_oficio = models.DateField(null=True, blank=True)
     ed_cierre_confirmado = models.CharField(max_length=10, blank=True, default="")
 
+    # -- Certificacion PDF ---------------------------------------------------
+    cert_pdf_emitido = models.BooleanField(
+        default=False,
+        help_text="Indica si se emitieron los certificados PDF por lote para este curso.",
+    )
+
     # -- Metadata ------------------------------------------------------------
     creado_por = models.CharField(max_length=150)
     creado_nombre = models.CharField(max_length=200, blank=True, default="")

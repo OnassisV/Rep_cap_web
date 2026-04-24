@@ -3787,18 +3787,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "cap_anio",
                 "cap_estado",
                 "paso_actual",
+                "cert_pdf_emitido",
             )[:400]
         )
-
-        cert_codigos_completos: list[str] = []
-        for row in cert_caps:
-            base = str(row.get("cap_codigo") or "").strip()
-            sufijo = str(row.get("cap_id_curso") or "").strip()
-            if not base:
-                continue
-            cert_codigos_completos.append(f"{base}-{sufijo}" if sufijo else base)
-
-        cert_resumen = _obtener_resumen_certificados_por_codigo(cert_codigos_completos)
 
         cert_lista_completa: list[dict[str, Any]] = []
         for row in cert_caps:
@@ -3807,7 +3798,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             if not cap_codigo:
                 continue
             codigo_completo = f"{cap_codigo}-{cap_id_curso}" if cap_id_curso else cap_codigo
-            total_emitidos = int(cert_resumen.get(codigo_completo, 0))
+            emitido = bool(row.get("cert_pdf_emitido"))
             cert_lista_completa.append(
                 {
                     "id": int(row.get("id") or 0),
@@ -3818,9 +3809,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "cap_anio": row.get("cap_anio"),
                     "cap_estado": str(row.get("cap_estado") or "").strip(),
                     "paso_actual": int(row.get("paso_actual") or 0),
-                    "certificados_emitidos": total_emitidos,
-                    "estado_certificacion": "Emitido" if total_emitidos > 0 else "Pendiente",
-                    "estado_css": "emitido" if total_emitidos > 0 else "pendiente",
+                    "cert_pdf_emitido": emitido,
+                    "estado_certificacion": "Emitido" if emitido else "Pendiente",
+                    "estado_css": "emitido" if emitido else "pendiente",
                 }
             )
 
@@ -3828,9 +3819,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         cert_estado_sel = cert_estado_param if cert_estado_param in estados_validos_cert else "todos"
 
         if cert_estado_sel == "emitido":
-            cert_lista = [item for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) > 0]
+            cert_lista = [item for item in cert_lista_completa if item.get("cert_pdf_emitido")]
         elif cert_estado_sel == "pendiente":
-            cert_lista = [item for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) == 0]
+            cert_lista = [item for item in cert_lista_completa if not item.get("cert_pdf_emitido")]
         else:
             cert_lista = cert_lista_completa
 
@@ -3851,8 +3842,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "cert_codigo_sel": cert_codigo_sel,
                 "cert_cap_sel": cert_cap_sel,
                 "cert_estado_sel": cert_estado_sel,
-                "cert_total_emitidas": sum(1 for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) > 0),
-                "cert_total_pendientes": sum(1 for item in cert_lista_completa if int(item.get("certificados_emitidos") or 0) == 0),
+                "cert_total_emitidas": sum(1 for item in cert_lista_completa if item.get("cert_pdf_emitido")),
+                "cert_total_pendientes": sum(1 for item in cert_lista_completa if not item.get("cert_pdf_emitido")),
             }
         )
 
@@ -3915,6 +3906,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                 nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
                                 resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
                                 resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
+                                # Marca el curso como certificado en la BD.
+                                if cert_cap_sel.get("id"):
+                                    Capacitacion.objects.filter(pk=cert_cap_sel["id"]).update(cert_pdf_emitido=True)
                                 return resp
                             else:
                                 messages.error(request, "No se generó ningún certificado. Revisa el Excel.")

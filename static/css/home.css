@@ -3586,7 +3586,7 @@ h1 {
 /* Variante de tabla para listado previo de certificación. */
 .simple-table--certificaciones .simple-table__head,
 .simple-table--certificaciones .simple-table__row {
-    grid-template-columns: 140px minmax(280px, 1.8fr) 170px 90px;
+    grid-template-columns: 140px minmax(280px, 1.8fr) 170px;
 }
 
 .cert-row-item {
@@ -5497,6 +5497,63 @@ h1 {
 
 .cert-search-empty {
     margin-top: 0.85rem;
+}
+
+/* Modal de emisión por lote */
+.cert-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .55);
+    z-index: 2000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem 1rem;
+    overflow-y: auto;
+}
+
+.cert-modal {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.22);
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+}
+
+.cert-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.cert-modal__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.cert-modal__close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #64748b;
+    padding: 0 .25rem;
+    transition: color 140ms;
+}
+
+.cert-modal__close:hover { color: #0f172a; }
+
+.cert-modal__body {
+    padding: 1.25rem 1.5rem 1.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 70px);
 }
 
 .cert-grid-2 {
