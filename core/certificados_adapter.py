@@ -779,20 +779,20 @@ def generar_certificados_zip(
                 lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 18, 10)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
-                gap_curso = fs_curso * 1.10
-                y_start = y + (len(lineas_curso) - 1) * (gap_curso / 2)
-                for i, linea in enumerate(lineas_curso):
-                    c.drawCentredString(ancho / 2, y_start - i * gap_curso, linea)
-                y -= lh + (len(lineas_curso) - 1) * gap_curso
+                gap_curso = fs_curso * 1.30
+                for linea in lineas_curso:
+                    c.drawCentredString(ancho / 2, y, linea)
+                    y -= gap_curso
+                y -= lh * 0.3  # pequeño espacio tras el bloque del nombre
 
                 lineas_desc, fs_desc = _ajustar_texto_a_2_lineas(c, curso_descripcion, 650, "Helvetica", 12, 10)
                 c.setFont("Helvetica", fs_desc)
                 c.setFillColor(colors.black)
-                gap_desc = fs_desc * 1.15
-                y_start_desc = y + (len(lineas_desc) - 1) * (gap_desc / 2)
-                for i, linea in enumerate(lineas_desc):
-                    c.drawCentredString(ancho / 2, y_start_desc - i * gap_desc, linea)
-                y -= lh + (len(lineas_desc) - 1) * gap_desc
+                gap_desc = fs_desc * 1.30
+                for linea in lineas_desc:
+                    c.drawCentredString(ancho / 2, y, linea)
+                    y -= gap_desc
+                y -= lh * 0.3
 
                 c.setFont("Helvetica", 12)
                 c.setFillColor(colors.black)
