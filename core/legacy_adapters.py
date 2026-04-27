@@ -2536,17 +2536,17 @@ def _obtener_dnis_matriculados_aula(codigo: str) -> list[str]:
 
 
 def _enriquecer_filas_con_sidi(filas_por_dni: dict[str, dict[str, Any]]) -> None:
-    """Completa datos demograficos desde uvw_usuarios_detalle_completo (SIDI en Railway).
+    """Completa y actualiza datos demograficos desde uvw_usuarios_detalle_completo (SIDI en Railway).
 
-    Solo actualiza campos que estan vacios/None en la fila existente.
-    Replica la logica de obtener_datos_sidi() de la app original.
+    Estrategia de actualizacion:
+    - Campos institucionales (region, IGED, puesto, regimen): siempre se sobreescriben con el
+      valor de SIDI si este tiene datos, para reflejar cambios que el participante haya hecho
+      en SIDIFOCA.
+    - Campos personales (apellidos, nombres, email, telefonos, etc.): solo se rellenan si estan
+      vacios en bbdd_difoca, para no sobreescribir correcciones manuales.
     """
-    # Identificar DNIs con datos incompletos (sin apellidos ni nombres).
-    dnis_incompletos = [
-        dni for dni, fila in filas_por_dni.items()
-        if _valor_vacio(fila.get("apellidos")) and _valor_vacio(fila.get("nombres"))
-    ]
-    if not dnis_incompletos:
+    dnis_todos = list(filas_por_dni.keys())
+    if not dnis_todos:
         return
 
     query = """
@@ -2580,13 +2580,13 @@ def _enriquecer_filas_con_sidi(filas_por_dni: dict[str, dict[str, Any]]) -> None
         FROM uvw_usuarios_detalle_completo
         WHERE nro_documento IN ({placeholders})
     """
-    placeholders = ", ".join(["%s"] * len(dnis_incompletos))
+    placeholders = ", ".join(["%s"] * len(dnis_todos))
     query = query.format(placeholders=placeholders)
 
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(query, dnis_incompletos)
+                cur.execute(query, dnis_todos)
                 rows_sidi = list(cur.fetchall())
     except Exception:
         logger.exception("Error consultando uvw_usuarios_detalle_completo")
@@ -2602,33 +2602,44 @@ def _enriquecer_filas_con_sidi(filas_por_dni: dict[str, dict[str, Any]]) -> None
     # Obtener codigo_iged desde iged_s3.
     codigos_iged = _obtener_mapa_codigo_iged()
 
-    campos_sidi = [
+    # Todos los campos se actualizan siempre desde SIDI si este tiene datos.
+    campos_sobreescribir = [
         "tipo_documento", "genero", "apellidos", "nombres", "fecha_nacimiento",
-        "email", "telefono_celular", "telefono_fijo", "actualizo_datos",
-        "region", "tipo_iged", "nombre_iged", "nivel_puesto", "nombre_puesto",
-        "regimen_laboral",
+        "email", "telefono_celular", "telefono_fijo",
+        "actualizo_datos", "region", "tipo_iged", "nombre_iged",
+        "nivel_puesto", "nombre_puesto", "regimen_laboral",
     ]
+    campos_solo_vacios: list[str] = []
 
-    for dni in dnis_incompletos:
+    enriquecidos = 0
+    for dni in dnis_todos:
         sidi = sidi_por_dni.get(dni)
         if not sidi:
             continue
         fila = filas_por_dni[dni]
-        for campo in campos_sidi:
+        enriquecidos += 1
+        # Sobreescribir siempre los campos institucionales con datos de SIDI.
+        for campo in campos_sobreescribir:
+            valor = sidi.get(campo)
+            if not _valor_vacio(valor):
+                fila[campo] = valor
+        # Rellenar datos personales solo si estan vacios.
+        for campo in campos_solo_vacios:
             if _valor_vacio(fila.get(campo)):
                 valor = sidi.get(campo)
                 if not _valor_vacio(valor):
                     fila[campo] = valor
-        # codigo_iged: buscar en mapa iged_s3 por region + nombre_iged.
-        if _valor_vacio(fila.get("codigo_iged")):
-            region = str(fila.get("region") or "").strip()
-            nombre_iged = str(fila.get("nombre_iged") or "").strip()
-            clave = (_normalizar_texto(region), _normalizar_texto(nombre_iged))
-            fila["codigo_iged"] = codigos_iged.get(clave)
+        # codigo_iged: recalcular siempre desde iged_s3 con la region/iged actualizada de SIDI.
+        region = str(fila.get("region") or "").strip()
+        nombre_iged = str(fila.get("nombre_iged") or "").strip()
+        clave = (_normalizar_texto(region), _normalizar_texto(nombre_iged))
+        codigo = codigos_iged.get(clave)
+        if not _valor_vacio(codigo):
+            fila["codigo_iged"] = codigo
 
     logger.info(
-        "_enriquecer_filas_con_sidi: %d/%d DNIs enriquecidos con datos SIDI",
-        len(sidi_por_dni), len(dnis_incompletos),
+        "_enriquecer_filas_con_sidi: %d/%d DNIs actualizados con datos SIDI",
+        enriquecidos, len(dnis_todos),
     )
 
 
