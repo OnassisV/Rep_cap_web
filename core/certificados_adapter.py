@@ -863,11 +863,17 @@ def generar_certificados_zip(
                         tabla_width_pct=tabla_width_pct,
                     )
 
+                # Muestra promedio sin decimales, redondeado al entero mas cercano.
+                try:
+                    promedio_texto = str(int(round(float(notas))))
+                except Exception:
+                    promedio_texto = str(notas).strip()
+
                 c.setFont("Helvetica-Bold", 12)
                 if y_promedio:
-                    c.drawCentredString(ancho / 2, y_promedio, f"Promedio Final: {notas}")
+                    c.drawCentredString(ancho / 2, y_promedio, f"Promedio Final: {promedio_texto}")
                 else:
-                    c.drawString(inch, alto - 2.5 * inch, f"Promedio Final: {notas}")
+                    c.drawString(inch, alto - 2.5 * inch, f"Promedio Final: {promedio_texto}")
 
                 qr_url = f"https://difoca.com/consultas-cyc/qr/?d={dni}&c={curso_codigo}"
                 qr_reader = _generar_qr_reader(qr_url)
