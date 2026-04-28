@@ -2784,6 +2784,19 @@
                                     </select>
                                 </div>
 
+                                <!-- Participantes certificables en BD -->
+                                {% if cert_cap_sel %}
+                                <div class="cert-row" style="margin:0.5rem 0 0.75rem 0">
+                                    {% if cert_n_participantes == -1 %}
+                                        <span style="color:#dc2626;font-size:0.85rem">⚠ No se pudo consultar participantes en BD</span>
+                                    {% elif cert_n_participantes == 0 %}
+                                        <span style="color:#dc2626;font-size:0.85rem">⚠ Sin participantes certificables en BD para este curso</span>
+                                    {% else %}
+                                        <span style="color:#16a34a;font-size:0.85rem">✓ <strong>{{ cert_n_participantes }}</strong> participante{{ cert_n_participantes|pluralize:"s" }} certificable{{ cert_n_participantes|pluralize:"s" }} encontrado{{ cert_n_participantes|pluralize:"s" }} en BD</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
                                 <!-- Botón -->
                                 <div class="cert-actions" id="cert-actions-wrap">
                                     <button type="submit" class="gf-btn gf-btn--primary" id="cert-submit-btn">

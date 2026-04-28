@@ -3836,6 +3836,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             {},
         )
 
+        # Contar participantes certificables para el curso seleccionado
+        cert_n_participantes = 0
+        if cert_cap_sel.get("codigo_completo"):
+            try:
+                from core.legacy_adapters import obtener_participantes_certificables as _get_cert_parts
+                cert_n_participantes = len(_get_cert_parts(cert_cap_sel["codigo_completo"]))
+            except Exception:
+                cert_n_participantes = -1
+
         context.update(
             {
                 "anios_disponibles": cert_anios,
@@ -3846,6 +3855,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "cert_estado_sel": cert_estado_sel,
                 "cert_total_emitidas": sum(1 for item in cert_lista_completa if item.get("cert_pdf_emitido")),
                 "cert_total_pendientes": sum(1 for item in cert_lista_completa if not item.get("cert_pdf_emitido")),
+                "cert_n_participantes": cert_n_participantes,
             }
         )
 
