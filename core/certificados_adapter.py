@@ -927,6 +927,9 @@ def generar_certificados_zip(
                 # Ajuste dinamico solicitado:
                 # - 1 linea: aumentar hasta 2x
                 # - 2 lineas: aumentar hasta 1.5x
+                # IMPORTANTE: al escalar no debe aumentar el numero de lineas,
+                # de lo contrario un curso de 1-2 lineas terminaria ocupando
+                # 3-4 lineas con fuente enorme.
                 lineas_curso_base, fs_curso_base = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
                 n_lineas_curso = len(lineas_curso_base)
                 if n_lineas_curso <= 1:
@@ -935,7 +938,17 @@ def generar_certificados_zip(
                     max_fs_curso = fs_curso_base * 1.5
                 else:
                     max_fs_curso = fs_curso_base
-                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", max_fs_curso, 8)
+                # Buscar el mayor tamano que NO supere n_lineas_curso lineas.
+                lineas_curso, fs_curso = lineas_curso_base, fs_curso_base
+                fs_try = max_fs_curso
+                while fs_try >= fs_curso_base:
+                    lineas_try = _obtener_lineas_ajustadas_max(
+                        c, curso_nombre, 600, "Helvetica-Bold", float(fs_try), max_lines=None
+                    )
+                    if lineas_try and len(lineas_try) <= n_lineas_curso:
+                        lineas_curso, fs_curso = lineas_try, float(fs_try)
+                        break
+                    fs_try -= 0.5
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
                 gap_curso = fs_curso * 1.30
