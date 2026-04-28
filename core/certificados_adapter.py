@@ -815,10 +815,17 @@ def generar_certificados_zip(
                 c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
-                # Si el nombre del curso es corto, permite un tamaño mayor para equilibrar visualmente
-                # frente al texto en mayusculas de puesto/IGED.
-                lineas_curso_base, _ = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
-                max_fs_curso = 16.5 if len(lineas_curso_base) <= 1 else 13.5
+                # Ajuste dinamico solicitado:
+                # - 1 linea: aumentar hasta 2x
+                # - 2 lineas: aumentar hasta 1.5x
+                lineas_curso_base, fs_curso_base = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
+                n_lineas_curso = len(lineas_curso_base)
+                if n_lineas_curso <= 1:
+                    max_fs_curso = fs_curso_base * 2.0
+                elif n_lineas_curso == 2:
+                    max_fs_curso = fs_curso_base * 1.5
+                else:
+                    max_fs_curso = fs_curso_base
                 lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", max_fs_curso, 8)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
