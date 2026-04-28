@@ -3924,7 +3924,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 else:
                     _set_progress("validando", 0, 0, "Cargando participantes desde base de datos…", 8)
 
-                    codigo_fuente = str(cert_cap_sel.get("cap_id_curso") or "").strip()
+                    codigo_fuente = str(cert_cap_sel.get("codigo_completo") or "").strip()
+                    if not codigo_fuente:
+                        codigo_fuente = str(cert_cap_sel.get("cap_id_curso") or "").strip()
                     if not codigo_fuente:
                         codigo_fuente = extraer_id_capacitacion(curso_codigo)
 
