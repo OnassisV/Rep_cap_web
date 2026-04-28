@@ -661,14 +661,16 @@ def generar_certificados_zip(
     excel_bytes: bytes,
     firma_bytes_list: list[bytes],
     progress_callback: Callable[[int, int, int, int, int, str], None] | None = None,
+    participantes_rows: list[dict[str, Any]] | None = None,
 ) -> tuple[io.BytesIO, int, list[str]]:
     """Genera un ZIP en memoria con los PDFs de certificados.
 
     Args:
         params: dict con 'curso_nombre', 'curso_descripcion', 'curso_codigo',
                 'n_firmas' (int, 1 o 2), 'tabla_width_pct' (float, 0.5-1.0).
-        excel_bytes: contenido del archivo .xlsx con Hoja1 (alumnos) y Hoja2 (actividades).
+        excel_bytes: contenido del archivo .xlsx de tabla de actividades (Hoja2).
         firma_bytes_list: lista de bytes de las imagenes de firma (1 o 2).
+        participantes_rows: lista opcional de participantes ya filtrados desde BD.
 
     Returns:
         (zip_bytesio, n_certificados, lista_errores)
@@ -681,20 +683,29 @@ def generar_certificados_zip(
 
     errores: list[str] = []
 
-    # Leer Excel con pandas
-    excel_buf = io.BytesIO(excel_bytes)
-    try:
-        df_alumnos = pd.read_excel(excel_buf, dtype={"DNI": str}, engine="openpyxl")
-    except Exception as exc:
-        return io.BytesIO(), 0, [f"No se pudo leer el archivo Excel: {exc}"]
-
+    # Construir universo de participantes.
     columnas_requeridas = {"DNI", "NOMBRES", "APELLIDOS", "NOTAS"}
-    faltantes_cols = columnas_requeridas - set(df_alumnos.columns)
-    if faltantes_cols:
-        return io.BytesIO(), 0, [f"El Excel no tiene las columnas requeridas: {', '.join(sorted(faltantes_cols))}"]
+    if participantes_rows is None:
+        excel_buf_participantes = io.BytesIO(excel_bytes)
+        try:
+            df_alumnos = pd.read_excel(excel_buf_participantes, dtype={"DNI": str}, engine="openpyxl")
+        except Exception as exc:
+            return io.BytesIO(), 0, [f"No se pudo leer el archivo Excel: {exc}"]
+        faltantes_cols = columnas_requeridas - set(df_alumnos.columns)
+        if faltantes_cols:
+            return io.BytesIO(), 0, [f"El Excel no tiene las columnas requeridas: {', '.join(sorted(faltantes_cols))}"]
+    else:
+        df_alumnos = pd.DataFrame(participantes_rows)
+        faltantes_cols = columnas_requeridas - set(df_alumnos.columns)
+        if faltantes_cols:
+            return io.BytesIO(), 0, [f"Faltan columnas en participantes automáticos: {', '.join(sorted(faltantes_cols))}"]
+        if df_alumnos.empty:
+            return io.BytesIO(), 0, ["No se encontraron participantes con los filtros requeridos."]
+        # Normaliza DNI a texto para conservar ceros a la izquierda en casos especiales.
+        df_alumnos["DNI"] = df_alumnos["DNI"].astype(str)
 
     # Leer tabla de actividades con openpyxl
-    excel_buf.seek(0)
+    excel_buf = io.BytesIO(excel_bytes)
     wb = openpyxl.load_workbook(excel_buf, data_only=True)
     res_tabla = _leer_tabla_excel(wb, "Hoja2", "A2", n_cols=None, n_rows=200)
     if not res_tabla.get("data"):

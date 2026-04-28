@@ -2057,6 +2057,43 @@ def obtener_certificados_detalle(codigo: str, limit: int = 5000) -> list[dict[st
         return []
 
 
+def obtener_participantes_certificacion_para_emision(codigo: str, limit: int = 10000) -> list[dict[str, Any]]:
+    """Retorna participantes aptos para emisión de certificados por código de curso.
+
+    Filtros aplicados:
+    - estado = 2
+    - compromiso = 20
+    - aprobados_certificados = 1
+    """
+    codigo = str(codigo or "").strip()
+    if not codigo:
+        return []
+
+    query = """
+        SELECT
+            dni AS DNI,
+            apellidos AS APELLIDOS,
+            nombres AS NOMBRES,
+            promedio_final_general AS NOTAS,
+            nombre_puesto AS `NOMBRE DE PUESTO`,
+            nombre_iged AS `NOMBRE IGED`
+        FROM bbdd_difoca
+        WHERE codigo = %s
+          AND estado = 2
+          AND compromiso = 20
+          AND aprobados_certificados = 1
+        ORDER BY apellidos ASC, nombres ASC
+        LIMIT %s
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, (codigo, int(limit)))
+                return list(cursor.fetchall())
+    except Exception:
+        return []
+
+
 def resumir_certificados_por_region(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Agrupa certificados por region con promedio de nota final."""
     grouped: dict[str, dict[str, Any]] = {}

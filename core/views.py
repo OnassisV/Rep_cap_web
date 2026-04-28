@@ -3864,7 +3864,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         if request.method == "POST":
             action = str(request.POST.get("action", "")).strip()
             if action == "generar_certificados":
-                from core.certificados_adapter import generar_certificados_zip, validar_excel_certificados
+                from core.certificados_adapter import generar_certificados_zip
+                from core.legacy_adapters import obtener_participantes_certificacion_para_emision
 
                 cert_progress_id = str(request.POST.get("progress_id", "")).strip() or uuid4().hex
                 progress_key = f"cert_progress:{request.user.id}:{cert_progress_id}"
@@ -3884,7 +3885,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
                 _set_progress("iniciando", 0, 0, "Preparando generación…", 3)
 
-                excel_file = request.FILES.get("excel_participantes")
+                excel_tabla_file = request.FILES.get("excel_tabla")
                 firma1_file = request.FILES.get("firma1")
                 firma2_file = request.FILES.get("firma2")
 
@@ -3898,8 +3899,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 errores_form: list[str] = []
                 if not curso_nombre:
                     errores_form.append("El nombre del curso es obligatorio.")
-                if not excel_file:
-                    errores_form.append("Debes adjuntar el Excel de participantes (.xlsx).")
+                if not excel_tabla_file:
+                    errores_form.append("Debes adjuntar el Excel con la tabla del reverso (.xlsx).")
                 if not firma1_file:
                     errores_form.append("Debes adjuntar al menos la Firma 1.")
                 if n_firmas == 2 and not firma2_file:
@@ -3910,13 +3911,21 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     for msg in errores_form:
                         messages.error(request, msg)
                 else:
-                    excel_bytes = excel_file.read()
-                    _set_progress("validando", 0, 0, "Validando Excel de participantes…", 8)
-                    ok, err_msg = validar_excel_certificados(excel_bytes)
-                    if not ok:
-                        _set_progress("error", 0, 0, f"Error en Excel: {err_msg}", 0)
-                        messages.error(request, f"Error en el Excel: {err_msg}")
+                    _set_progress("validando", 0, 0, "Cargando participantes desde base de datos…", 8)
+
+                    codigo_fuente = str(cert_cap_sel.get("cap_id_curso") or "").strip()
+                    if not codigo_fuente:
+                        codigo_fuente = extraer_id_capacitacion(curso_codigo)
+
+                    participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
+                    if not participantes_rows:
+                        _set_progress("error", 0, 0, "No hay participantes aptos para certificar con los filtros requeridos.", 0)
+                        messages.error(
+                            request,
+                            "No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para este curso.",
+                        )
                     else:
+                        tabla_excel_bytes = excel_tabla_file.read()
                         firma_bytes_list: list[bytes] = [firma1_file.read()]
                         if n_firmas == 2 and firma2_file:
                             firma_bytes_list.append(firma2_file.read())
@@ -3962,7 +3971,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                     )
 
                             zip_buffer, n_certs, errores_gen = generar_certificados_zip(
-                                params, excel_bytes, firma_bytes_list, progress_callback=_progress_cb
+                                params,
+                                tabla_excel_bytes,
+                                firma_bytes_list,
+                                progress_callback=_progress_cb,
+                                participantes_rows=participantes_rows,
                             )
                             if errores_gen:
                                 for e in errores_gen[:5]:
@@ -3985,7 +3998,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                 return resp
                             else:
                                 _set_progress("error", 0, 0, "No se generó ningún certificado.", 0)
-                                messages.error(request, "No se generó ningún certificado. Revisa el Excel.")
+                                messages.error(request, "No se generó ningún certificado. Revisa los datos del curso y la tabla del reverso.")
                         except Exception as exc:
                             import logging as _log
                             _log.getLogger("core.views").exception("Error generando certificados ZIP")
