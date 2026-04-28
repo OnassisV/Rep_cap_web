@@ -3840,7 +3840,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         cert_n_participantes = 0
         if cert_cap_sel.get("codigo_completo"):
             try:
-                from core.legacy_adapters import obtener_participantes_certificables as _get_cert_parts
+                from core.legacy_adapters import obtener_participantes_certificacion_para_emision as _get_cert_parts
                 cert_n_participantes = len(_get_cert_parts(cert_cap_sel["codigo_completo"]))
             except Exception:
                 cert_n_participantes = -1
