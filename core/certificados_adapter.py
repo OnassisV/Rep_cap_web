@@ -815,7 +815,11 @@ def generar_certificados_zip(
                 c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
-                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
+                # Si el nombre del curso es corto, permite un tamaño mayor para equilibrar visualmente
+                # frente al texto en mayusculas de puesto/IGED.
+                lineas_curso_base, _ = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
+                max_fs_curso = 16.5 if len(lineas_curso_base) <= 1 else 13.5
+                lineas_curso, fs_curso = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", max_fs_curso, 8)
                 c.setFont("Helvetica-Bold", fs_curso)
                 c.setFillColor(colors.red)
                 gap_curso = fs_curso * 1.30
