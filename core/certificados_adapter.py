@@ -659,19 +659,20 @@ def _generar_qr_reader(url: str) -> Any | None:
 def _clasificar_equipo(nombre_puesto: str) -> str:
     """Mapea el texto libre de `nombre_puesto` a una de las 5 categorias de equipo.
 
-    Categorias:
-    - equipo de directivos y jefaturas
-    - equipo de gestion pedagogica
-    - equipo de gestion institucional
-    - equipo administrativo
-    - equipo tecnico y de apoyo especializado  (default y fallback)
+    Categorias (devueltas en Title Case para que encajen en la frase
+    "Integrante del ... de la {IGED}" del certificado):
+    - Equipo de Directivos y Jefaturas
+    - Equipo de Gestión Pedagógica
+    - Equipo de Gestión Institucional
+    - Equipo Administrativo
+    - Equipo Técnico y de Apoyo Especializado  (default y fallback)
     """
     import re
     import unicodedata
 
     raw = str(nombre_puesto or "").strip()
     if not raw:
-        return "equipo técnico y de apoyo especializado"
+        return "Equipo Técnico y de Apoyo Especializado"
 
     # Normaliza: sin tildes, mayusculas, separadores como espacios.
     norm = "".join(
@@ -693,9 +694,9 @@ def _clasificar_equipo(nombre_puesto: str) -> str:
         "JEFE", "JEFA", "JEFATURA", "JEDE", "JEGE", "JEFEDE", "JEJFE",
     )
     if any(has_kw(kw) for kw in directivos_kw):
-        return "equipo de directivos y jefaturas"
+        return "Equipo de Directivos y Jefaturas"
     if has_token("DIRECCION"):
-        return "equipo de directivos y jefaturas"
+        return "Equipo de Directivos y Jefaturas"
 
     # 2) Gestion pedagogica
     pedagogica_kw = (
@@ -714,9 +715,9 @@ def _clasificar_equipo(nombre_puesto: str) -> str:
         "SUPERVISION Y GESTION DEL SERVICIO EDUCATIVO",
     )
     if any(has_kw(kw) for kw in pedagogica_kw):
-        return "equipo de gestión pedagógica"
+        return "Equipo de Gestión Pedagógica"
     if any(has_token(t) for t in ("AGP", "DGP", "UGP", "EBR", "EBA", "EBE", "EBTH", "ICE")):
-        return "equipo de gestión pedagógica"
+        return "Equipo de Gestión Pedagógica"
 
     # 3) Gestion institucional
     institucional_kw = (
@@ -728,9 +729,9 @@ def _clasificar_equipo(nombre_puesto: str) -> str:
         "PREVAED", "COMPROMISOS DE DESEMPENO", "CONVENIO FED",
     )
     if any(has_kw(kw) for kw in institucional_kw):
-        return "equipo de gestión institucional"
+        return "Equipo de Gestión Institucional"
     if any(has_token(t) for t in ("AGI", "DGI", "UGI", "POI", "UPDI")):
-        return "equipo de gestión institucional"
+        return "Equipo de Gestión Institucional"
 
     # 4) Administrativo
     administrativo_kw = (
@@ -752,15 +753,15 @@ def _clasificar_equipo(nombre_puesto: str) -> str:
         "ADQUISICIONES", "CONTRATACION",
     )
     if any(has_kw(kw) for kw in administrativo_kw):
-        return "equipo administrativo"
+        return "Equipo Administrativo"
     if any(has_token(t) for t in (
         "AGA", "DGA", "OGA", "RRHH", "ORRHH", "ARH", "EAP", "EARH",
         "AAJ", "OEAJ", "OCI", "PAD", "CPPADD", "COPROA",
     )):
-        return "equipo administrativo"
+        return "Equipo Administrativo"
 
     # 5) Default / fallback: tecnico y apoyo especializado
-    return "equipo técnico y de apoyo especializado"
+    return "Equipo Técnico y de Apoyo Especializado"
 
 
 def generar_certificados_zip(
