@@ -2724,13 +2724,33 @@
                                               placeholder="Breve descripción para el anverso del certificado">{{ cert_form_curso_descripcion|default:'' }}</textarea>
                                 </div>
 
-                                <!-- Excel -->
+                                <!-- ¿Incluir tabla del reverso? -->
                                 <div class="cert-row">
+                                    <label class="cert-label">¿Incluir tabla de actividades en el reverso?</label>
+                                    <div class="cert-radio-group">
+                                        <label class="cert-radio-label">
+                                            <input type="radio" name="incluir_reverso" value="si" id="cert-reverso-si"
+                                                   {% if cert_form_incluir_reverso != 'no' %}checked{% endif %}
+                                                   onchange="certToggleReverso(this)">
+                                            Con tabla del reverso
+                                        </label>
+                                        <label class="cert-radio-label">
+                                            <input type="radio" name="incluir_reverso" value="no" id="cert-reverso-no"
+                                                   {% if cert_form_incluir_reverso == 'no' %}checked{% endif %}
+                                                   onchange="certToggleReverso(this)">
+                                            Sin tabla (solo anverso)
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Excel (solo si incluye reverso) -->
+                                <div class="cert-row" id="cert-excel-row"
+                                     style="{% if cert_form_incluir_reverso == 'no' %}display:none{% else %}display:block{% endif %}">
                                     <label class="cert-label" for="cert-excel">
                                         Excel de tabla del reverso (.xlsx) <span class="cert-required">*</span>
                                     </label>
                                     <input type="file" id="cert-excel" name="excel_tabla" class="gf-file-input"
-                                           accept=".xlsx" required>
+                                           accept=".xlsx">
                                     <span class="cert-hint">
                                         Solo se requiere la hoja con la tabla del reverso (Hoja2).
                                         Los participantes se cargan automáticamente desde la base de datos.
@@ -2830,6 +2850,11 @@
                     function certToggleFirma2(val) {
                         var g = document.getElementById("cert-firma2-group");
                         if (g) g.style.display = (val === "2") ? "" : "none";
+                    }
+                    function certToggleReverso(radio) {
+                        var row = document.getElementById("cert-excel-row");
+                        if (!row) return;
+                        row.style.display = (radio.value === "si") ? "block" : "none";
                     }
                     function certAbrirModal() {
                         var overlay = document.getElementById("cert-modal-overlay");

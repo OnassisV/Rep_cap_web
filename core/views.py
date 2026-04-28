@@ -3904,12 +3904,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 curso_codigo = str(request.POST.get("curso_codigo", "")).strip()
                 n_firmas = int(request.POST.get("n_firmas", "1"))
                 tabla_width_pct = float(request.POST.get("tabla_width_pct", "0.85"))
+                incluir_reverso = str(request.POST.get("incluir_reverso", "si")).strip().lower() == "si"
 
                 # Validaciones básicas de campos obligatorios.
                 errores_form: list[str] = []
                 if not curso_nombre:
                     errores_form.append("El nombre del curso es obligatorio.")
-                if not excel_tabla_file:
+                if incluir_reverso and not excel_tabla_file:
                     errores_form.append("Debes adjuntar el Excel con la tabla del reverso (.xlsx).")
                 if not firma1_file:
                     errores_form.append("Debes adjuntar al menos la Firma 1.")
@@ -3935,7 +3936,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             "No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para este curso.",
                         )
                     else:
-                        tabla_excel_bytes = excel_tabla_file.read()
+                        tabla_excel_bytes = excel_tabla_file.read() if (incluir_reverso and excel_tabla_file) else b""
                         firma_bytes_list: list[bytes] = [firma1_file.read()]
                         if n_firmas == 2 and firma2_file:
                             firma_bytes_list.append(firma2_file.read())
@@ -4028,6 +4029,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             ),
             "cert_form_n_firmas": str(request.POST.get("n_firmas", "1")),
             "cert_form_tabla_width_pct": str(request.POST.get("tabla_width_pct", "0.85")),
+            "cert_form_incluir_reverso": str(request.POST.get("incluir_reverso", "si")),
             "cert_form_disabled": not bool(cert_cap_sel),
         })
         return render(request, "core/submenu_detail.html", context)

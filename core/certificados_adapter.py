@@ -704,18 +704,25 @@ def generar_certificados_zip(
         # Normaliza DNI a texto para conservar ceros a la izquierda en casos especiales.
         df_alumnos["DNI"] = df_alumnos["DNI"].astype(str)
 
-    # Leer tabla de actividades con openpyxl
-    excel_buf = io.BytesIO(excel_bytes)
-    wb = openpyxl.load_workbook(excel_buf, data_only=True)
-    res_tabla = _leer_tabla_excel(wb, "Hoja2", "A2", n_cols=None, n_rows=200)
-    if not res_tabla.get("data"):
-        res_tabla = _leer_tabla_excel(wb, "Hoja2", "B2", n_cols=None, n_rows=200)
-    wb.close()
-
-    datos_tabla = res_tabla.get("data")
-    tabla_spans = res_tabla.get("excel_spans", [])
-    tabla_col_widths = res_tabla.get("excel_col_widths", [])
-    tabla_halign = res_tabla.get("excel_halign", [])
+    # Leer tabla de actividades con openpyxl (opcional: si excel_bytes está vacío, no hay tabla)
+    datos_tabla = None
+    tabla_spans: list = []
+    tabla_col_widths: list = []
+    tabla_halign: list = []
+    if excel_bytes:
+        excel_buf = io.BytesIO(excel_bytes)
+        try:
+            wb = openpyxl.load_workbook(excel_buf, data_only=True)
+            res_tabla = _leer_tabla_excel(wb, "Hoja2", "A2", n_cols=None, n_rows=200)
+            if not res_tabla.get("data"):
+                res_tabla = _leer_tabla_excel(wb, "Hoja2", "B2", n_cols=None, n_rows=200)
+            wb.close()
+            datos_tabla = res_tabla.get("data")
+            tabla_spans = res_tabla.get("excel_spans", [])
+            tabla_col_widths = res_tabla.get("excel_col_widths", [])
+            tabla_halign = res_tabla.get("excel_halign", [])
+        except Exception as exc:
+            errores.append(f"No se pudo leer la tabla del reverso: {exc}")
 
     # Cargar recursos del servidor
     fondo_reader = ImageReader(str(FONDO_PATH)) if FONDO_PATH.exists() else None
