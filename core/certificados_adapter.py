@@ -925,15 +925,13 @@ def generar_certificados_zip(
                 y -= lh
 
                 # Ajuste dinamico solicitado:
-                # - Si en el tamano base entra en 1 linea -> aumentar el tamano x2
+                # - Si en el tamano base entra en 1 linea -> aumentar el tamano x1.5
                 # - Si en el tamano base entra en 2 lineas -> aumentar el tamano x1.5
                 # - Si entra en 3+ lineas -> mantener el tamano base
                 # Nota: tras escalar puede usar mas lineas; eso es aceptable.
                 lineas_curso_base, fs_curso_base = _ajustar_texto_sin_limite(c, curso_nombre, 600, "Helvetica-Bold", 13.5, 8)
                 n_lineas_curso = len(lineas_curso_base)
-                if n_lineas_curso <= 1:
-                    fs_curso = fs_curso_base * 2.0
-                elif n_lineas_curso == 2:
+                if n_lineas_curso <= 2:
                     fs_curso = fs_curso_base * 1.5
                 else:
                     fs_curso = fs_curso_base
