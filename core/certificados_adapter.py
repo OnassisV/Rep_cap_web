@@ -656,6 +656,113 @@ def _generar_qr_reader(url: str) -> Any | None:
 # Funcion principal de generacion
 # ---------------------------------------------------------------------------
 
+def _clasificar_equipo(nombre_puesto: str) -> str:
+    """Mapea el texto libre de `nombre_puesto` a una de las 5 categorias de equipo.
+
+    Categorias:
+    - equipo de directivos y jefaturas
+    - equipo de gestion pedagogica
+    - equipo de gestion institucional
+    - equipo administrativo
+    - equipo tecnico y de apoyo especializado  (default y fallback)
+    """
+    import re
+    import unicodedata
+
+    raw = str(nombre_puesto or "").strip()
+    if not raw:
+        return "equipo técnico y de apoyo especializado"
+
+    # Normaliza: sin tildes, mayusculas, separadores como espacios.
+    norm = "".join(
+        ch for ch in unicodedata.normalize("NFD", raw)
+        if unicodedata.category(ch) != "Mn"
+    ).upper()
+    # Convierte separadores comunes en espacios para que las siglas queden tokenizadas.
+    norm_tokens = " " + re.sub(r"[^A-Z0-9]+", " ", norm).strip() + " "
+
+    def has_kw(kw: str) -> bool:
+        return kw in norm
+
+    def has_token(tok: str) -> bool:
+        return f" {tok} " in norm_tokens
+
+    # 1) Directivos y jefaturas
+    directivos_kw = (
+        "DIRECTOR", "DIRECTORA", "SUBDIRECTOR", "GERENTE", "GERENCIA",
+        "JEFE", "JEFA", "JEFATURA", "JEDE", "JEGE", "JEFEDE", "JEJFE",
+    )
+    if any(has_kw(kw) for kw in directivos_kw):
+        return "equipo de directivos y jefaturas"
+    if has_token("DIRECCION"):
+        return "equipo de directivos y jefaturas"
+
+    # 2) Gestion pedagogica
+    pedagogica_kw = (
+        "PEDAGOG", "AGEBRE", "AGEBATP", "AGEBA", "AGEBE", "AGEBTH",
+        "DOCENTE", "PROFESOR", "PROFESORA", "FORMADOR",
+        "ACOMPANANTE", "ACOMPANAMIENTO",
+        "TUTORIA", "TUTOR", "ORIENTACION EDUCATIVA", "ORIENTADOR",
+        "PSICOLOG", "EDUCUNA", "PRONOEI",
+        "CONVIVENCIA",
+        "EICE",
+        "EDUCACION BASICA", "EDUCACION INICIAL", "EDUCACION PRIMARIA",
+        "EDUCACION SECUNDARIA", "EDUCACION FISICA", "EDUCACION ARTISTICA",
+        "ESPECIALISTA EN EDUCACION", "ESPECIALISTA DE EDUCACION",
+        "ESPECIALISTA PEDAGOG",
+        "ASGESE",
+        "SUPERVISION Y GESTION DEL SERVICIO EDUCATIVO",
+    )
+    if any(has_kw(kw) for kw in pedagogica_kw):
+        return "equipo de gestión pedagógica"
+    if any(has_token(t) for t in ("AGP", "DGP", "UGP", "EBR", "EBA", "EBE", "EBTH", "ICE")):
+        return "equipo de gestión pedagógica"
+
+    # 3) Gestion institucional
+    institucional_kw = (
+        "INSTITUCIONAL",
+        "PLANIFICAC", "PLANEAMIENTO", "PLANIFICADOR",
+        "PRESUPUESTO", "RACIONALIZA", "MODERNIZACION",
+        "ESTADIST", "INVESTIGAC",
+        "CALIDAD DE LA INFORMAC", "CALIDAD DE INFORMAC",
+        "PREVAED", "COMPROMISOS DE DESEMPENO", "CONVENIO FED",
+    )
+    if any(has_kw(kw) for kw in institucional_kw):
+        return "equipo de gestión institucional"
+    if any(has_token(t) for t in ("AGI", "DGI", "UGI", "POI", "UPDI")):
+        return "equipo de gestión institucional"
+
+    # 4) Administrativo
+    administrativo_kw = (
+        "ADMINISTRATIV", "ADMINISTRACION", "ADMINISTRADOR",
+        "ABASTECIMIENTO", "LOGISTIC",
+        "TESORER", "CONTABIL", "PATRIMONI", "ALMACEN",
+        "SECRETARI", "OFICINISTA",
+        "PERSONAL", "RECURSOS HUMANOS",
+        "ESCALAFON", "REMUNERACION", "PENSION", "PLANILLA",
+        "TRAMITE", "MESA DE PARTES", "ARCHIVO", "NOTIFIC",
+        "ASESORIA JURIDIC", "JURIDIC", "ABOGAD", "LEGAL",
+        "COMUNICAC", "IMAGEN", "RELACIONES PUB", "RELACIONISTA",
+        "INTEGRIDAD", "CONTROL INTERNO", "PROCESOS ADMIN",
+        "BIENESTAR",
+        "ATENCION AL USUARIO", "QUEJAS", "RECLAMOS", "TRANSPARENC",
+        "ACTAS Y CERTIFICADOS", "CONSTANCIA DE PAGOS",
+        "FINANZAS", "FINANCIST", "CONTADOR", "AUDITOR",
+        "INSPECTORIA", "INSPECCION",
+        "ADQUISICIONES", "CONTRATACION",
+    )
+    if any(has_kw(kw) for kw in administrativo_kw):
+        return "equipo administrativo"
+    if any(has_token(t) for t in (
+        "AGA", "DGA", "OGA", "RRHH", "ORRHH", "ARH", "EAP", "EARH",
+        "AAJ", "OEAJ", "OCI", "PAD", "CPPADD", "COPROA",
+    )):
+        return "equipo administrativo"
+
+    # 5) Default / fallback: tecnico y apoyo especializado
+    return "equipo técnico y de apoyo especializado"
+
+
 def generar_certificados_zip(
     params: dict[str, Any],
     excel_bytes: bytes,
@@ -771,6 +878,7 @@ def generar_certificados_zip(
                 apellidos = str(row.get("APELLIDOS", "")).strip()
                 notas = row.get("NOTAS", "")
                 puesto = str(row.get("NOMBRE DE PUESTO", "")).strip()
+                equipo = _clasificar_equipo(puesto)
                 iged = str(row.get("NOMBRE IGED", "")).strip().upper()
 
                 if not dni or not nombres:
@@ -812,7 +920,7 @@ def generar_certificados_zip(
                 y -= lh
 
                 c.setFont("Helvetica", 12)
-                c.drawCentredString(ancho / 2, y, f"Integrante del {puesto} de la {iged}, culminó satisfactoriamente el")
+                c.drawCentredString(ancho / 2, y, f"Integrante del {equipo} de la {iged}, culminó satisfactoriamente el")
                 y -= lh
 
                 # Ajuste dinamico solicitado:
