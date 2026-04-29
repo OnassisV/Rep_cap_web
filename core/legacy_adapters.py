@@ -2094,6 +2094,47 @@ def obtener_participantes_certificacion_para_emision(codigo: str, limit: int = 1
         return []
 
 
+def obtener_participantes_certificados_lista_excel(codigo: str, limit: int = 10000) -> list[dict[str, Any]]:
+    """Lista nominal de participantes certificados por codigo de curso, para descargar a Excel.
+
+    Devuelve los campos solicitados: DNI, APELLIDOS, NOMBRES, TELEFONO, NOMBRE IGED,
+    NIVEL DE PUESTO, PROMEDIO FINAL.
+
+    Mismo filtro que `obtener_participantes_certificacion_para_emision`:
+    - estado = 2
+    - compromiso = 20
+    - aprobados_certificados = 1
+    """
+    codigo = str(codigo or "").strip()
+    if not codigo:
+        return []
+
+    query = """
+        SELECT
+            dni AS DNI,
+            apellidos AS APELLIDOS,
+            nombres AS NOMBRES,
+            telefono_celular AS TELEFONO,
+            nombre_iged AS `NOMBRE IGED`,
+            nivel_puesto AS `NIVEL DE PUESTO`,
+            promedio_final_general AS `PROMEDIO FINAL`
+        FROM bbdd_difoca
+        WHERE codigo = %s
+          AND estado = 2
+          AND compromiso = 20
+          AND aprobados_certificados = 1
+        ORDER BY apellidos ASC, nombres ASC
+        LIMIT %s
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, (codigo, int(limit)))
+                return list(cursor.fetchall())
+    except Exception:
+        return []
+
+
 def resumir_certificados_por_region(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Agrupa certificados por region con promedio de nota final."""
     grouped: dict[str, dict[str, Any]] = {}

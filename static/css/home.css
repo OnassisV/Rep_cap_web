@@ -3586,13 +3586,19 @@ h1 {
 /* Variante de tabla para listado previo de certificación. */
 .simple-table--certificaciones .simple-table__head,
 .simple-table--certificaciones .simple-table__row {
-    grid-template-columns: 140px minmax(280px, 1.8fr) 170px;
+    grid-template-columns: 140px minmax(280px, 1.8fr) 110px 170px;
 }
 
 .cert-row-item {
     text-decoration: none;
     position: relative;
     transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    cursor: pointer;
+}
+
+.cert-row-item:focus-visible {
+    outline: 2px solid rgba(13, 95, 184, 0.55);
+    outline-offset: -2px;
 }
 
 .cert-row-item::before {
@@ -3650,6 +3656,35 @@ h1 {
     color: #b45309;
     background: rgba(217, 119, 6, 0.12);
     border: 1px solid rgba(217, 119, 6, 0.22);
+}
+
+.cert-btn-descarga-lista {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.55rem;
+    border-radius: 0.45rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #1d6f42;
+    background: rgba(29, 111, 66, 0.10);
+    border: 1px solid rgba(29, 111, 66, 0.30);
+    text-decoration: none;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.cert-btn-descarga-lista:hover {
+    background: #1d6f42;
+    color: #fff;
+    border-color: #1d6f42;
+}
+
+.cert-btn-descarga-lista--disabled {
+    color: #94a3b8;
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    pointer-events: none;
 }
 
 /* Panel de modulos en la vista detalle. */

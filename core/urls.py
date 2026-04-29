@@ -4,7 +4,13 @@
 from django.urls import path
 
 # Vistas protegidas de core.
-from .views import home_view, section_detail_view, submenu_detail_view, switch_role_view
+from .views import (
+    cert_descargar_lista_excel_view,
+    home_view,
+    section_detail_view,
+    submenu_detail_view,
+    switch_role_view,
+)
 
 
 # Namespace para resolver URLs como `core:home`.
@@ -28,4 +34,9 @@ urlpatterns = [
         switch_role_view,
         name="switch_role",
     ),  # Endpoint para cambiar modo de rol en sesion.
+    path(
+        "certificados/lista-excel/<str:codigo>/",
+        cert_descargar_lista_excel_view,
+        name="cert_descargar_lista_excel",
+    ),  # Descarga Excel con lista nominal de participantes certificados.
 ]

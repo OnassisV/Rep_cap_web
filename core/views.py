@@ -68,6 +68,7 @@ from .legacy_adapters import (
     obtener_plantilla_generada_info,
     obtener_excel_actividad_fuera_info,
     obtener_certificados_detalle,
+    obtener_participantes_certificados_lista_excel,
     obtener_participantes_retiro_manual_por_codigo,
     obtener_resumen_satisfaccion,
     obtener_resumen_estandares,
@@ -4067,3 +4068,74 @@ def switch_role_view(request):
 
     # Fallback al inicio si next no es valido.
     return redirect("core:home")
+
+
+# ---------------------------------------------------------------------------
+# Descarga de Excel: lista nominal de participantes certificados por curso
+# ---------------------------------------------------------------------------
+
+@login_required
+def cert_descargar_lista_excel_view(request, codigo: str):
+    """Descarga un Excel con la lista de participantes certificados del curso `codigo`.
+
+    Columnas: DNI, APELLIDOS, NOMBRES, TELEFONO, NOMBRE IGED, NIVEL DE PUESTO,
+    PROMEDIO FINAL.
+    """
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    codigo = str(codigo or "").strip()
+    if not codigo:
+        raise Http404("Codigo de curso requerido.")
+
+    filas = obtener_participantes_certificados_lista_excel(codigo)
+
+    columnas = [
+        "DNI", "APELLIDOS", "NOMBRES", "TELEFONO",
+        "NOMBRE IGED", "NIVEL DE PUESTO", "PROMEDIO FINAL",
+    ]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Certificados"
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="305496")
+    center = Alignment(horizontal="center", vertical="center")
+
+    for col_idx, nombre in enumerate(columnas, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=nombre)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+
+    for row_idx, fila in enumerate(filas, start=2):
+        for col_idx, nombre in enumerate(columnas, start=1):
+            valor = fila.get(nombre, "")
+            if nombre == "PROMEDIO FINAL":
+                try:
+                    valor = int(round(float(valor))) if valor not in (None, "") else ""
+                except Exception:
+                    pass
+            elif nombre == "DNI" and valor is not None:
+                valor = str(valor)
+            ws.cell(row=row_idx, column=col_idx, value=valor)
+
+    anchos = {"DNI": 12, "APELLIDOS": 28, "NOMBRES": 28, "TELEFONO": 14,
+              "NOMBRE IGED": 36, "NIVEL DE PUESTO": 28, "PROMEDIO FINAL": 16}
+    for col_idx, nombre in enumerate(columnas, start=1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = anchos.get(nombre, 18)
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    nombre_archivo = f"certificados_{codigo}.xlsx"
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
+    return response
