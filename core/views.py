@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 from uuid import uuid4
 
 # Error HTTP para retornar 404 cuando una seccion no exista.
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.core.cache import cache
 # Decorador que exige sesion autenticada activa.
 from django.contrib.auth.decorators import login_required
@@ -481,7 +481,10 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
             for e in errores_gen[:5]:
                 messages.warning(request, e)
         if n_certs > 0:
-            zip_buffer.seek(0)
+            try:
+                zip_buffer.seek(0)
+            except Exception:
+                pass
             nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
             _set_progress(
                 "ok",
@@ -490,8 +493,28 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
                 f"Completado: {n_certs} certificados. Errores: {len(errores_gen)}.",
                 100,
             )
-            resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
-            resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
+            # Si el adapter usó un archivo temporal en disco (lotes grandes),
+            # lo enviamos en streaming vía FileResponse y borramos el tmp al
+            # cerrar el response. Para BytesIO seguimos con HttpResponse.
+            _tmp_path = getattr(zip_buffer, "_cert_tmp_path", None)
+            if _tmp_path:
+                resp = FileResponse(zip_buffer, as_attachment=True, filename=nombre_zip, content_type="application/zip")
+                _orig_close = resp.close
+
+                def _close_and_cleanup():
+                    try:
+                        _orig_close()
+                    finally:
+                        try:
+                            import os as _os
+                            _os.unlink(_tmp_path)
+                        except Exception:
+                            pass
+
+                resp.close = _close_and_cleanup  # type: ignore[assignment]
+            else:
+                resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
+                resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
             if cert_cap_sel.get("id"):
                 Capacitacion.objects.filter(pk=cert_cap_sel["id"]).update(cert_pdf_emitido=True)
             return resp

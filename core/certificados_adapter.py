@@ -7,7 +7,9 @@ Recibe bytes en memoria y devuelve un ZIP con los PDFs generados.
 from __future__ import annotations
 
 import io
+import os
 import re
+import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -792,6 +794,12 @@ def generar_certificados_zip(
     es_sincronica = bool(params.get("es_sincronica", False))
     # Para sincrónicas: permite omitir el segmento "del {equipo} " del texto.
     incluir_nivel_puesto = bool(params.get("incluir_nivel_puesto", True))
+    # Tamaño de lote: cada N PDFs van a una subcarpeta Lote_NNN/ dentro del ZIP.
+    # Si el total de participantes supera este umbral, además se vuelca el ZIP
+    # a un archivo temporal en disco para evitar mantenerlo entero en RAM.
+    batch_size = int(params.get("batch_size", 300) or 300)
+    if batch_size <= 0:
+        batch_size = 300
 
     errores: list[str] = []
 
@@ -858,11 +866,25 @@ def generar_certificados_zip(
     ]
     fecha_str = f"{ahora.day} de {meses[ahora.month - 1]} de {ahora.year}"
 
-    zip_buf = io.BytesIO()
     n_ok = 0
     n_omitidos = 0
     total_filas = int(len(df_alumnos.index))
     procesadas = 0
+
+    # Para volúmenes grandes (> batch_size) escribimos el ZIP a un archivo
+    # temporal en disco; así no acumulamos los ~N MB en memoria del proceso.
+    # FileResponse en la vista lo enviará en streaming.
+    _use_disk_zip = total_filas > batch_size
+    _zip_tmp_path: str | None = None
+    if _use_disk_zip:
+        _tmp = tempfile.NamedTemporaryFile(
+            delete=False, suffix=".zip", prefix="certs_"
+        )
+        _zip_tmp_path = _tmp.name
+        _tmp.close()
+        zip_buf: Any = open(_zip_tmp_path, "wb")
+    else:
+        zip_buf = io.BytesIO()
 
     def _reportar_progreso(done: int, total: int, etapa: str) -> None:
         if not progress_callback:
@@ -875,8 +897,10 @@ def generar_certificados_zip(
 
     _reportar_progreso(0, total_filas, "iniciando")
 
-    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for _, row in df_alumnos.iterrows():
+    # ZIP_STORED: los PDFs ya están internamente comprimidos por ReportLab,
+    # ZIP_DEFLATED no aporta compresión real y multiplica el uso de RAM/CPU.
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_STORED) as zf:
+        for _idx_row, (_, row) in enumerate(df_alumnos.iterrows()):
             try:
                 dni = str(row.get("DNI", "")).strip()
                 # DNI peruano: siempre 8 digitos, completar con ceros a la izquierda
@@ -1029,8 +1053,14 @@ def generar_certificados_zip(
 
                 pdf_bytes = pdf_buf.getvalue()
                 nombre_archivo = f"DIFOCA-{dni}-{curso_codigo}.pdf"
-                zf.writestr(nombre_archivo, pdf_bytes)
+                # Agrupar en subcarpetas Lote_NNN de batch_size elementos.
+                _lote_idx = (_idx_row // batch_size) + 1
+                _lote_folder = f"Lote_{_lote_idx:03d}"
+                zf.writestr(f"{_lote_folder}/{nombre_archivo}", pdf_bytes)
                 n_ok += 1
+                # Liberar referencia al buffer del PDF cuanto antes.
+                pdf_buf.close()
+                del pdf_bytes
 
             except Exception as exc:
                 errores.append(f"Error en DNI {row.get('DNI', '?')}: {exc}")
@@ -1039,6 +1069,25 @@ def generar_certificados_zip(
                 _reportar_progreso(procesadas, total_filas, "generando")
 
     _reportar_progreso(total_filas, total_filas, "empaquetando")
+    if _use_disk_zip:
+        try:
+            zip_buf.flush()
+        except Exception:
+            pass
+        try:
+            zip_buf.close()
+        except Exception:
+            pass
+        # Reabrimos en modo lectura binaria. La vista usará FileResponse para
+        # streaming. Se marca el path en `.name` y un atributo extra para que
+        # quien consuma pueda borrar el temporal al terminar el envío.
+        final_fh = open(_zip_tmp_path, "rb")
+        try:
+            final_fh._cert_tmp_path = _zip_tmp_path  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        _reportar_progreso(total_filas, total_filas, "completado")
+        return final_fh, n_ok, errores
     zip_buf.seek(0)
     _reportar_progreso(total_filas, total_filas, "completado")
     return zip_buf, n_ok, errores
