@@ -404,12 +404,22 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
     if not codigo_fuente:
         codigo_fuente = extraer_id_capacitacion(curso_codigo)
 
+    import logging as _log_cert
+    _log_cert.getLogger("core.views").info(
+        "[generar_certificados] codigo_fuente=%s curso_codigo=%s es_sincronica=%s incluir_nivel=%s",
+        codigo_fuente, curso_codigo, cert_cap_sel.get("es_sincronica"), incluir_nivel_puesto,
+    )
+
     participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
+    _log_cert.getLogger("core.views").info(
+        "[generar_certificados] participantes encontrados=%d (codigo=%s)",
+        len(participantes_rows or []), codigo_fuente,
+    )
     if not participantes_rows:
         _set_progress("error", 0, 0, "No hay participantes aptos para certificar con los filtros requeridos.", 0)
         messages.error(
             request,
-            "No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para este curso.",
+            f"No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para el código '{codigo_fuente}'.",
         )
         return None
 
@@ -3220,11 +3230,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 elif action == "generar_certificados" and post_codigo:
                     # Reutiliza helper compartido: arma cert_cap_sel desde la BD.
                     from core.models import Capacitacion as _CapModel
+                    logger.info("POST sincronicas generar_certificados: codigo=%s", post_codigo)
                     _cap_obj = _CapModel.objects.filter(
                         cap_tipo="Capacitación sincrónica", cap_codigo=post_codigo
                     ).first()
                     if _cap_obj is None:
-                        messages.error(request, "Capacitación sincrónica no encontrada.")
+                        logger.warning("No se encontro Capacitacion sincronica con cap_codigo=%s", post_codigo)
+                        messages.error(request, f"Capacitación sincrónica no encontrada (código: {post_codigo}).")
                     else:
                         _cid = str(_cap_obj.cap_id_curso or "").strip()
                         _cap_sel = {
@@ -3235,10 +3247,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             "codigo_completo": f"{_cap_obj.cap_codigo}-{_cid}" if _cid else str(_cap_obj.cap_codigo or "").strip(),
                             "es_sincronica": True,
                         }
+                        logger.info("Helper sincronicas: codigo_completo=%s", _cap_sel["codigo_completo"])
                         resp = _handle_generar_certificados_post(request, _cap_sel)
                         if resp is not None:
                             return resp
-                        redirect_params["tab"] = "certificados"
+                    redirect_params["tab"] = "certificados"
             except Exception as exc:
                 logger.exception("Error en POST procesamiento-sincronicas: %s", exc)
                 messages.error(request, f"Error inesperado: {exc}")
