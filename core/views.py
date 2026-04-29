@@ -424,8 +424,14 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
         "curso_codigo": curso_codigo,
         "n_firmas": n_firmas,
         "tabla_width_pct": tabla_width_pct,
-            "es_sincronica": es_sincronica,
-            "incluir_nivel_puesto": incluir_nivel_puesto,
+        "es_sincronica": es_sincronica,
+        "incluir_nivel_puesto": incluir_nivel_puesto,
+    }
+
+    try:
+        def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
+            total_safe = max(int(total), 1)
+            avance = int((int(done) / total_safe) * 86)
             pct = 8 + max(0, min(86, avance))
             if etapa == "iniciando":
                 _set_progress("iniciando", done, total, "Preparando certificados…", 10)
