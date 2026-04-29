@@ -3549,13 +3549,30 @@
                                                         var pollUrl = "{% url 'core:submenu_detail' 'gestion-capacitacion' 'certificacion' %}";
                                                         var u = new URL(pollUrl, window.location.origin);
                                                         u.searchParams.set("cert_download_id", progressId);
-                                                        // Descarga vía iframe oculto: el navegador maneja el stream
-                                                        // sin recargar la página ni cargar todo el ZIP en memoria JS.
-                                                        var iframe = document.createElement("iframe");
-                                                        iframe.style.display = "none";
-                                                        iframe.src = u.toString();
-                                                        document.body.appendChild(iframe);
-                                                        mostrarExito("certificados.zip");
+                                                        // Usamos un <a download> real: el navegador lo trata como
+                                                        // descarga normal (aparece en la barra/carpeta de Descargas).
+                                                        var a = document.createElement("a");
+                                                        a.href = u.toString();
+                                                        a.download = "certificados.zip";
+                                                        a.rel = "noopener";
+                                                        document.body.appendChild(a);
+                                                        a.click();
+                                                        setTimeout(function () {
+                                                            try { document.body.removeChild(a); } catch (e) {}
+                                                        }, 2000);
+                                                        // Fallback visible: enlace clicable en el modal por si el
+                                                        // navegador bloqueó el click programático.
+                                                        if (progLabel) {
+                                                            progLabel.innerHTML =
+                                                                '✔ Certificados generados. Si no inicia la descarga, ' +
+                                                                '<a href="' + u.toString() + '" download="certificados.zip" ' +
+                                                                'style="color:#16a34a;text-decoration:underline;font-weight:600;">' +
+                                                                'haz clic aquí</a>.';
+                                                            progLabel.style.color = "#16a34a";
+                                                        }
+                                                        if (progBar)  progBar.style.width = "100%";
+                                                        if (progBar)  progBar.style.background = "linear-gradient(90deg, #16a34a, #22c55e)";
+                                                        if (closeBtn) closeBtn.hidden = false;
                                                     }
                                                     function iniciarPolling(progressId) {
                                                         detenerPolling();
