@@ -336,6 +336,114 @@ def _build_submenu_url(section_slug: str, submenu_slug: str, params: dict[str, A
     return f"{base}?{query}" if query else base
 
 
+def _run_generar_certificados_worker(
+    *,
+    user_id: int,
+    progress_key: str,
+    result_key: str,
+    params: dict[str, Any],
+    tabla_excel_bytes: bytes,
+    firma_bytes_list: list[bytes],
+    codigo_fuente: str,
+    curso_codigo: str,
+    cap_id_to_update: int | None,
+) -> None:
+    """Ejecuta la generación del ZIP en background.
+
+    Guarda el progreso en `progress_key` y, al terminar, deja el resultado
+    en `result_key` con {tmp_path, filename, n_certs, errores}.
+    """
+    from core.models import Capacitacion
+    from core.certificados_adapter import generar_certificados_zip
+    from core.legacy_adapters import obtener_participantes_certificacion_para_emision
+
+    def _set_progress(status: str, done: int, total: int, message: str, pct: int) -> None:
+        cache.set(
+            progress_key,
+            {
+                "status": status,
+                "done": int(done),
+                "total": int(total),
+                "pct": int(max(0, min(100, pct))),
+                "message": message,
+            },
+            timeout=1800,
+        )
+
+    try:
+        _set_progress("validando", 0, 0, "Cargando participantes desde base de datos…", 8)
+        participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
+        if not participantes_rows:
+            _set_progress("error", 0, 0, "No hay participantes aptos para certificar.", 0)
+            cache.set(result_key, {"status": "error", "message": "Sin participantes."}, timeout=1800)
+            return
+
+        def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
+            total_safe = max(int(total), 1)
+            avance = int((int(done) / total_safe) * 86)
+            pct = 8 + max(0, min(86, avance))
+            if etapa == "iniciando":
+                _set_progress("iniciando", done, total, "Preparando certificados…", 10)
+            elif etapa == "empaquetando":
+                _set_progress("empaquetando", done, total,
+                    f"Empaquetando ZIP final… OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}", 96)
+            elif etapa == "completado":
+                _set_progress("empaquetando", done, total,
+                    f"Generación finalizada. OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}", 99)
+            else:
+                _set_progress("generando", done, total,
+                    f"Generando certificados: {done}/{total} | OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}", pct)
+
+        zip_buffer, n_certs, errores_gen = generar_certificados_zip(
+            params, tabla_excel_bytes, firma_bytes_list,
+            progress_callback=_progress_cb, participantes_rows=participantes_rows,
+        )
+
+        if n_certs <= 0:
+            _set_progress("error", 0, 0, "No se generó ningún certificado.", 0)
+            cache.set(result_key, {"status": "error", "message": "No se generó ningún certificado."}, timeout=1800)
+            return
+
+        # Materializar a un path en disco si vino como BytesIO (totales chicos).
+        tmp_path = getattr(zip_buffer, "_cert_tmp_path", None)
+        if not tmp_path:
+            import tempfile as _tf
+            _tmp = _tf.NamedTemporaryFile(delete=False, suffix=".zip", prefix="certs_")
+            try:
+                zip_buffer.seek(0)
+                _tmp.write(zip_buffer.read())
+            finally:
+                _tmp.close()
+            tmp_path = _tmp.name
+        else:
+            try:
+                zip_buffer.close()
+            except Exception:
+                pass
+
+        nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
+        cache.set(result_key, {
+            "status": "ok",
+            "tmp_path": tmp_path,
+            "filename": nombre_zip,
+            "n_certs": n_certs,
+            "errores": errores_gen[:5],
+        }, timeout=1800)
+        _set_progress("ok", n_certs, n_certs,
+            f"Completado: {n_certs} certificados. Errores: {len(errores_gen)}. Listo para descargar.", 100)
+
+        if cap_id_to_update:
+            try:
+                Capacitacion.objects.filter(pk=cap_id_to_update).update(cert_pdf_emitido=True)
+            except Exception:
+                pass
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger("core.views").exception("Error generando certificados ZIP (worker async)")
+        _set_progress("error", 0, 0, f"Error al generar certificados: {exc}", 0)
+        cache.set(result_key, {"status": "error", "message": str(exc)}, timeout=1800)
+
+
 def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
     """Procesa POST de generación de certificados ZIP.
 
@@ -343,6 +451,11 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
     capacitaciones sincrónicas. Si genera el ZIP retorna HttpResponse, en
     caso contrario (validación, sin participantes, error) registra mensajes
     y progress en cache y retorna None para que la vista renderice el form.
+
+    Si el POST trae `async=1`, lanza la generación en un Thread y devuelve
+    inmediatamente un JsonResponse con `progress_id`. El cliente debe hacer
+    polling y, cuando vea `status="ok"`, llamar al endpoint de descarga
+    (`?cert_download_id=...`).
     """
     from core.models import Capacitacion
     from core.certificados_adapter import generar_certificados_zip
@@ -410,19 +523,6 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
         codigo_fuente, curso_codigo, cert_cap_sel.get("es_sincronica"), incluir_nivel_puesto,
     )
 
-    participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
-    _log_cert.getLogger("core.views").info(
-        "[generar_certificados] participantes encontrados=%d (codigo=%s)",
-        len(participantes_rows or []), codigo_fuente,
-    )
-    if not participantes_rows:
-        _set_progress("error", 0, 0, "No hay participantes aptos para certificar con los filtros requeridos.", 0)
-        messages.error(
-            request,
-            f"No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para el código '{codigo_fuente}'.",
-        )
-        return None
-
     tabla_excel_bytes = excel_tabla_file.read() if (incluir_reverso and excel_tabla_file) else b""
     firma_bytes_list: list[bytes] = [firma1_file.read()]
     if n_firmas == 2 and firma2_file:
@@ -437,6 +537,51 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
         "es_sincronica": es_sincronica,
         "incluir_nivel_puesto": incluir_nivel_puesto,
     }
+
+    # ── Modo asíncrono ────────────────────────────────────────────────
+    # Si el cliente pide async, lanzamos un Thread con la generación y
+    # devolvemos JSON inmediatamente. El cliente seguirá el progreso por
+    # polling y bajará el ZIP por GET con `cert_download_id` cuando termine.
+    # Esto evita que proxies (Railway, etc.) corten conexiones largas.
+    if str(request.POST.get("async", "")).strip() == "1":
+        import threading as _threading
+        result_key = f"cert_result:{request.user.id}:{cert_progress_id}"
+        cache.set(result_key, {"status": "pending"}, timeout=1800)
+        _t = _threading.Thread(
+            target=_run_generar_certificados_worker,
+            kwargs={
+                "user_id": request.user.id,
+                "progress_key": progress_key,
+                "result_key": result_key,
+                "params": params,
+                "tabla_excel_bytes": tabla_excel_bytes,
+                "firma_bytes_list": firma_bytes_list,
+                "codigo_fuente": codigo_fuente,
+                "curso_codigo": curso_codigo,
+                "cap_id_to_update": cert_cap_sel.get("id"),
+            },
+            daemon=True,
+        )
+        _t.start()
+        return JsonResponse({
+            "async": True,
+            "status": "started",
+            "progress_id": cert_progress_id,
+        })
+
+    # ── Modo síncrono (legado): carga participantes y genera en este request.
+    participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
+    _log_cert.getLogger("core.views").info(
+        "[generar_certificados] participantes encontrados=%d (codigo=%s)",
+        len(participantes_rows or []), codigo_fuente,
+    )
+    if not participantes_rows:
+        _set_progress("error", 0, 0, "No hay participantes aptos para certificar con los filtros requeridos.", 0)
+        messages.error(
+            request,
+            f"No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para el código '{codigo_fuente}'.",
+        )
+        return None
 
     try:
         def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
@@ -4130,6 +4275,42 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "message": "Sin datos de progreso.",
             }
             return JsonResponse(payload)
+
+        # Endpoint de descarga del ZIP generado en modo asíncrono.
+        cert_download_id = str(request.GET.get("cert_download_id", "")).strip()
+        if request.method == "GET" and cert_download_id:
+            result_key = f"cert_result:{request.user.id}:{cert_download_id}"
+            result = cache.get(result_key)
+            if not result or result.get("status") != "ok":
+                raise Http404("El ZIP solicitado no está disponible o aún no se generó.")
+            tmp_path = result.get("tmp_path")
+            filename = result.get("filename") or "certificados.zip"
+            if not tmp_path:
+                raise Http404("Ruta del ZIP no disponible.")
+            try:
+                fh = open(tmp_path, "rb")
+            except FileNotFoundError:
+                cache.delete(result_key)
+                raise Http404("El archivo ZIP ya fue eliminado.")
+            resp = FileResponse(fh, as_attachment=True, filename=filename, content_type="application/zip")
+            _orig_close = resp.close
+
+            def _close_and_cleanup():
+                try:
+                    _orig_close()
+                finally:
+                    try:
+                        import os as _os
+                        _os.unlink(tmp_path)
+                    except Exception:
+                        pass
+                    try:
+                        cache.delete(result_key)
+                    except Exception:
+                        pass
+
+            resp.close = _close_and_cleanup  # type: ignore[assignment]
+            return resp
 
         if request.method == "POST":
             action = str(request.POST.get("action", "")).strip()

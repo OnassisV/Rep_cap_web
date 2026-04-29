@@ -3535,12 +3535,27 @@
                                                     if (!form) return;
 
                                                     var pollTimer = null;
+                                                    var descargaDisparada = false;
                                                     function setProgreso(pct, msg) {
                                                         if (progBar)   progBar.style.width = pct + "%";
                                                         if (progLabel) progLabel.textContent = msg;
                                                     }
                                                     function detenerPolling() {
                                                         if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+                                                    }
+                                                    function dispararDescarga(progressId) {
+                                                        if (descargaDisparada) return;
+                                                        descargaDisparada = true;
+                                                        var pollUrl = "{% url 'core:submenu_detail' 'gestion-capacitacion' 'certificacion' %}";
+                                                        var u = new URL(pollUrl, window.location.origin);
+                                                        u.searchParams.set("cert_download_id", progressId);
+                                                        // Descarga vía iframe oculto: el navegador maneja el stream
+                                                        // sin recargar la página ni cargar todo el ZIP en memoria JS.
+                                                        var iframe = document.createElement("iframe");
+                                                        iframe.style.display = "none";
+                                                        iframe.src = u.toString();
+                                                        document.body.appendChild(iframe);
+                                                        mostrarExito("certificados.zip");
                                                     }
                                                     function iniciarPolling(progressId) {
                                                         detenerPolling();
@@ -3560,9 +3575,16 @@
                                                                 if (typeof data.pct === "number") {
                                                                     setProgreso(data.pct, data.message || "Procesando…");
                                                                 }
+                                                                if (data.status === "ok") {
+                                                                    detenerPolling();
+                                                                    dispararDescarga(progressId);
+                                                                } else if (data.status === "error") {
+                                                                    detenerPolling();
+                                                                    mostrarError(data.message || "Error al generar certificados.");
+                                                                }
                                                             })
                                                             .catch(function () {});
-                                                        }, 500);
+                                                        }, 1000);
                                                     }
                                                     function mostrarExito(nombre) {
                                                         detenerPolling();
@@ -3586,12 +3608,17 @@
                                                         if (progLabel) progLabel.style.color = "";
                                                         if (progBar)   progBar.style.background = "";
                                                         setProgreso(0, "Iniciando…");
+                                                        descargaDisparada = false;
 
                                                         var fd = new FormData(form);
                                                         var progressId = (window.crypto && window.crypto.randomUUID)
                                                             ? window.crypto.randomUUID().replace(/-/g, "")
                                                             : String(Date.now()) + String(Math.random()).slice(2);
                                                         fd.append("progress_id", progressId);
+                                                        // Modo asíncrono: el servidor lanza un thread y devuelve JSON
+                                                        // inmediatamente. La descarga la dispara el polling al ver status="ok".
+                                                        // Esto evita que proxies (Railway) corten conexiones largas.
+                                                        fd.append("async", "1");
                                                         iniciarPolling(progressId);
 
                                                         fetch(window.location.href, {
@@ -3601,19 +3628,14 @@
                                                         })
                                                         .then(function (resp) {
                                                             var ct = resp.headers.get("Content-Type") || "";
-                                                            if (ct.indexOf("zip") !== -1 || ct.indexOf("octet-stream") !== -1) {
-                                                                var cd = resp.headers.get("Content-Disposition") || "";
-                                                                var m  = cd.match(/filename="?([^"\n]+)"?/);
-                                                                var nombre = m ? m[1] : "certificados.zip";
-                                                                return resp.blob().then(function (blob) {
-                                                                    var url = URL.createObjectURL(blob);
-                                                                    var a = document.createElement("a");
-                                                                    a.href = url; a.download = nombre;
-                                                                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                                                                    setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
-                                                                    mostrarExito(nombre);
+                                                            if (ct.indexOf("json") !== -1) {
+                                                                return resp.json().then(function (data) {
+                                                                    if (!data || data.status !== "started") {
+                                                                        mostrarError((data && data.message) || "No se pudo iniciar la generación.");
+                                                                    }
                                                                 });
                                                             }
+                                                            // HTML: hubo error de validación o sesión expiró.
                                                             return resp.text().then(function (html) {
                                                                 var tmp = document.createElement("div");
                                                                 tmp.innerHTML = html;
