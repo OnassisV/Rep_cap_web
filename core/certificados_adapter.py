@@ -875,6 +875,10 @@ def generar_certificados_zip(
         for _, row in df_alumnos.iterrows():
             try:
                 dni = str(row.get("DNI", "")).strip()
+                # DNI peruano: siempre 8 digitos, completar con ceros a la izquierda
+                # (afecta nombre del archivo PDF, codigo del certificado y URL del QR).
+                if dni and dni.isdigit():
+                    dni = dni.zfill(8)
                 nombres = str(row.get("NOMBRES", "")).strip()
                 apellidos = str(row.get("APELLIDOS", "")).strip()
                 notas = row.get("NOTAS", "")
