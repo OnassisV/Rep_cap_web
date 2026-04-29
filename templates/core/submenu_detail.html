@@ -3478,11 +3478,22 @@
                                                                 </select>
                                                             </div>
 
-                                                            <div class="cert-actions">
+                                                            <div class="cert-actions" id="sync-cert-actions-wrap">
                                                                 <button type="submit" class="gf-btn gf-btn--primary">
                                                                     Generar certificados ZIP
                                                                 </button>
                                                                 <button type="button" class="gf-btn" onclick="syncCertCerrarModal()">Cancelar</button>
+                                                            </div>
+
+                                                            <!-- Barra de progreso (oculta hasta enviar) -->
+                                                            <div id="sync-cert-progress-wrap" hidden>
+                                                                <div class="cert-progress">
+                                                                    <div class="cert-progress__bar" id="sync-cert-progress-bar"></div>
+                                                                </div>
+                                                                <p class="cert-progress__label" id="sync-cert-progress-label">Iniciando…</p>
+                                                                <div style="text-align:center;margin-top:.9rem;">
+                                                                    <button type="button" id="sync-cert-progress-close" class="gf-btn" hidden onclick="syncCertCerrarModal()">Cerrar</button>
+                                                                </div>
                                                             </div>
                                                         </form>
                                                     </div>
@@ -3512,6 +3523,110 @@
                                                     if (!overlay) return;
                                                     overlay.addEventListener("click", function (e) {
                                                         if (e.target === overlay) syncCertCerrarModal();
+                                                    });
+                                                })();
+                                                (function () {
+                                                    var form      = document.getElementById("sync-cert-form");
+                                                    var actWrap   = document.getElementById("sync-cert-actions-wrap");
+                                                    var progWrap  = document.getElementById("sync-cert-progress-wrap");
+                                                    var progBar   = document.getElementById("sync-cert-progress-bar");
+                                                    var progLabel = document.getElementById("sync-cert-progress-label");
+                                                    var closeBtn  = document.getElementById("sync-cert-progress-close");
+                                                    if (!form) return;
+
+                                                    var pollTimer = null;
+                                                    function setProgreso(pct, msg) {
+                                                        if (progBar)   progBar.style.width = pct + "%";
+                                                        if (progLabel) progLabel.textContent = msg;
+                                                    }
+                                                    function detenerPolling() {
+                                                        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+                                                    }
+                                                    function iniciarPolling(progressId) {
+                                                        detenerPolling();
+                                                        // Endpoint de progreso vive en el modulo de certificacion regular.
+                                                        var pollUrl = "{% url 'core:submenu_detail' 'gestion-capacitacion' 'certificacion' %}";
+                                                        pollTimer = setInterval(function () {
+                                                            var u = new URL(pollUrl, window.location.origin);
+                                                            u.searchParams.set("cert_progress_id", progressId);
+                                                            fetch(u.toString(), {
+                                                                method: "GET",
+                                                                credentials: "same-origin",
+                                                                headers: { "X-Requested-With": "XMLHttpRequest" },
+                                                            })
+                                                            .then(function (r) { return r.ok ? r.json() : null; })
+                                                            .then(function (data) {
+                                                                if (!data) return;
+                                                                if (typeof data.pct === "number") {
+                                                                    setProgreso(data.pct, data.message || "Procesando…");
+                                                                }
+                                                            })
+                                                            .catch(function () {});
+                                                        }, 500);
+                                                    }
+                                                    function mostrarExito(nombre) {
+                                                        detenerPolling();
+                                                        setProgreso(100, "✔ Certificados generados. Descargando " + nombre + "…");
+                                                        if (progLabel) progLabel.style.color = "#16a34a";
+                                                        if (progBar)   progBar.style.background = "linear-gradient(90deg, #16a34a, #22c55e)";
+                                                        if (closeBtn)  closeBtn.hidden = false;
+                                                    }
+                                                    function mostrarError(msg) {
+                                                        detenerPolling();
+                                                        setProgreso(0, "");
+                                                        if (progWrap) progWrap.hidden = true;
+                                                        if (actWrap)  actWrap.hidden  = false;
+                                                        alert(msg || "Error al generar certificados.");
+                                                    }
+                                                    form.addEventListener("submit", function (e) {
+                                                        e.preventDefault();
+                                                        if (actWrap)  actWrap.hidden  = true;
+                                                        if (progWrap) progWrap.hidden = false;
+                                                        if (closeBtn) closeBtn.hidden = true;
+                                                        if (progLabel) progLabel.style.color = "";
+                                                        if (progBar)   progBar.style.background = "";
+                                                        setProgreso(0, "Iniciando…");
+
+                                                        var fd = new FormData(form);
+                                                        var progressId = (window.crypto && window.crypto.randomUUID)
+                                                            ? window.crypto.randomUUID().replace(/-/g, "")
+                                                            : String(Date.now()) + String(Math.random()).slice(2);
+                                                        fd.append("progress_id", progressId);
+                                                        iniciarPolling(progressId);
+
+                                                        fetch(window.location.href, {
+                                                            method: "POST",
+                                                            body: fd,
+                                                            credentials: "same-origin",
+                                                        })
+                                                        .then(function (resp) {
+                                                            var ct = resp.headers.get("Content-Type") || "";
+                                                            if (ct.indexOf("zip") !== -1 || ct.indexOf("octet-stream") !== -1) {
+                                                                var cd = resp.headers.get("Content-Disposition") || "";
+                                                                var m  = cd.match(/filename="?([^"\n]+)"?/);
+                                                                var nombre = m ? m[1] : "certificados.zip";
+                                                                return resp.blob().then(function (blob) {
+                                                                    var url = URL.createObjectURL(blob);
+                                                                    var a = document.createElement("a");
+                                                                    a.href = url; a.download = nombre;
+                                                                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                                                                    setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
+                                                                    mostrarExito(nombre);
+                                                                });
+                                                            }
+                                                            return resp.text().then(function (html) {
+                                                                var tmp = document.createElement("div");
+                                                                tmp.innerHTML = html;
+                                                                var msgs = tmp.querySelectorAll(".messages li, .alert, [class*='message']");
+                                                                var txt = msgs.length
+                                                                    ? Array.prototype.map.call(msgs, function(n){ return n.textContent.trim(); }).join(" | ")
+                                                                    : "Error al generar certificados.";
+                                                                mostrarError(txt);
+                                                            });
+                                                        })
+                                                        .catch(function () {
+                                                            mostrarError("Error de conexión. Verifica tu red e inténtalo nuevamente.");
+                                                        });
                                                     });
                                                 })();
                                             </script>
