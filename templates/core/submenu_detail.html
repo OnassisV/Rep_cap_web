@@ -3417,6 +3417,26 @@
                                                             </div>
 
                                                             <div class="cert-row">
+                                                                <label class="cert-label">¿Incluir nivel de puesto en el certificado? <span class="cert-required">*</span></label>
+                                                                <div class="cert-radio-group">
+                                                                    <label class="cert-radio-label">
+                                                                        <input type="radio" name="incluir_nivel_puesto" value="si"
+                                                                               {% if sync_cert_form_incluir_nivel_puesto != 'no' %}checked{% endif %}>
+                                                                        Sí, incluir nivel de puesto
+                                                                    </label>
+                                                                    <label class="cert-radio-label">
+                                                                        <input type="radio" name="incluir_nivel_puesto" value="no"
+                                                                               {% if sync_cert_form_incluir_nivel_puesto == 'no' %}checked{% endif %}>
+                                                                        No incluir
+                                                                    </label>
+                                                                </div>
+                                                                <span class="cert-hint">
+                                                                    Con nivel: «Integrante del [nivel] de la [IGED], culminó satisfactoriamente la…».
+                                                                    Sin nivel: «Integrante de la [IGED], culminó satisfactoriamente el…».
+                                                                </span>
+                                                            </div>
+
+                                                            <div class="cert-row">
                                                                 <label class="cert-label">Número de firmas <span class="cert-required">*</span></label>
                                                                 <div class="cert-radio-group">
                                                                     <label class="cert-radio-label">

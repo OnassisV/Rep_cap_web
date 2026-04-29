@@ -376,6 +376,9 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
     n_firmas = int(request.POST.get("n_firmas", "1"))
     tabla_width_pct = float(request.POST.get("tabla_width_pct", "0.85"))
     incluir_reverso = str(request.POST.get("incluir_reverso", "si")).strip().lower() == "si"
+    # Solo aplica para sincrónicas: si NO incluye nivel, frase omite "del {equipo} ".
+    incluir_nivel_puesto = str(request.POST.get("incluir_nivel_puesto", "si")).strip().lower() == "si"
+    es_sincronica = bool(cert_cap_sel.get("es_sincronica", False))
 
     errores_form: list[str] = []
     if not curso_nombre:
@@ -421,12 +424,8 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
         "curso_codigo": curso_codigo,
         "n_firmas": n_firmas,
         "tabla_width_pct": tabla_width_pct,
-    }
-
-    try:
-        def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
-            total_safe = max(int(total), 1)
-            avance = int((int(done) / total_safe) * 86)
+            "es_sincronica": es_sincronica,
+            "incluir_nivel_puesto": incluir_nivel_puesto,
             pct = 8 + max(0, min(86, avance))
             if etapa == "iniciando":
                 _set_progress("iniciando", done, total, "Preparando certificados…", 10)
@@ -3228,6 +3227,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             "cap_codigo": str(_cap_obj.cap_codigo or "").strip(),
                             "cap_id_curso": _cid,
                             "codigo_completo": f"{_cap_obj.cap_codigo}-{_cid}" if _cid else str(_cap_obj.cap_codigo or "").strip(),
+                            "es_sincronica": True,
                         }
                         resp = _handle_generar_certificados_post(request, _cap_sel)
                         if resp is not None:
@@ -3632,6 +3632,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "sync_cert_form_curso_descripcion": str(request.POST.get("curso_descripcion", "")) if request.method == "POST" else "",
                 "sync_cert_form_n_firmas": str(request.POST.get("n_firmas", "1")) if request.method == "POST" else "1",
                 "sync_cert_form_incluir_reverso": str(request.POST.get("incluir_reverso", "si")) if request.method == "POST" else "si",
+                "sync_cert_form_incluir_nivel_puesto": str(request.POST.get("incluir_nivel_puesto", "si")) if request.method == "POST" else "si",
                 "sync_cert_form_tabla_width_pct": str(request.POST.get("tabla_width_pct", "0.85")) if request.method == "POST" else "0.85",
             })
           except Exception as exc:

@@ -788,6 +788,10 @@ def generar_certificados_zip(
     curso_codigo = str(params.get("curso_codigo", "")).strip()
     n_firmas = int(params.get("n_firmas", 1) or 1)
     tabla_width_pct = float(params.get("tabla_width_pct", 0.92) or 0.92)
+    # Modo "capacitación sincrónica": cambia el cierre de "el" -> "la".
+    es_sincronica = bool(params.get("es_sincronica", False))
+    # Para sincrónicas: permite omitir el segmento "del {equipo} " del texto.
+    incluir_nivel_puesto = bool(params.get("incluir_nivel_puesto", True))
 
     errores: list[str] = []
 
@@ -925,7 +929,14 @@ def generar_certificados_zip(
                 y -= lh
 
                 c.setFont("Helvetica", 12)
-                c.drawCentredString(ancho / 2, y, f"Integrante del {equipo} de la {iged}, culminó satisfactoriamente el")
+                # Cierre: "el" para regulares; "la" para sincrónicas (concuerda con "capacitación").
+                _cierre = "la" if es_sincronica else "el"
+                if es_sincronica and not incluir_nivel_puesto:
+                    # Sin nivel de puesto: "Integrante de la {iged}, ..."
+                    _frase_intro = f"Integrante de la {iged}, culminó satisfactoriamente {_cierre}"
+                else:
+                    _frase_intro = f"Integrante del {equipo} de la {iged}, culminó satisfactoriamente {_cierre}"
+                c.drawCentredString(ancho / 2, y, _frase_intro)
                 y -= lh
 
                 # Ajuste dinamico solicitado:
