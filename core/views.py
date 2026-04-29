@@ -336,6 +336,161 @@ def _build_submenu_url(section_slug: str, submenu_slug: str, params: dict[str, A
     return f"{base}?{query}" if query else base
 
 
+def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
+    """Procesa POST de generación de certificados ZIP.
+
+    Reusable desde el módulo de certificación regular y desde el flujo de
+    capacitaciones sincrónicas. Si genera el ZIP retorna HttpResponse, en
+    caso contrario (validación, sin participantes, error) registra mensajes
+    y progress en cache y retorna None para que la vista renderice el form.
+    """
+    from core.models import Capacitacion
+    from core.certificados_adapter import generar_certificados_zip
+    from core.legacy_adapters import obtener_participantes_certificacion_para_emision
+
+    cert_progress_id = str(request.POST.get("progress_id", "")).strip() or uuid4().hex
+    progress_key = f"cert_progress:{request.user.id}:{cert_progress_id}"
+
+    def _set_progress(status: str, done: int, total: int, message: str, pct: int) -> None:
+        cache.set(
+            progress_key,
+            {
+                "status": status,
+                "done": int(done),
+                "total": int(total),
+                "pct": int(max(0, min(100, pct))),
+                "message": message,
+            },
+            timeout=1800,
+        )
+
+    _set_progress("iniciando", 0, 0, "Preparando generación…", 3)
+
+    excel_tabla_file = request.FILES.get("excel_tabla")
+    firma1_file = request.FILES.get("firma1")
+    firma2_file = request.FILES.get("firma2")
+
+    curso_nombre = str(request.POST.get("curso_nombre", "")).strip()
+    curso_descripcion = str(request.POST.get("curso_descripcion", "")).strip()
+    curso_codigo = str(request.POST.get("curso_codigo", "")).strip()
+    n_firmas = int(request.POST.get("n_firmas", "1"))
+    tabla_width_pct = float(request.POST.get("tabla_width_pct", "0.85"))
+    incluir_reverso = str(request.POST.get("incluir_reverso", "si")).strip().lower() == "si"
+
+    errores_form: list[str] = []
+    if not curso_nombre:
+        errores_form.append("El nombre del curso es obligatorio.")
+    if incluir_reverso and not excel_tabla_file:
+        errores_form.append("Debes adjuntar el Excel con la tabla del reverso (.xlsx).")
+    if not firma1_file:
+        errores_form.append("Debes adjuntar al menos la Firma 1.")
+    if n_firmas == 2 and not firma2_file:
+        errores_form.append("Seleccionaste 2 firmas pero no adjuntaste la Firma 2.")
+
+    if errores_form:
+        _set_progress("error", 0, 0, "Error de validación del formulario.", 0)
+        for msg in errores_form:
+            messages.error(request, msg)
+        return None
+
+    _set_progress("validando", 0, 0, "Cargando participantes desde base de datos…", 8)
+
+    codigo_fuente = str(cert_cap_sel.get("codigo_completo") or "").strip()
+    if not codigo_fuente:
+        codigo_fuente = str(cert_cap_sel.get("cap_id_curso") or "").strip()
+    if not codigo_fuente:
+        codigo_fuente = extraer_id_capacitacion(curso_codigo)
+
+    participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
+    if not participantes_rows:
+        _set_progress("error", 0, 0, "No hay participantes aptos para certificar con los filtros requeridos.", 0)
+        messages.error(
+            request,
+            "No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para este curso.",
+        )
+        return None
+
+    tabla_excel_bytes = excel_tabla_file.read() if (incluir_reverso and excel_tabla_file) else b""
+    firma_bytes_list: list[bytes] = [firma1_file.read()]
+    if n_firmas == 2 and firma2_file:
+        firma_bytes_list.append(firma2_file.read())
+
+    params = {
+        "curso_nombre": curso_nombre,
+        "curso_descripcion": curso_descripcion,
+        "curso_codigo": curso_codigo,
+        "n_firmas": n_firmas,
+        "tabla_width_pct": tabla_width_pct,
+    }
+
+    try:
+        def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
+            total_safe = max(int(total), 1)
+            avance = int((int(done) / total_safe) * 86)
+            pct = 8 + max(0, min(86, avance))
+            if etapa == "iniciando":
+                _set_progress("iniciando", done, total, "Preparando certificados…", 10)
+            elif etapa == "empaquetando":
+                _set_progress(
+                    "empaquetando",
+                    done,
+                    total,
+                    f"Empaquetando ZIP final… OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
+                    96,
+                )
+            elif etapa == "completado":
+                _set_progress(
+                    "completado",
+                    done,
+                    total,
+                    f"Generación finalizada. OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
+                    99,
+                )
+            else:
+                _set_progress(
+                    "generando",
+                    done,
+                    total,
+                    f"Generando certificados: {done}/{total} | OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
+                    pct,
+                )
+
+        zip_buffer, n_certs, errores_gen = generar_certificados_zip(
+            params,
+            tabla_excel_bytes,
+            firma_bytes_list,
+            progress_callback=_progress_cb,
+            participantes_rows=participantes_rows,
+        )
+        if errores_gen:
+            for e in errores_gen[:5]:
+                messages.warning(request, e)
+        if n_certs > 0:
+            zip_buffer.seek(0)
+            nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
+            _set_progress(
+                "ok",
+                n_certs,
+                n_certs,
+                f"Completado: {n_certs} certificados. Errores: {len(errores_gen)}.",
+                100,
+            )
+            resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
+            resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
+            if cert_cap_sel.get("id"):
+                Capacitacion.objects.filter(pk=cert_cap_sel["id"]).update(cert_pdf_emitido=True)
+            return resp
+        _set_progress("error", 0, 0, "No se generó ningún certificado.", 0)
+        messages.error(request, "No se generó ningún certificado. Revisa los datos del curso y la tabla del reverso.")
+        return None
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger("core.views").exception("Error generando certificados ZIP")
+        _set_progress("error", 0, 0, f"Error al generar certificados: {exc}", 0)
+        messages.error(request, f"Error al generar certificados: {exc}")
+        return None
+
+
 def _valor_por_defecto_registro_capacitacion() -> dict[str, str]:
     """Retorna valores iniciales del formulario de registro de capacitacion."""
     return {
@@ -3056,6 +3211,28 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         redirect_params["tab"] = "resultado"
                     else:
                         messages.error(request, resultado.get("error", "Error en el procesamiento."))
+
+                elif action == "generar_certificados" and post_codigo:
+                    # Reutiliza helper compartido: arma cert_cap_sel desde la BD.
+                    from core.models import Capacitacion as _CapModel
+                    _cap_obj = _CapModel.objects.filter(
+                        cap_tipo="Capacitación sincrónica", cap_codigo=post_codigo
+                    ).first()
+                    if _cap_obj is None:
+                        messages.error(request, "Capacitación sincrónica no encontrada.")
+                    else:
+                        _cid = str(_cap_obj.cap_id_curso or "").strip()
+                        _cap_sel = {
+                            "id": int(_cap_obj.id or 0),
+                            "cap_nombre": str(_cap_obj.cap_nombre or "").strip(),
+                            "cap_codigo": str(_cap_obj.cap_codigo or "").strip(),
+                            "cap_id_curso": _cid,
+                            "codigo_completo": f"{_cap_obj.cap_codigo}-{_cid}" if _cid else str(_cap_obj.cap_codigo or "").strip(),
+                        }
+                        resp = _handle_generar_certificados_post(request, _cap_sel)
+                        if resp is not None:
+                            return resp
+                        redirect_params["tab"] = "certificados"
             except Exception as exc:
                 logger.exception("Error en POST procesamiento-sincronicas: %s", exc)
                 messages.error(request, f"Error inesperado: {exc}")
@@ -3364,6 +3541,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             sync_tabs = [
                 {"slug": "archivos", "titulo": "Archivos"},
                 {"slug": "resultado", "titulo": "Resultado"},
+                {"slug": "certificados", "titulo": "Certificados"},
             ]
             tabs_validos = {t["slug"] for t in sync_tabs}
             sync_tab_activo = tab_param if tab_param in tabs_validos else "archivos"
@@ -3410,6 +3588,35 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             if sync_codigo_sel:
                 sync_resultado = obtener_resultado_procesamiento(sync_codigo_sel)
 
+            # Contexto de certificación (compartido con módulo de certificación regular).
+            sync_cap_sel: dict[str, Any] = {}
+            sync_cert_n_participantes = 0
+            if sync_codigo_sel:
+                _cap_sync_obj = next(
+                    (c for c in _proc_qs if str(c.cap_codigo or "").strip() == sync_codigo_sel),
+                    None,
+                )
+                if _cap_sync_obj is not None:
+                    _cap_id_curso = str(_cap_sync_obj.cap_id_curso or "").strip()
+                    _codigo_completo = (
+                        f"{_cap_sync_obj.cap_codigo}-{_cap_id_curso}" if _cap_id_curso else str(_cap_sync_obj.cap_codigo or "").strip()
+                    )
+                    sync_cap_sel = {
+                        "id": int(_cap_sync_obj.id or 0),
+                        "cap_nombre": str(_cap_sync_obj.cap_nombre or "").strip(),
+                        "cap_codigo": str(_cap_sync_obj.cap_codigo or "").strip(),
+                        "cap_id_curso": _cap_id_curso,
+                        "codigo_completo": _codigo_completo,
+                        "cap_anio": _cap_sync_obj.cap_anio,
+                        "cert_pdf_emitido": bool(getattr(_cap_sync_obj, "cert_pdf_emitido", False)),
+                    }
+                    if sync_tab_activo == "certificados":
+                        try:
+                            from core.legacy_adapters import obtener_participantes_certificacion_para_emision as _get_cert_parts
+                            sync_cert_n_participantes = len(_get_cert_parts(_codigo_completo))
+                        except Exception:
+                            sync_cert_n_participantes = -1
+
             context.update({
                 "sync_tabs": sync_tabs,
                 "sync_tab_activo": sync_tab_activo,
@@ -3417,6 +3624,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "sync_archivos_info": sync_archivos_info,
                 "sync_cards": sync_cards,
                 "sync_resultado": sync_resultado,
+                # Para el tab "certificados": reusa el modal compartido.
+                "sync_cap_sel": sync_cap_sel,
+                "sync_cert_n_participantes": sync_cert_n_participantes,
+                "sync_cert_form_curso_nombre": str(request.POST.get("curso_nombre", "")) if request.method == "POST" else (sync_cap_sel.get("cap_nombre", "") if sync_cap_sel else ""),
+                "sync_cert_form_curso_codigo": str(request.POST.get("curso_codigo", "")) if request.method == "POST" else (sync_cap_sel.get("codigo_completo", "") if sync_cap_sel else ""),
+                "sync_cert_form_curso_descripcion": str(request.POST.get("curso_descripcion", "")) if request.method == "POST" else "",
+                "sync_cert_form_n_firmas": str(request.POST.get("n_firmas", "1")) if request.method == "POST" else "1",
+                "sync_cert_form_incluir_reverso": str(request.POST.get("incluir_reverso", "si")) if request.method == "POST" else "si",
+                "sync_cert_form_tabla_width_pct": str(request.POST.get("tabla_width_pct", "0.85")) if request.method == "POST" else "0.85",
             })
           except Exception as exc:
             logger.exception("Error en GET procesamiento-sincronicas: %s", exc)
@@ -3875,149 +4091,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         if request.method == "POST":
             action = str(request.POST.get("action", "")).strip()
             if action == "generar_certificados":
-                from core.certificados_adapter import generar_certificados_zip
-                from core.legacy_adapters import obtener_participantes_certificacion_para_emision
-
-                cert_progress_id = str(request.POST.get("progress_id", "")).strip() or uuid4().hex
-                progress_key = f"cert_progress:{request.user.id}:{cert_progress_id}"
-
-                def _set_progress(status: str, done: int, total: int, message: str, pct: int) -> None:
-                    cache.set(
-                        progress_key,
-                        {
-                            "status": status,
-                            "done": int(done),
-                            "total": int(total),
-                            "pct": int(max(0, min(100, pct))),
-                            "message": message,
-                        },
-                        timeout=1800,
-                    )
-
-                _set_progress("iniciando", 0, 0, "Preparando generación…", 3)
-
-                excel_tabla_file = request.FILES.get("excel_tabla")
-                firma1_file = request.FILES.get("firma1")
-                firma2_file = request.FILES.get("firma2")
-
-                curso_nombre = str(request.POST.get("curso_nombre", "")).strip()
-                curso_descripcion = str(request.POST.get("curso_descripcion", "")).strip()
-                curso_codigo = str(request.POST.get("curso_codigo", "")).strip()
-                n_firmas = int(request.POST.get("n_firmas", "1"))
-                tabla_width_pct = float(request.POST.get("tabla_width_pct", "0.85"))
-                incluir_reverso = str(request.POST.get("incluir_reverso", "si")).strip().lower() == "si"
-
-                # Validaciones básicas de campos obligatorios.
-                errores_form: list[str] = []
-                if not curso_nombre:
-                    errores_form.append("El nombre del curso es obligatorio.")
-                if incluir_reverso and not excel_tabla_file:
-                    errores_form.append("Debes adjuntar el Excel con la tabla del reverso (.xlsx).")
-                if not firma1_file:
-                    errores_form.append("Debes adjuntar al menos la Firma 1.")
-                if n_firmas == 2 and not firma2_file:
-                    errores_form.append("Seleccionaste 2 firmas pero no adjuntaste la Firma 2.")
-
-                if errores_form:
-                    _set_progress("error", 0, 0, "Error de validación del formulario.", 0)
-                    for msg in errores_form:
-                        messages.error(request, msg)
-                else:
-                    _set_progress("validando", 0, 0, "Cargando participantes desde base de datos…", 8)
-
-                    codigo_fuente = str(cert_cap_sel.get("codigo_completo") or "").strip()
-                    if not codigo_fuente:
-                        codigo_fuente = str(cert_cap_sel.get("cap_id_curso") or "").strip()
-                    if not codigo_fuente:
-                        codigo_fuente = extraer_id_capacitacion(curso_codigo)
-
-                    participantes_rows = obtener_participantes_certificacion_para_emision(codigo_fuente)
-                    if not participantes_rows:
-                        _set_progress("error", 0, 0, "No hay participantes aptos para certificar con los filtros requeridos.", 0)
-                        messages.error(
-                            request,
-                            "No se encontraron participantes con estado=2, compromiso=20 y aprueba/certifica=1 para este curso.",
-                        )
-                    else:
-                        tabla_excel_bytes = excel_tabla_file.read() if (incluir_reverso and excel_tabla_file) else b""
-                        firma_bytes_list: list[bytes] = [firma1_file.read()]
-                        if n_firmas == 2 and firma2_file:
-                            firma_bytes_list.append(firma2_file.read())
-
-                        params = {
-                            "curso_nombre": curso_nombre,
-                            "curso_descripcion": curso_descripcion,
-                            "curso_codigo": curso_codigo,
-                            "n_firmas": n_firmas,
-                            "tabla_width_pct": tabla_width_pct,
-                        }
-
-                        try:
-                            def _progress_cb(done: int, total: int, ok_count: int, err_count: int, omit_count: int, etapa: str) -> None:
-                                total_safe = max(int(total), 1)
-                                avance = int((int(done) / total_safe) * 86)
-                                pct = 8 + max(0, min(86, avance))
-                                if etapa == "iniciando":
-                                    _set_progress("iniciando", done, total, "Preparando certificados…", 10)
-                                elif etapa == "empaquetando":
-                                    _set_progress(
-                                        "empaquetando",
-                                        done,
-                                        total,
-                                        f"Empaquetando ZIP final… OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
-                                        96,
-                                    )
-                                elif etapa == "completado":
-                                    _set_progress(
-                                        "completado",
-                                        done,
-                                        total,
-                                        f"Generación finalizada. OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
-                                        99,
-                                    )
-                                else:
-                                    _set_progress(
-                                        "generando",
-                                        done,
-                                        total,
-                                        f"Generando certificados: {done}/{total} | OK: {ok_count} | Errores: {err_count} | Omitidos: {omit_count}",
-                                        pct,
-                                    )
-
-                            zip_buffer, n_certs, errores_gen = generar_certificados_zip(
-                                params,
-                                tabla_excel_bytes,
-                                firma_bytes_list,
-                                progress_callback=_progress_cb,
-                                participantes_rows=participantes_rows,
-                            )
-                            if errores_gen:
-                                for e in errores_gen[:5]:
-                                    messages.warning(request, e)
-                            if n_certs > 0:
-                                zip_buffer.seek(0)
-                                nombre_zip = f"certificados_{curso_codigo or 'lote'}.zip"
-                                _set_progress(
-                                    "ok",
-                                    n_certs,
-                                    n_certs,
-                                    f"Completado: {n_certs} certificados. Errores: {len(errores_gen)}.",
-                                    100,
-                                )
-                                resp = HttpResponse(zip_buffer.read(), content_type="application/zip")
-                                resp["Content-Disposition"] = f'attachment; filename="{nombre_zip}"'
-                                # Marca el curso como certificado en la BD.
-                                if cert_cap_sel.get("id"):
-                                    Capacitacion.objects.filter(pk=cert_cap_sel["id"]).update(cert_pdf_emitido=True)
-                                return resp
-                            else:
-                                _set_progress("error", 0, 0, "No se generó ningún certificado.", 0)
-                                messages.error(request, "No se generó ningún certificado. Revisa los datos del curso y la tabla del reverso.")
-                        except Exception as exc:
-                            import logging as _log
-                            _log.getLogger("core.views").exception("Error generando certificados ZIP")
-                            _set_progress("error", 0, 0, f"Error al generar certificados: {exc}", 0)
-                            messages.error(request, f"Error al generar certificados: {exc}")
+                # Helper compartido (tambien usado por sincronicas).
+                resp = _handle_generar_certificados_post(request, cert_cap_sel)
+                if resp is not None:
+                    return resp
 
         # GET o POST con errores: renderiza el formulario.
         context.update({

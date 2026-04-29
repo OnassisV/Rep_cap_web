@@ -3309,6 +3309,197 @@
                                         {% endif %}
                                     </div>
                                 {% endif %}
+
+                                <!-- Tab: Certificados (sincrónicas) -->
+                                {% if sync_tab_activo == "certificados" %}
+                                    <div class="sync-certificados">
+                                        <h3 style="margin-top:0">Emisión de certificados</h3>
+                                        {% if sync_cap_sel %}
+                                            <p class="module-panel__note" style="margin-top:0">
+                                                Curso: <strong>{{ sync_cap_sel.codigo_completo }}</strong> — {{ sync_cap_sel.cap_nombre }}
+                                            </p>
+
+                                            <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin:.8rem 0 1rem 0">
+                                                <a class="cert-btn-descarga-lista{% if not sync_cert_n_participantes or sync_cert_n_participantes < 0 %} cert-btn-descarga-lista--disabled{% endif %}"
+                                                   href="{% if sync_cert_n_participantes and sync_cert_n_participantes > 0 %}{% url 'core:cert_descargar_lista_excel' sync_codigo_sel %}{% else %}#{% endif %}"
+                                                   {% if not sync_cert_n_participantes or sync_cert_n_participantes < 0 %}onclick="event.preventDefault();return false;" aria-disabled="true"{% endif %}>
+                                                    Descargar Excel lista certificados
+                                                </a>
+                                                <button type="button" class="gf-btn gf-btn--primary"
+                                                    onclick="syncCertAbrirModal()"
+                                                    {% if not sync_cert_n_participantes or sync_cert_n_participantes < 0 %}disabled{% endif %}>
+                                                    Emitir certificados por lote
+                                                </button>
+                                            </div>
+
+                                            <div style="margin:.5rem 0">
+                                                {% if sync_cert_n_participantes == -1 %}
+                                                    <span style="color:#dc2626;font-size:.9rem">⚠ No se pudo consultar participantes en BD</span>
+                                                {% elif sync_cert_n_participantes == 0 %}
+                                                    <span style="color:#dc2626;font-size:.9rem">⚠ Sin participantes certificables en BD para este curso</span>
+                                                {% else %}
+                                                    <span style="color:#16a34a;font-size:.9rem">✓ <strong>{{ sync_cert_n_participantes }}</strong> participante{{ sync_cert_n_participantes|pluralize:"s" }} certificable{{ sync_cert_n_participantes|pluralize:"s" }} encontrado{{ sync_cert_n_participantes|pluralize:"s" }} en BD</span>
+                                                {% endif %}
+                                            </div>
+
+                                            <!-- Modal: Emitir certificados por lote (sincrónicas) -->
+                                            <div id="sync-cert-modal-overlay" class="cert-modal-overlay" hidden aria-modal="true" role="dialog"
+                                                 aria-labelledby="sync-cert-modal-title">
+                                                <div class="cert-modal">
+                                                    <div class="cert-modal__header">
+                                                        <h3 class="cert-modal__title" id="sync-cert-modal-title">Emitir certificados por lote</h3>
+                                                        <button type="button" class="cert-modal__close" onclick="syncCertCerrarModal()" aria-label="Cerrar">&times;</button>
+                                                    </div>
+                                                    <div class="cert-modal__body">
+                                                        <p class="module-panel__note" style="margin-top:0;margin-bottom:1rem">
+                                                            Curso: <strong>{{ sync_cap_sel.codigo_completo }}</strong> — {{ sync_cap_sel.cap_nombre }}
+                                                        </p>
+                                                        <p class="module-panel__note" style="margin-top:0">
+                                                            Adjunta el Excel de tabla del reverso (si aplica) y las imágenes de firma.
+                                                            Recibirás un ZIP con los certificados PDF listos para imprimir.
+                                                        </p>
+
+                                                        <form method="post" enctype="multipart/form-data" class="cert-form" id="sync-cert-form" novalidate>
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="generar_certificados">
+                                                            <input type="hidden" name="codigo" value="{{ sync_codigo_sel }}">
+                                                            <input type="hidden" name="anio" value="{{ anio_seleccionado|default:'' }}">
+
+                                                            <div class="cert-grid-2">
+                                                                <div class="cert-row">
+                                                                    <label class="cert-label" for="sync-cert-curso-nombre">
+                                                                        Nombre del curso <span class="cert-required">*</span>
+                                                                    </label>
+                                                                    <input type="text" id="sync-cert-curso-nombre" name="curso_nombre" class="cert-input"
+                                                                           value="{{ sync_cert_form_curso_nombre|default:'' }}" required>
+                                                                </div>
+                                                                <div class="cert-row">
+                                                                    <label class="cert-label" for="sync-cert-curso-codigo">Código del curso</label>
+                                                                    <input type="text" id="sync-cert-curso-codigo" name="curso_codigo" class="cert-input"
+                                                                           value="{{ sync_cert_form_curso_codigo|default:'' }}">
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="cert-row">
+                                                                <label class="cert-label" for="sync-cert-curso-descripcion">Descripción del curso</label>
+                                                                <textarea id="sync-cert-curso-descripcion" name="curso_descripcion" class="cert-textarea" rows="3"
+                                                                          placeholder="Breve descripción para el anverso del certificado">{{ sync_cert_form_curso_descripcion|default:'' }}</textarea>
+                                                            </div>
+
+                                                            <div class="cert-row">
+                                                                <label class="cert-label">¿Incluir tabla de actividades en el reverso?</label>
+                                                                <div class="cert-radio-group">
+                                                                    <label class="cert-radio-label">
+                                                                        <input type="radio" name="incluir_reverso" value="si"
+                                                                               {% if sync_cert_form_incluir_reverso != 'no' %}checked{% endif %}
+                                                                               onchange="syncCertToggleReverso(this)">
+                                                                        Con tabla del reverso
+                                                                    </label>
+                                                                    <label class="cert-radio-label">
+                                                                        <input type="radio" name="incluir_reverso" value="no"
+                                                                               {% if sync_cert_form_incluir_reverso == 'no' %}checked{% endif %}
+                                                                               onchange="syncCertToggleReverso(this)">
+                                                                        Sin tabla (solo anverso)
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="cert-row" id="sync-cert-excel-row"
+                                                                 style="{% if sync_cert_form_incluir_reverso == 'no' %}display:none{% else %}display:block{% endif %}">
+                                                                <label class="cert-label" for="sync-cert-excel">
+                                                                    Excel de tabla del reverso (.xlsx) <span class="cert-required">*</span>
+                                                                </label>
+                                                                <input type="file" id="sync-cert-excel" name="excel_tabla" class="gf-file-input" accept=".xlsx">
+                                                                <span class="cert-hint">
+                                                                    Solo se requiere la hoja con la tabla del reverso (Hoja2).
+                                                                    Los participantes se cargan automáticamente desde la base de datos.
+                                                                </span>
+                                                            </div>
+
+                                                            <div class="cert-row">
+                                                                <label class="cert-label">Número de firmas <span class="cert-required">*</span></label>
+                                                                <div class="cert-radio-group">
+                                                                    <label class="cert-radio-label">
+                                                                        <input type="radio" name="n_firmas" value="1"
+                                                                               {% if sync_cert_form_n_firmas != "2" %}checked{% endif %}
+                                                                               onchange="syncCertToggleFirma2(this.value)">
+                                                                        1 firma
+                                                                    </label>
+                                                                    <label class="cert-radio-label">
+                                                                        <input type="radio" name="n_firmas" value="2"
+                                                                               {% if sync_cert_form_n_firmas == "2" %}checked{% endif %}
+                                                                               onchange="syncCertToggleFirma2(this.value)">
+                                                                        2 firmas
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="cert-grid-2">
+                                                                <div class="cert-row">
+                                                                    <label class="cert-label" for="sync-cert-firma1">
+                                                                        Firma 1 — imagen PNG/JPG <span class="cert-required">*</span>
+                                                                    </label>
+                                                                    <input type="file" id="sync-cert-firma1" name="firma1" class="gf-file-input" accept=".png,.jpg,.jpeg" required>
+                                                                </div>
+                                                                <div class="cert-row" id="sync-cert-firma2-group"
+                                                                     style="{% if sync_cert_form_n_firmas == '2' %}display:block{% else %}display:none{% endif %}">
+                                                                    <label class="cert-label" for="sync-cert-firma2">Firma 2 — imagen PNG/JPG</label>
+                                                                    <input type="file" id="sync-cert-firma2" name="firma2" class="gf-file-input" accept=".png,.jpg,.jpeg">
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="cert-row">
+                                                                <label class="cert-label" for="sync-cert-tabla-width">Ancho de la tabla de actividades</label>
+                                                                <select id="sync-cert-tabla-width" name="tabla_width_pct" class="cert-select" style="max-width:220px">
+                                                                    <option value="0.75" {% if sync_cert_form_tabla_width_pct == "0.75" %}selected{% endif %}>75 % del ancho</option>
+                                                                    <option value="0.85" {% if sync_cert_form_tabla_width_pct != "0.75" and sync_cert_form_tabla_width_pct != "0.95" and sync_cert_form_tabla_width_pct != "1.0" %}selected{% endif %}>85 % del ancho</option>
+                                                                    <option value="0.95" {% if sync_cert_form_tabla_width_pct == "0.95" %}selected{% endif %}>95 % del ancho</option>
+                                                                    <option value="1.0" {% if sync_cert_form_tabla_width_pct == "1.0" %}selected{% endif %}>100 % del ancho</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="cert-actions">
+                                                                <button type="submit" class="gf-btn gf-btn--primary">
+                                                                    Generar certificados ZIP
+                                                                </button>
+                                                                <button type="button" class="gf-btn" onclick="syncCertCerrarModal()">Cancelar</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <script>
+                                                function syncCertToggleFirma2(val) {
+                                                    var g = document.getElementById("sync-cert-firma2-group");
+                                                    if (g) g.style.display = (val === "2") ? "" : "none";
+                                                }
+                                                function syncCertToggleReverso(radio) {
+                                                    var row = document.getElementById("sync-cert-excel-row");
+                                                    if (!row) return;
+                                                    row.style.display = (radio.value === "si") ? "block" : "none";
+                                                }
+                                                function syncCertAbrirModal() {
+                                                    var overlay = document.getElementById("sync-cert-modal-overlay");
+                                                    if (overlay) { overlay.hidden = false; document.body.style.overflow = "hidden"; }
+                                                }
+                                                function syncCertCerrarModal() {
+                                                    var overlay = document.getElementById("sync-cert-modal-overlay");
+                                                    if (overlay) { overlay.hidden = true; document.body.style.overflow = ""; }
+                                                }
+                                                (function () {
+                                                    var overlay = document.getElementById("sync-cert-modal-overlay");
+                                                    if (!overlay) return;
+                                                    overlay.addEventListener("click", function (e) {
+                                                        if (e.target === overlay) syncCertCerrarModal();
+                                                    });
+                                                })();
+                                            </script>
+                                        {% else %}
+                                            <p class="module-panel__note">Selecciona una capacitación para emitir certificados.</p>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
                             {% else %}
                                 <p class="module-panel__note">
                                     No hay capacitaciones sincrónicas registradas para el año {{ anio_seleccionado }}.
