@@ -4118,8 +4118,12 @@ def cert_descargar_lista_excel_view(request, codigo: str):
                     valor = int(round(float(valor))) if valor not in (None, "") else ""
                 except Exception:
                     pass
-            elif nombre == "DNI" and valor is not None:
-                valor = str(valor)
+            elif nombre == "DNI" and valor not in (None, ""):
+                # DNI peruano: siempre 8 digitos, completar con ceros a la izquierda.
+                valor = str(valor).strip().zfill(8)
+            elif nombre == "TELEFONO" and valor is not None:
+                # Conservar como texto (puede empezar con 0 o tener varios numeros).
+                valor = str(valor).strip()
             ws.cell(row=row_idx, column=col_idx, value=valor)
 
     anchos = {"DNI": 12, "APELLIDOS": 28, "NOMBRES": 28, "TELEFONO": 14,
