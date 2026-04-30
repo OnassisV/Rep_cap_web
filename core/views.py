@@ -256,6 +256,13 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "descripcion": "Procesa archivos de sincrónicas y genera plantillas de seguimiento.",
                 "adapter": "sincronicas_procesamiento",
             },
+            {
+                "slug": "certificacion-sincronicas",
+                "titulo": "Certificación",
+                "descripcion": "Emite certificados PDF por lote para capacitaciones sincrónicas.",
+                "adapter": "emitir_certificados",
+                "legacy_module": "core/certificados_adapter.py",
+            },
         ],
     },
     {
@@ -3728,7 +3735,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             sync_tabs = [
                 {"slug": "archivos", "titulo": "Archivos"},
                 {"slug": "resultado", "titulo": "Resultado"},
-                {"slug": "certificados", "titulo": "Certificados"},
             ]
             tabs_validos = {t["slug"] for t in sync_tabs}
             sync_tab_activo = tab_param if tab_param in tabs_validos else "archivos"
@@ -4148,7 +4154,12 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         return render(request, "core/gestion_forms.html", context)
 
     # ---- Modulo Certificacion: genera PDFs por lote desde Excel ----
-    if section_slug == "gestion-capacitacion" and submenu_slug == "certificacion":
+    # Se reutiliza para dos rutas:
+    #   - gestion-capacitacion / certificacion              -> NO sincrónicas
+    #   - sincronicas-evidencias / certificacion-sincronicas -> sincrónicas
+    _is_cert_regular = section_slug == "gestion-capacitacion" and submenu_slug == "certificacion"
+    _is_cert_sincronicas = section_slug == "sincronicas-evidencias" and submenu_slug == "certificacion-sincronicas"
+    if _is_cert_regular or _is_cert_sincronicas:
         from core.models import Capacitacion
 
         cert_username = str(request.user.username)
@@ -4162,7 +4173,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         cert_codigo_param = str(request.GET.get("codigo", request.POST.get("codigo_ctx", ""))).strip()
         cert_estado_param = str(request.GET.get("estado_cert", request.POST.get("estado_cert_ctx", "todos"))).strip().lower()
 
-        cert_qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica")
+        if _is_cert_sincronicas:
+            cert_qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica")
+        else:
+            cert_qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica")
         if not cert_is_admin:
             cert_qs = cert_qs.filter(creado_por__in=[cert_username, cert_display])
 
@@ -4240,6 +4254,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             (item for item in cert_lista if str(item.get("codigo_completo") or "").strip() == cert_codigo_sel),
             {},
         )
+        # Marca para que el helper compartido emita el texto correcto
+        # ("la" en sincrónicas, "el" en regulares) y para que el polling
+        # del progress endpoint use el mismo flag.
+        if cert_cap_sel:
+            cert_cap_sel["es_sincronica"] = bool(_is_cert_sincronicas)
 
         # Contar participantes certificables para el curso seleccionado
         cert_n_participantes = 0
@@ -4261,6 +4280,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "cert_total_emitidas": sum(1 for item in cert_lista_completa if item.get("cert_pdf_emitido")),
                 "cert_total_pendientes": sum(1 for item in cert_lista_completa if not item.get("cert_pdf_emitido")),
                 "cert_n_participantes": cert_n_participantes,
+                "cert_es_sincronica": bool(_is_cert_sincronicas),
             }
         )
 
@@ -4334,6 +4354,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             "cert_form_n_firmas": str(request.POST.get("n_firmas", "1")),
             "cert_form_tabla_width_pct": str(request.POST.get("tabla_width_pct", "0.85")),
             "cert_form_incluir_reverso": str(request.POST.get("incluir_reverso", "si")),
+            "cert_form_incluir_nivel_puesto": str(request.POST.get("incluir_nivel_puesto", "si")),
             "cert_form_disabled": not bool(cert_cap_sel),
         })
         return render(request, "core/submenu_detail.html", context)

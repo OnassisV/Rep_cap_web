@@ -2783,6 +2783,29 @@
                                     </span>
                                 </div>
 
+                                {% if cert_es_sincronica %}
+                                <!-- ¿Incluir nivel de puesto? (solo sincrónicas) -->
+                                <div class="cert-row">
+                                    <label class="cert-label">¿Incluir nivel de puesto en el certificado? <span class="cert-required">*</span></label>
+                                    <div class="cert-radio-group">
+                                        <label class="cert-radio-label">
+                                            <input type="radio" name="incluir_nivel_puesto" value="si"
+                                                   {% if cert_form_incluir_nivel_puesto != 'no' %}checked{% endif %}>
+                                            Sí, incluir nivel de puesto
+                                        </label>
+                                        <label class="cert-radio-label">
+                                            <input type="radio" name="incluir_nivel_puesto" value="no"
+                                                   {% if cert_form_incluir_nivel_puesto == 'no' %}checked{% endif %}>
+                                            No incluir
+                                        </label>
+                                    </div>
+                                    <span class="cert-hint">
+                                        Con nivel: «Integrante del [nivel] de la [IGED], culminó satisfactoriamente la…».
+                                        Sin nivel: «Integrante de la [IGED], culminó satisfactoriamente la…».
+                                    </span>
+                                </div>
+                                {% endif %}
+
                                 <!-- Número de firmas -->
                                 <div class="cert-row">
                                     <label class="cert-label">Número de firmas <span class="cert-required">*</span></label>
@@ -2863,7 +2886,8 @@
                                         <div class="cert-progress__bar" id="cert-progress-bar"></div>
                                     </div>
                                     <p class="cert-progress__label" id="cert-progress-label">Iniciando…</p>
-                                    <div style="text-align:center;margin-top:.9rem;">
+                                    <div style="text-align:center;margin-top:.9rem;display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;">
+                                        <a id="cert-download-link" class="gf-btn gf-btn--primary" href="#" hidden style="text-decoration:none;">⬇ Descargar ZIP</a>
                                         <button type="button" id="cert-progress-close" class="gf-btn" hidden onclick="certCerrarModal()">Cerrar</button>
                                     </div>
                                 </div>
@@ -2912,6 +2936,7 @@
                         if (!form) return;
 
                         var pollTimer = null;
+                        var descargaDisparada = false;
 
                         function setProgreso(pct, msg) {
                             if (progBar)   progBar.style.width = pct + "%";
@@ -2922,6 +2947,39 @@
                             if (pollTimer) {
                                 clearInterval(pollTimer);
                                 pollTimer = null;
+                            }
+                        }
+
+                        function dispararDescarga(progressId) {
+                            if (descargaDisparada) return;
+                            descargaDisparada = true;
+                            var u = new URL(window.location.href);
+                            u.searchParams.set("cert_download_id", progressId);
+                            u.searchParams.delete("cert_progress_id");
+                            var url = u.toString();
+
+                            // 1) Enlace visible siempre (Safari bloquea descargas no iniciadas por click).
+                            var dl = document.getElementById("cert-download-link");
+                            if (dl) {
+                                dl.href = url;
+                                dl.setAttribute("download", "certificados.zip");
+                                dl.hidden = false;
+                            }
+
+                            // 2) Intentar descarga automática.
+                            try {
+                                var a = document.createElement("a");
+                                a.href = url;
+                                a.setAttribute("download", "certificados.zip");
+                                a.rel = "noopener";
+                                document.body.appendChild(a);
+                                a.click();
+                                setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 2000);
+                            } catch (err) { /* el usuario tiene el enlace visible */ }
+
+                            mostrarExito("certificados.zip");
+                            if (progLabel) {
+                                progLabel.textContent = "✔ Certificados listos. Si la descarga no inicia, presiona “Descargar ZIP”.";
                             }
                         }
 
@@ -2943,11 +3001,18 @@
                                     if (typeof data.pct === "number") {
                                         setProgreso(data.pct, data.message || "Procesando…");
                                     }
+                                    if (data.status === "ok") {
+                                        detenerPolling();
+                                        dispararDescarga(progressId);
+                                    } else if (data.status === "error") {
+                                        detenerPolling();
+                                        mostrarError(data.message || "Error al generar certificados.");
+                                    }
                                 })
                                 .catch(function () {
-                                    // Ignorado: el POST principal ya reportara si falla.
+                                    // Ignorado: el polling reintenta.
                                 });
-                            }, 500);
+                            }, 1000);
                         }
 
                         function mostrarExito(nombreArchivo) {
@@ -2976,13 +3041,16 @@
                             if (progLabel) progLabel.style.color = "";
                             if (progBar)   progBar.style.background = "";
                             setProgreso(0, "Iniciando…");
+                            descargaDisparada = false;
 
-                            // Enviar via fetch para capturar la respuesta
+                            // Enviar via fetch en MODO ASÍNCRONO: el servidor lanza un thread
+                            // y devuelve JSON inmediato. La descarga la dispara el polling.
                             var fd = new FormData(form);
                             var progressId = (window.crypto && window.crypto.randomUUID)
                                 ? window.crypto.randomUUID().replace(/-/g, "")
                                 : String(Date.now()) + String(Math.random()).slice(2);
                             fd.append("progress_id", progressId);
+                            fd.append("async", "1");
                             iniciarPolling(progressId);
 
                             fetch(window.location.href, {
@@ -2992,34 +3060,23 @@
                             })
                             .then(function (resp) {
                                 var ct = resp.headers.get("Content-Type") || "";
-                                if (ct.indexOf("zip") !== -1 || ct.indexOf("octet-stream") !== -1) {
-                                    // Éxito: descargar ZIP y mostrar confirmación
-                                    var cd = resp.headers.get("Content-Disposition") || "";
-                                    var m  = cd.match(/filename="?([^"\n]+)"?/);
-                                    var nombre = m ? m[1] : "certificados.zip";
-                                    return resp.blob().then(function (blob) {
-                                        var url = URL.createObjectURL(blob);
-                                        var a = document.createElement("a");
-                                        a.href = url;
-                                        a.download = nombre;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                        setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
-                                        mostrarExito(nombre);
-                                    });
-                                } else {
-                                    // Error del servidor (devuelve HTML con messages)
-                                    return resp.text().then(function (html) {
-                                        var tmp = document.createElement("div");
-                                        tmp.innerHTML = html;
-                                        var msgs = tmp.querySelectorAll(".messages li, .alert, [class*='message']");
-                                        var txt = msgs.length
-                                            ? Array.prototype.map.call(msgs, function(n){ return n.textContent.trim(); }).join(" | ")
-                                            : "Error al generar certificados. Verifica el Excel e inténtalo nuevamente.";
-                                        mostrarError(txt);
+                                if (ct.indexOf("json") !== -1) {
+                                    return resp.json().then(function (data) {
+                                        if (!data || data.status !== "started") {
+                                            mostrarError((data && data.message) || "No se pudo iniciar la generación.");
+                                        }
                                     });
                                 }
+                                // HTML: error de validación o sesión expirada.
+                                return resp.text().then(function (html) {
+                                    var tmp = document.createElement("div");
+                                    tmp.innerHTML = html;
+                                    var msgs = tmp.querySelectorAll(".messages li, .alert, [class*='message']");
+                                    var txt = msgs.length
+                                        ? Array.prototype.map.call(msgs, function(n){ return n.textContent.trim(); }).join(" | ")
+                                        : "Error al generar certificados. Verifica el Excel e inténtalo nuevamente.";
+                                    mostrarError(txt);
+                                });
                             })
                             .catch(function () {
                                 mostrarError("Error de conexión. Verifica tu red e inténtalo nuevamente.");
