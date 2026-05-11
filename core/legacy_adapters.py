@@ -164,6 +164,15 @@ def crear_registro_capacitacion(
             return None
 
     try:
+        # Mapea decisiones del paso 1 a campos de caracterización oficial.
+        def _si_no(clave: str) -> str:
+            v = str(payload.get(clave, "") or "").strip().lower()
+            if v in {"si", "sí", "yes", "true", "1"}:
+                return "Sí"
+            if v in {"no", "false", "0"}:
+                return "No"
+            return ""
+
         cap = Capacitacion.objects.create(
             # Solicitud (Paso 1)
             sol_origen_institucional=_str("sol_origen_institucional", 60),
@@ -172,9 +181,7 @@ def crear_registro_capacitacion(
             sol_archivo_oficio=_str("sol_archivo_oficio", 500),
             sol_region_iged=_str("sol_region_iged", 120),
             sol_iged_nombre=_str("sol_iged_nombre", 250),
-            sol_es_replica=_str("sol_es_replica", 10),
             sol_tiene_matriz=_str("sol_tiene_matriz", 10),
-            sol_tiene_diagnostico=_str("sol_tiene_diagnostico", 10),
             sol_responde_desempeno=_str("sol_responde_desempeno", 10),
             # Identificacion
             cap_nombre=_str("cap_nombre", 255),
@@ -183,9 +190,12 @@ def crear_registro_capacitacion(
             cap_estrategia=_str("cap_estrategia", 255),
             cap_prioridad=_str("cap_prioridad", 30),
             cap_anio=_int("cap_anio") or datetime.now().year,
-            cap_direccion=_str("cap_direccion", 120),
-            pob_tipo=_str("pob_tipo", 120),
-            pob_ambito=_str("pob_ambito", 120),
+            # Caracterización inicial: el formulario ya envía los nombres
+            # oficiales del catálogo (Excel 16.04), sin alias legacy.
+            capacitacion_replicada=_si_no("capacitacion_replicada"),
+            capacitacion_diagnostico_previo=_si_no("capacitacion_diagnostico_previo"),
+            publico_objetivo_oferta=str(payload.get("publico_objetivo_oferta") or "").strip(),
+            especialista_cargo=str(creado_nombre or "").strip(),
             # Estado
             cap_estado=Capacitacion.Estado.FORMULADA,
             paso_actual=1,

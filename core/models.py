@@ -23,18 +23,21 @@ class Capacitacion(models.Model):
         CANCELADA = "Cancelada"
 
     # -- Datos de solicitud (Paso 1) -----------------------------------------
+    # Nota: sol_es_replica, sol_tiene_diagnostico fueron eliminados; ahora se
+    # usan los equivalentes de caracterización oficial (capacitacion_replicada
+    # y capacitacion_diagnostico_previo).
     sol_origen_institucional = models.CharField(max_length=60, blank=True, default="")
     sol_numero_oficio = models.CharField(max_length=120, blank=True, default="")
     sol_fecha_oficio = models.DateField(null=True, blank=True)
     sol_archivo_oficio = models.CharField(max_length=500, blank=True, default="")
     sol_region_iged = models.CharField(max_length=120, blank=True, default="")
     sol_iged_nombre = models.CharField(max_length=250, blank=True, default="")
-    sol_es_replica = models.CharField(max_length=10, blank=True, default="")
     sol_tiene_matriz = models.CharField(max_length=10, blank=True, default="")
-    sol_tiene_diagnostico = models.CharField(max_length=10, blank=True, default="")
     sol_responde_desempeno = models.CharField(max_length=10, blank=True, default="")
 
     # -- Identificacion general ----------------------------------------------
+    # Nota: cap_direccion, pob_tipo, pob_ambito fueron reemplazados por
+    # organo_formulador y publico_objetivo_oferta de la caracterización oficial.
     cap_nombre = models.CharField(max_length=512)
     cap_codigo = models.CharField(max_length=120, blank=True, default="")
     cap_id_curso = models.CharField(max_length=120, blank=True, default="")
@@ -42,9 +45,43 @@ class Capacitacion(models.Model):
     cap_estrategia = models.CharField(max_length=255, blank=True, default="")
     cap_prioridad = models.CharField(max_length=30, blank=True, default="")
     cap_anio = models.IntegerField()
-    cap_direccion = models.CharField(max_length=120, blank=True, default="")
-    pob_tipo = models.CharField(max_length=500, blank=True, default="")
-    pob_ambito = models.CharField(max_length=120, blank=True, default="")
+
+    # -- Caracterizacion oficial (Excel "caracteristicas de las capacitaciones") --
+    # Indicadores binarios (almacenados como 'Sí'/'No'/'' para uniformidad).
+    capacitacion_replicada = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_diagnostico_previo = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_virtual_sincronica = models.CharField(max_length=4, blank=True, default="")
+    autoformativo = models.CharField(max_length=4, blank=True, default="")
+    necesidad_acompanamiento = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_acompanamiento = models.CharField(max_length=4, blank=True, default="")
+    monitores = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_tutoria = models.CharField(max_length=4, blank=True, default="")
+    retroalimentacion = models.CharField(max_length=4, blank=True, default="")
+    acompanamiento_uo = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_presencialidad = models.CharField(max_length=4, blank=True, default="")
+    acciones_sostenidas = models.CharField(max_length=4, blank=True, default="")
+    recursos_virtuales = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_competencia_especifica = models.CharField(max_length=4, blank=True, default="")
+    capacitacion_aplicacion_inmediata = models.CharField(max_length=4, blank=True, default="")
+    evidencia_comparativa = models.CharField(max_length=4, blank=True, default="")
+    evaluacion_eficacia_grupo_control = models.CharField(max_length=4, blank=True, default="")
+    encuesta_satisfaccion = models.CharField(max_length=4, blank=True, default="")
+    incluido_reporte_cneb = models.CharField(max_length=4, blank=True, default="")
+    mentoria = models.CharField(max_length=4, blank=True, default="")
+    trazabilidad_servicio_educativo = models.CharField(max_length=4, blank=True, default="")
+    asesorias_personalizadas_colectivas = models.CharField(max_length=4, blank=True, default="")
+    # Clasificación institucional.
+    organo_formulador = models.CharField(max_length=255, blank=True, default="")
+    especialista_cargo = models.CharField(max_length=200, blank=True, default="")
+    publico_objetivo_oferta = models.TextField(blank=True, default="")
+    tipo_proceso_fortalecido = models.CharField(max_length=80, blank=True, default="")
+    proceso_principal_fortalecido = models.CharField(max_length=10, blank=True, default="")
+    subproceso_fortalecido = models.CharField(max_length=255, blank=True, default="")
+    rubro_tematico = models.CharField(max_length=255, blank=True, default="")
+    nivel_capacidad_fortalecida = models.CharField(max_length=30, blank=True, default="")
+    tipo_inscripcion = models.CharField(max_length=20, blank=True, default="")
+    resultado_aprendizaje = models.CharField(max_length=80, blank=True, default="")
+    estrategia_formativa = models.CharField(max_length=80, blank=True, default="")
 
     # -- Estado y control del flujo ------------------------------------------
     cap_estado = models.CharField(

@@ -83,6 +83,10 @@ from .registro_capacitacion_schema import (
     REGISTRO_CAPACITACION_SECCIONES,
     iterar_campos_registro_capacitacion,
 )
+from .caracterizacion_schema import (
+    CARACTERIZACION_SECCIONES,
+    iterar_campos_caracterizacion,
+)
 from .indicadores_adapters import build_indicadores_dashboard_context, build_indicadores_download
 from .sync_runtime import build_sync_status_context
 from . import estandares_calidad as ec_mod
@@ -967,9 +971,9 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
 
     # Decisiones binarias mostradas como chips Si/No.
     campos_decision = {
-        "sol_es_replica",
+        "capacitacion_replicada",
         "sol_tiene_matriz",
-        "sol_tiene_diagnostico",
+        "capacitacion_diagnostico_previo",
     }
 
     # Determina obligatoriedad condicional segun origen de la solicitud.
@@ -1003,7 +1007,7 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
 
 def _diagnostico_habilitado(valores_form: dict[str, str]) -> bool:
     """Determina si el flujo de diagnostico debe activarse desde la fase preliminar."""
-    decision_diagnostico = str(valores_form.get("sol_tiene_diagnostico", "")).strip().lower()
+    decision_diagnostico = str(valores_form.get("capacitacion_diagnostico_previo", "")).strip().lower()
     decision_matriz = str(valores_form.get("sol_tiene_matriz", "")).strip().lower()
     return decision_diagnostico in {"si", "sí"} or decision_matriz in {"si", "sí"}
 
@@ -1015,7 +1019,73 @@ def _matriz_habilitada(valores_form: dict[str, str]) -> bool:
 
 def _detalle_diagnostico_habilitado(valores_form: dict[str, str]) -> bool:
     """Indica si el modal específico de diagnostico debe habilitarse."""
-    return str(valores_form.get("sol_tiene_diagnostico", "")).strip().lower() in {"si", "sí"}
+    return str(valores_form.get("capacitacion_diagnostico_previo", "")).strip().lower() in {"si", "sí"}
+
+
+def _construir_caracterizacion_secciones_render(
+    valores_form: dict[str, str],
+    *,
+    usuarios_especialista: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Construye estructura renderizable de las secciones de caracterización.
+
+    `valores_form` ya viene como `_serializar_capacitacion_valores(cap_obj)`.
+    `usuarios_especialista` (opcional) reemplaza las opciones del campo
+    `especialista_cargo` para vincularlo al modelo de usuarios del sistema.
+    """
+    secciones_render: list[dict[str, Any]] = []
+    for seccion in CARACTERIZACION_SECCIONES:
+        campos_render: list[dict[str, Any]] = []
+        for campo in seccion.get("campos", []):
+            codigo = str(campo.get("codigo", "")).strip()
+            valor_actual = str(valores_form.get(codigo, "")).strip()
+            campo_copy = {**campo, "valor": valor_actual}
+            if codigo == "especialista_cargo" and usuarios_especialista:
+                opciones = list(usuarios_especialista)
+                # Preserva el valor previo aunque ya no exista en la lista.
+                if valor_actual and valor_actual not in opciones:
+                    opciones.insert(0, valor_actual)
+                campo_copy["opciones"] = opciones
+                campo_copy["tipo"] = "list"
+            elif codigo == "especialista_cargo":
+                # Sin lista (BD legacy no disponible): degrada a texto libre
+                # para no bloquear edición ni perder el valor existente.
+                campo_copy["opciones"] = []
+                campo_copy["tipo"] = "text_short"
+            campos_render.append(campo_copy)
+        secciones_render.append({**seccion, "campos": campos_render})
+    return secciones_render
+
+
+def _aplicar_caracterizacion_post(request, cap_obj) -> None:
+    """Aplica los valores enviados en el POST a los campos de caracterización."""
+    for campo in iterar_campos_caracterizacion():
+        codigo = str(campo.get("codigo", "")).strip()
+        if not codigo or not hasattr(cap_obj, codigo):
+            continue
+        tipo = str(campo.get("tipo", "")).strip()
+        raw_val = _leer_post_campo_registro(request, codigo, tipo)
+        coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
+        if coerced is None:
+            setattr(cap_obj, codigo, "")
+        else:
+            setattr(cap_obj, codigo, str(coerced) if not isinstance(coerced, str) else coerced)
+
+
+def _obtener_usuarios_especialista() -> list[str]:
+    """Devuelve la lista de nombres a usar como opciones en `especialista_cargo`."""
+    try:
+        from accounts.db import fetch_users_with_names
+        users = fetch_users_with_names() or []
+        nombres: list[str] = []
+        for u in users:
+            nombre = str(u.get("nombre", "") or "").strip()
+            if nombre and nombre not in nombres:
+                nombres.append(nombre)
+        return sorted(nombres)
+    except Exception:
+        logger.exception("No se pudo cargar la lista de usuarios para especialista_cargo")
+        return []
 
 
 def _filtrar_campos_registro(
@@ -1450,7 +1520,7 @@ def _construir_flujo_expediente(
                 },
                 {
                     "label": "Publico",
-                    "value": str(valores_form.get("pob_tipo", "")).strip() or "Pendiente",
+                    "value": str(valores_form.get("publico_objetivo_oferta", "")).strip() or "Pendiente",
                 },
                 {
                     "label": "Modalidad",
@@ -2075,6 +2145,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             setattr(cap_obj, codigo, "")
                     else:
                         setattr(cap_obj, codigo, coerced)
+
+                # Aplica los campos del catalogo oficial de caracterizacion.
+                _aplicar_caracterizacion_post(request, cap_obj)
 
                 # Recalcula el avance real desde la completitud de bloques.
                 cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
@@ -2720,6 +2793,12 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
                 })
 
+                # Caracterizacion oficial (Excel 16.04): bloque adicional editable.
+                _usuarios_esp_reg = _obtener_usuarios_especialista()
+                context["editar_caracterizacion_secciones"] = _construir_caracterizacion_secciones_render(
+                    editar_valores, usuarios_especialista=_usuarios_esp_reg,
+                )
+
             context["editar_lista"] = editar_lista
 
         # Adaptacion del submenu "Seguimiento de capacitaciones" (plantillas.py).
@@ -3302,6 +3381,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         else:
                             setattr(cap_obj, codigo_campo, coerced)
 
+                    # Aplica los campos del catalogo oficial de caracterizacion.
+                    _aplicar_caracterizacion_post(request, cap_obj)
+
                     # Mantener tipo sincrónica
                     cap_obj.cap_tipo = "Capacitación sincrónica"
                     cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
@@ -3681,6 +3763,12 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "editar_sustento_etapa": etapa_sustento_ed,
                     "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
                 })
+
+                # Caracterizacion oficial (Excel 16.04): bloque adicional editable.
+                _usuarios_esp = _obtener_usuarios_especialista()
+                context["editar_caracterizacion_secciones"] = _construir_caracterizacion_secciones_render(
+                    editar_valores, usuarios_especialista=_usuarios_esp,
+                )
 
             context["editar_lista"] = editar_lista
 

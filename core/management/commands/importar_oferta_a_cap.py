@@ -60,8 +60,10 @@ def _norm(val: object) -> str:
 def _es_si(val: object) -> str:
     v = _norm(val).lower()
     if v in ("si", "sí", "1", "true", "yes"):
-        return "Si"
-    return "No"
+        return "Sí"
+    if v in ("no", "0", "false"):
+        return "No"
+    return ""
 
 
 class Command(BaseCommand):
@@ -129,12 +131,12 @@ class Command(BaseCommand):
             # Especialista.
             especialista = _norm(fila.get("especialista_cargo"))
 
-            # Decisiones.
-            sol_es_replica = _es_si(fila.get("capacitacion_replicada"))
-            sol_tiene_diagnostico = _es_si(fila.get("capacitacion_diagnostico_previo"))
+            # Decisiones (caracterización oficial).
+            capacitacion_replicada_v = _es_si(fila.get("capacitacion_replicada"))
+            capacitacion_diagnostico_previo_v = _es_si(fila.get("capacitacion_diagnostico_previo"))
 
             # Público objetivo.
-            pob_tipo = _norm(fila.get("publico_objetivo"))
+            publico_objetivo_v = _norm(fila.get("publico_objetivo"))
 
             # Objetivo.
             mi_objetivo = _norm(fila.get("objetivo_capacitacion"))
@@ -162,9 +164,10 @@ class Command(BaseCommand):
                     cap_anio=cap_anio,
                     cap_estado=cap_estado,
                     paso_actual=7,
-                    sol_es_replica=sol_es_replica,
-                    sol_tiene_diagnostico=sol_tiene_diagnostico,
-                    pob_tipo=pob_tipo,
+                    capacitacion_replicada=capacitacion_replicada_v,
+                    capacitacion_diagnostico_previo=capacitacion_diagnostico_previo_v,
+                    publico_objetivo_oferta=publico_objetivo_v,
+                    especialista_cargo=especialista,
                     mi_objetivo_capacitacion=mi_objetivo,
                     pt_horas=pt_horas,
                     creado_por=especialista or "importacion",
