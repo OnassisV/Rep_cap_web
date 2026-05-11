@@ -695,6 +695,11 @@ def _valor_por_defecto_registro_capacitacion() -> dict[str, str]:
     }
 
 
+# Total de pasos del flujo unificado actual: Solicitud + Caracterización oficial.
+# Se usa como umbral para considerar la capacitación "lista para finalizar".
+TOTAL_PASOS_FLUJO = 2
+
+
 def _auto_actualizar_estado(cap_obj) -> None:
     """Actualiza cap_estado según reglas automáticas.
 
@@ -703,8 +708,11 @@ def _auto_actualizar_estado(cap_obj) -> None:
     - Año 2026 o mayor:
         * pasos completos O certificados → Por finalizar
         * pasos completos Y certificados → Finalizada
-    - Años previos a 2026: paso 7 + código → Finalizada
+    - Años previos a 2026: pasos completos + código → Finalizada
     No toca registros Cancelados.
+
+    El umbral de "pasos completos" es dinámico (`TOTAL_PASOS_FLUJO`) para
+    soportar el flujo unificado actual de Solicitud + Caracterización.
     """
     from core.models import Capacitacion
 
@@ -718,7 +726,7 @@ def _auto_actualizar_estado(cap_obj) -> None:
         nuevo = Capacitacion.Estado.FORMULADA
     else:
         nuevo = Capacitacion.Estado.EN_PROCESO
-        pasos_completos = int(cap_obj.paso_actual or 0) >= 7
+        pasos_completos = int(cap_obj.paso_actual or 0) >= TOTAL_PASOS_FLUJO
         tiene_certificados = _cap_tiene_certificados(cap_obj)
         anio = int(cap_obj.cap_anio or 0)
 
@@ -857,7 +865,7 @@ def _recalcular_paso_actual(cap_obj) -> int:
 
     pasos_completos = sum(1 for paso in flujo if bool(paso.get("is_complete")))
     pasos_iniciados = sum(1 for paso in flujo if bool(paso.get("is_started")))
-    total_pasos = len(flujo) or 7
+    total_pasos = len(flujo) or TOTAL_PASOS_FLUJO
 
     if pasos_completos > 0:
         return min(total_pasos, pasos_completos)
