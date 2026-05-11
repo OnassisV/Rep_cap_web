@@ -10,6 +10,7 @@ from .views import (
     section_detail_view,
     submenu_detail_view,
     switch_role_view,
+    api_caracterizacion_replica_view,
 )
 
 
@@ -39,4 +40,9 @@ urlpatterns = [
         cert_descargar_lista_excel_view,
         name="cert_descargar_lista_excel",
     ),  # Descarga Excel con lista nominal de participantes certificados.
+    path(
+        "api/caracterizacion-replica/<int:cap_id>/",
+        api_caracterizacion_replica_view,
+        name="api_caracterizacion_replica",
+    ),  # Devuelve los campos de caracterización de una capacitación fuente.
 ]

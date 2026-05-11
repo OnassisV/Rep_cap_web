@@ -379,6 +379,8 @@
                                                     {% endfor %}
                                                 </div>
                                             {% endif %}
+                                        {% elif paso.panel_type == 'caracterizacion' %}
+                                            {% include "core/_caracterizacion_panel.html" with secciones=registro_caracterizacion_secciones replicas=registro_replica_capacitaciones paso=paso %}
                                         {% endif %}
 
                                         <div class="registro-unified-nav">
@@ -2057,6 +2059,8 @@
                                                         {% endfor %}
                                                     </div>
                                                 {% endif %}
+                                            {% elif paso.panel_type == 'caracterizacion' %}
+                                                {% include "core/_caracterizacion_panel.html" with secciones=editar_caracterizacion_secciones replicas=editar_replica_capacitaciones paso=paso %}
                                             {% endif %}
 
                                             <div class="registro-unified-nav">
@@ -2069,7 +2073,7 @@
                             </section>
                         {% endif %}
 
-                        {% if editar_caracterizacion_secciones %}
+                        {% if editar_caracterizacion_secciones_LEGACY_REMOVED %}
                             <section class="registro-block registro-block--caracterizacion" data-caracterizacion-block>
                                 <header class="registro-block__header">
                                     <div>
@@ -5755,6 +5759,113 @@
                 aplicaSelect.addEventListener("change", filtrarVariablesPorAplica);
             }
             filtrarVariablesPorAplica();
+        })();
+    </script>
+
+    {# ── Banner de réplica de caracterización ── #}
+    <script>
+        (function () {
+            "use strict";
+            document.querySelectorAll("[data-replica-banner]").forEach(function (banner) {
+                var form = banner.closest("form");
+                if (!form) { return; }
+                var replicaInputs = form.querySelectorAll("input[name='capacitacion_replicada']");
+                var anioSelect = banner.querySelector("[data-replica-anio]");
+                var sourceSelect = banner.querySelector("[data-replica-source]");
+                var copyBtn = banner.querySelector("[data-replica-copy]");
+
+                var allOptions = sourceSelect ? Array.prototype.slice.call(sourceSelect.options) : [];
+
+                var refreshVisibility = function () {
+                    var marcado = "";
+                    replicaInputs.forEach(function (inp) {
+                        if (inp.checked) { marcado = String(inp.value || "").trim(); }
+                    });
+                    if (marcado === "Sí" || marcado === "Si") {
+                        banner.classList.remove("is-hidden");
+                    } else {
+                        banner.classList.add("is-hidden");
+                        if (sourceSelect) { sourceSelect.value = ""; }
+                    }
+                };
+
+                var refreshOptions = function () {
+                    if (!sourceSelect || !anioSelect) { return; }
+                    var anio = String(anioSelect.value || "").trim();
+                    var current = sourceSelect.value;
+                    while (sourceSelect.options.length > 0) { sourceSelect.remove(0); }
+                    allOptions.forEach(function (opt) {
+                        if (!opt.value) {
+                            sourceSelect.appendChild(opt.cloneNode(true));
+                            return;
+                        }
+                        var optAnio = opt.getAttribute("data-anio") || "";
+                        if (!anio || optAnio === anio) {
+                            sourceSelect.appendChild(opt.cloneNode(true));
+                        }
+                    });
+                    sourceSelect.value = current;
+                };
+
+                replicaInputs.forEach(function (inp) {
+                    inp.addEventListener("change", refreshVisibility);
+                });
+                if (anioSelect) {
+                    anioSelect.addEventListener("change", refreshOptions);
+                }
+                if (copyBtn && sourceSelect) {
+                    copyBtn.addEventListener("click", function () {
+                        var capId = String(sourceSelect.value || "").trim();
+                        if (!capId) {
+                            alert("Selecciona una capacitación fuente.");
+                            return;
+                        }
+                        copyBtn.disabled = true;
+                        var url = "{% url 'core:api_caracterizacion_replica' 0 %}".replace(/\/0\/$/, "/" + encodeURIComponent(capId) + "/");
+                        fetch(url, { credentials: "same-origin" })
+                            .then(function (r) { return r.json(); })
+                            .then(function (data) {
+                                if (!data || !data.ok) {
+                                    alert(data && data.error ? data.error : "No se pudo cargar la caracterización fuente.");
+                                    return;
+                                }
+                                var aplicados = 0;
+                                Object.keys(data.valores || {}).forEach(function (codigo) {
+                                    var valor = data.valores[codigo];
+                                    var elems = form.querySelectorAll("[name='" + codigo + "']");
+                                    elems.forEach(function (el) {
+                                        if (el.tagName === "SELECT") {
+                                            el.value = valor;
+                                            if (el.value !== valor) {
+                                                // Agregar opción si no existe (caso especialista_cargo).
+                                                var opt = document.createElement("option");
+                                                opt.value = valor;
+                                                opt.textContent = valor;
+                                                opt.selected = true;
+                                                el.appendChild(opt);
+                                            }
+                                        } else if (el.type === "radio") {
+                                            el.checked = (String(el.value || "") === String(valor || ""));
+                                        } else if (el.type === "checkbox") {
+                                            el.checked = !!valor;
+                                        } else {
+                                            el.value = valor;
+                                        }
+                                        aplicados++;
+                                    });
+                                });
+                                alert("Caracterización copiada (" + aplicados + " campos). Revisa antes de guardar.");
+                            })
+                            .catch(function () {
+                                alert("Error al consultar la capacitación fuente.");
+                            })
+                            .finally(function () { copyBtn.disabled = false; });
+                    });
+                }
+
+                refreshVisibility();
+                refreshOptions();
+            });
         })();
     </script>
 </body>

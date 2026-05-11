@@ -1,0 +1,92 @@
+{# Panel reutilizable: Caracterizacion oficial (Excel 16.04). #}
+{# Variables esperadas: secciones, replicas, paso. #}
+<header class="registro-block__header registro-block__header--split">
+    <div>
+        <p class="registro-block__eyebrow">Paso {{ paso.step_index }}</p>
+        <h3 class="subsection-title">{{ paso.titulo }}</h3>
+        <p class="module-panel__note">{{ paso.descripcion }}</p>
+    </div>
+    <div class="registro-block__meta">
+        {% if paso.is_complete %}
+            <span class="registro-status registro-status--complete">Completo</span>
+        {% elif paso.is_started %}
+            <span class="registro-status registro-status--current">En progreso</span>
+        {% else %}
+            <span class="registro-status">Pendiente</span>
+        {% endif %}
+        <small>{{ paso.required_done }}/{{ paso.required_count }} obligatorios</small>
+    </div>
+</header>
+
+{% if replicas %}
+<div class="registro-replica-banner is-hidden" data-replica-banner>
+    <div class="registro-replica-banner__head">
+        <strong>¿Esta capacitación es una réplica exacta?</strong>
+        <p>Selecciona la capacitación fuente y copia automáticamente todos los campos de caracterización.</p>
+    </div>
+    <div class="registro-replica-banner__controls">
+        <label class="registro-replica-banner__field">
+            <span>Año</span>
+            <select data-replica-anio>
+                <option value="">Todos</option>
+                {% for r in replicas %}
+                    {% if r.cap_anio %}
+                        <option value="{{ r.cap_anio }}">{{ r.cap_anio }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </label>
+        <label class="registro-replica-banner__field registro-replica-banner__field--wide">
+            <span>Capacitación fuente</span>
+            <select name="replica_source_cap_id" data-replica-source>
+                <option value="">— Selecciona una capacitación —</option>
+                {% for r in replicas %}
+                    <option value="{{ r.id }}" data-anio="{{ r.cap_anio }}">{{ r.etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="button" class="btn-primary-soft" data-replica-copy>Copiar caracterización</button>
+    </div>
+    <p class="registro-replica-banner__hint">Al guardar, los campos se copiarán de la capacitación seleccionada.</p>
+</div>
+{% endif %}
+
+<div class="registro-block registro-block--caracterizacion">
+    {% for seccion in secciones %}
+        <details class="registro-caracterizacion-seccion" {% if forloop.first %}open{% endif %}>
+            <summary>
+                <strong>{{ seccion.titulo }}</strong>
+                {% if seccion.descripcion %}<small>{{ seccion.descripcion }}</small>{% endif %}
+            </summary>
+            <div class="registro-grid">
+                {% for campo in seccion.campos %}
+                    <label class="registro-field{% if campo.tipo == 'text_long' %} registro-field--full{% endif %}">
+                        <span class="registro-field__label">
+                            {{ campo.pregunta }}
+                            {% if campo.obligatorio %}<em class="registro-field__req">*</em>{% endif %}
+                        </span>
+                        {% if campo.tipo == 'list' or campo.tipo == 'list_multi' %}
+                            <select name="{{ campo.codigo }}"{% if campo.tipo == 'list_multi' %} multiple{% endif %}>
+                                {% if campo.tipo == 'list' %}<option value="">— Selecciona —</option>{% endif %}
+                                {% for op in campo.opciones %}
+                                    <option value="{{ op }}" {% if op == campo.valor %}selected{% endif %}>{{ op }}</option>
+                                {% endfor %}
+                            </select>
+                        {% elif campo.tipo == 'text_long' %}
+                            <textarea name="{{ campo.codigo }}" rows="3">{{ campo.valor }}</textarea>
+                        {% elif campo.tipo == 'date' %}
+                            <input type="date" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                        {% elif campo.tipo == 'integer' %}
+                            <input type="number" step="1" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                        {% elif campo.tipo == 'decimal' %}
+                            <input type="number" step="0.01" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                        {% else %}
+                            <input type="text" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                        {% endif %}
+                        {% if campo.ayuda %}<small class="registro-field__help">{{ campo.ayuda }}</small>{% endif %}
+                    </label>
+                {% endfor %}
+            </div>
+        </details>
+    {% endfor %}
+</div>

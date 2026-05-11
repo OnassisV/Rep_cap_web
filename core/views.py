@@ -845,12 +845,14 @@ def _recalcular_paso_actual(cap_obj) -> int:
         valores_form,
     )
     flujo_exp = _construir_flujo_expediente(secciones_render, valores_form)
+    caracterizacion_secciones = _construir_caracterizacion_secciones_render(valores_form)
     flujo = _construir_flujo_unificado(
         secciones_render,
         valores_form,
         solicitud,
         sustento,
         flujo_exp,
+        caracterizacion_secciones=caracterizacion_secciones,
     )
 
     pasos_completos = sum(1 for paso in flujo if bool(paso.get("is_complete")))
@@ -1058,12 +1060,29 @@ def _construir_caracterizacion_secciones_render(
 
 
 def _aplicar_caracterizacion_post(request, cap_obj) -> None:
-    """Aplica los valores enviados en el POST a los campos de caracterización."""
+    """Aplica los valores enviados en el POST a los campos de caracterización.
+
+    Si el formulario incluye `replica_source_cap_id` y la capacitación está
+    marcada como réplica (`capacitacion_replicada == "Sí"`), primero copia
+    todos los campos de caracterización desde la capacitación origen y luego
+    aplica los valores del POST por encima (permitiendo ajustes manuales).
+    """
+    replica_id_raw = str(request.POST.get("replica_source_cap_id", "") or "").strip()
+    es_replica = str(request.POST.get("capacitacion_replicada", "") or "").strip() == "Sí"
+    if es_replica and replica_id_raw:
+        try:
+            _copiar_caracterizacion_desde(cap_obj, int(replica_id_raw))
+        except Exception:
+            logger.exception("No se pudo copiar caracterización desde réplica id=%s", replica_id_raw)
+
     for campo in iterar_campos_caracterizacion():
         codigo = str(campo.get("codigo", "")).strip()
         if not codigo or not hasattr(cap_obj, codigo):
             continue
         tipo = str(campo.get("tipo", "")).strip()
+        # Si fue réplica y el campo no vino en POST, conservar el valor copiado.
+        if es_replica and replica_id_raw and codigo not in request.POST:
+            continue
         raw_val = _leer_post_campo_registro(request, codigo, tipo)
         coerced = _coercer_valor_registro_capacitacion(tipo, raw_val)
         if coerced is None:
@@ -1086,6 +1105,58 @@ def _obtener_usuarios_especialista() -> list[str]:
     except Exception:
         logger.exception("No se pudo cargar la lista de usuarios para especialista_cargo")
         return []
+
+
+def _obtener_capacitaciones_para_replica(excluir_id: int | None = None) -> list[dict[str, Any]]:
+    """Lista capacitaciones disponibles como fuente de réplica de caracterización."""
+    try:
+        from core.models import Capacitacion as _Cap
+        qs = _Cap.objects.all().order_by("-cap_anio", "cap_codigo")
+        if excluir_id:
+            qs = qs.exclude(pk=int(excluir_id))
+        return [
+            {
+                "id": int(c.pk),
+                "cap_codigo": str(c.cap_codigo or "").strip(),
+                "cap_id_curso": str(c.cap_id_curso or "").strip(),
+                "cap_nombre": str(c.cap_nombre or "").strip(),
+                "cap_anio": c.cap_anio,
+                "etiqueta": " · ".join(filter(None, [
+                    str(c.cap_anio or "").strip(),
+                    str(c.cap_codigo or "").strip()
+                    + (f"-{c.cap_id_curso}" if c.cap_id_curso else ""),
+                    (str(c.cap_nombre or "").strip()[:60]),
+                ])),
+            }
+            for c in qs[:500]
+        ]
+    except Exception:
+        logger.exception("No se pudo construir la lista de réplicas de caracterización")
+        return []
+
+
+def _copiar_caracterizacion_desde(cap_dest, cap_origen_id: int) -> int:
+    """Copia los campos de caracterizacion desde otra Capacitacion.
+
+    Retorna la cantidad de campos efectivamente copiados (cambiados).
+    """
+    try:
+        from core.models import Capacitacion as _Cap
+        origen = _Cap.objects.filter(pk=int(cap_origen_id)).first()
+    except Exception:
+        return 0
+    if not origen or origen.pk == cap_dest.pk:
+        return 0
+    cambiados = 0
+    for campo in iterar_campos_caracterizacion():
+        codigo = str(campo.get("codigo", "")).strip()
+        if not codigo or not hasattr(origen, codigo) or not hasattr(cap_dest, codigo):
+            continue
+        valor_origen = getattr(origen, codigo, "")
+        if str(valor_origen or "") != str(getattr(cap_dest, codigo, "") or ""):
+            setattr(cap_dest, codigo, valor_origen)
+            cambiados += 1
+    return cambiados
 
 
 def _filtrar_campos_registro(
@@ -1556,10 +1627,16 @@ def _construir_flujo_unificado(
     secciones_render: list[dict[str, Any]],
     valores_form: dict[str, str],
     solicitud_bloque: dict[str, Any] | None,
-    sustento_etapa: dict[str, Any] | None,
-    expediente_flujo: dict[str, Any] | None,
+    sustento_etapa: dict[str, Any] | None = None,
+    expediente_flujo: dict[str, Any] | None = None,
+    caracterizacion_secciones: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Construye una linea de tiempo unica con todos los pasos del registro."""
+    """Construye una linea de tiempo unica con dos pasos: Solicitud + Caracterizacion.
+
+    Los argumentos `sustento_etapa` y `expediente_flujo` se conservan por
+    compatibilidad pero ya no generan pasos en el flujo (se simplifico el
+    proceso a Solicitud + Caracterizacion oficial).
+    """
     pasos: list[dict[str, Any]] = []
 
     # Paso 1: Solicitud
@@ -1580,58 +1657,32 @@ def _construir_flujo_unificado(
         "is_started": sol_filled > 0,
     })
 
-    # Paso 2: Sustento tecnico
-    sustento_req = sustento_done = sustento_filled = 0
-    sustento_complete = False
-    sustento_started = False
-    if not sustento_etapa or not bool(sustento_etapa.get("is_enabled")):
-        sustento_complete = True
-    else:
-        algun_componente_activo = False
-
-        for clave in ("matriz", "diagnostico"):
-            flujo = sustento_etapa.get(clave)
-            if not flujo or not bool(flujo.get("is_enabled")):
-                continue
-            algun_componente_activo = True
-            pasos_flujo = list(flujo.get("steps", []))
-            sustento_req += sum(int(item.get("required_count", 0) or 0) for item in pasos_flujo)
-            sustento_done += sum(int(item.get("required_done", 0) or 0) for item in pasos_flujo)
-            sustento_filled += sum(int(item.get("filled_count", 0) or 0) for item in pasos_flujo)
-            sustento_started = sustento_started or any(
-                bool(item.get("is_started")) or bool(item.get("is_complete"))
-                for item in pasos_flujo
-            )
-
-        # La etapa esta completa cuando se cumplen todos los obligatorios
-        # agregados (o, si no hay obligatorios en toda la etapa, cuando al
-        # menos un campo tiene valor). Antes exigiamos all(is_complete) por
-        # subpaso, lo que dejaba En curso aun con 6/6 obligatorios cumplidos
-        # porque algunos subpasos sin obligatorios estaban vacios.
-        sustento_complete = algun_componente_activo and (
-            (sustento_req > 0 and sustento_done >= sustento_req)
-            or (sustento_req == 0 and sustento_filled > 0)
-        )
-
+    # Paso 2: Caracterizacion oficial (Excel 16.04).
+    car_req = car_done = car_filled = 0
+    for seccion in (caracterizacion_secciones or []):
+        for campo in seccion.get("campos", []):
+            valor = str(campo.get("valor", "") or "").strip()
+            if bool(campo.get("obligatorio")):
+                car_req += 1
+                if valor:
+                    car_done += 1
+            if valor:
+                car_filled += 1
+    car_complete = (
+        (car_req > 0 and car_done >= car_req)
+        or (car_req == 0 and car_filled > 0)
+    )
     pasos.append({
-        "slug": "paso-sustento",
-        "titulo": "Sustento tecnico",
-        "descripcion": "",
-        "panel_type": "sustento",
-        "required_count": sustento_req,
-        "required_done": sustento_done,
-        "filled_count": sustento_filled,
-        "is_complete": sustento_complete,
-        "is_started": sustento_started or bool(sustento_etapa and sustento_etapa.get("is_enabled")),
+        "slug": "paso-caracterizacion",
+        "titulo": "Caracterizacion oficial",
+        "descripcion": "Atributos descriptivos de la oferta formativa (Excel 16.04).",
+        "panel_type": "caracterizacion",
+        "required_count": car_req,
+        "required_done": car_done,
+        "filled_count": car_filled,
+        "is_complete": car_complete,
+        "is_started": car_filled > 0,
     })
-
-    # Pasos 3-7: Expediente
-    if expediente_flujo:
-        for exp_paso in expediente_flujo.get("steps", []):
-            pasos.append({
-                **exp_paso,
-                "panel_type": "expediente",
-            })
 
     current_index = 0
     for index, paso in enumerate(pasos):
@@ -2587,8 +2638,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 ),
                 None,
             )
+            _carac_render_reg = _construir_caracterizacion_secciones_render(
+                valores_form,
+                usuarios_especialista=_obtener_usuarios_especialista(),
+            )
             flujo_unificado = _construir_flujo_unificado(
                 secciones_render, valores_form, solicitud_inicial, etapa_sustento, flujo_expediente,
+                caracterizacion_secciones=_carac_render_reg,
             )
             slugs_diagnostico = {
                 "diagnostico-paso-1",
@@ -2634,6 +2690,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "registro_sustento_etapa": etapa_sustento,
                     "registro_expediente_flujo": flujo_expediente,
                     "registro_flujo_unificado": flujo_unificado,
+                    "registro_caracterizacion_secciones": _carac_render_reg,
+                    "registro_replica_capacitaciones": _obtener_capacitaciones_para_replica(),
                     "registro_iged_catalogo": catalogo_iged,
                     "registro_iged_regiones": regiones_iged,
                     "registro_origen_actual": origen_actual,
@@ -2772,8 +2830,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 flujo_diag_ed = _construir_flujo_diagnostico(editar_secciones_render, editar_valores)
                 etapa_sustento_ed = _construir_pasarela_sustento(flujo_matriz_ed, flujo_diag_ed, editar_secciones_render, editar_valores)
                 flujo_exp_ed = _construir_flujo_expediente(editar_secciones_render, editar_valores)
+                _carac_render_ed = _construir_caracterizacion_secciones_render(
+                    editar_valores,
+                    usuarios_especialista=_obtener_usuarios_especialista(),
+                )
                 editar_flujo_unificado = _construir_flujo_unificado(
                     editar_secciones_render, editar_valores, solicitud_ed, etapa_sustento_ed, flujo_exp_ed,
+                    caracterizacion_secciones=_carac_render_ed,
                 )
 
                 context.update({
@@ -2790,14 +2853,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "editar_matriz_flujo": flujo_matriz_ed,
                     "editar_diagnostico_flujo": flujo_diag_ed,
                     "editar_sustento_etapa": etapa_sustento_ed,
+                    "editar_caracterizacion_secciones": _carac_render_ed,
+                    "editar_replica_capacitaciones": _obtener_capacitaciones_para_replica(excluir_id=editar_cap.pk),
                     "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
                 })
-
-                # Caracterizacion oficial (Excel 16.04): bloque adicional editable.
-                _usuarios_esp_reg = _obtener_usuarios_especialista()
-                context["editar_caracterizacion_secciones"] = _construir_caracterizacion_secciones_render(
-                    editar_valores, usuarios_especialista=_usuarios_esp_reg,
-                )
 
             context["editar_lista"] = editar_lista
 
@@ -3578,8 +3637,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             solicitud_inicial = next(
                 (s for s in secciones_render if str(s.get("slug", "")) == "solicitud-inicial"), None,
             )
+            _carac_render_sync = _construir_caracterizacion_secciones_render(
+                valores_form,
+                usuarios_especialista=_obtener_usuarios_especialista(),
+            )
             flujo_unificado = _construir_flujo_unificado(
                 secciones_render, valores_form, solicitud_inicial, etapa_sustento, flujo_expediente,
+                caracterizacion_secciones=_carac_render_sync,
             )
             slugs_diagnostico = {
                 "diagnostico-paso-1", "diagnostico-paso-1b", "diagnostico-paso-2",
@@ -3605,6 +3669,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "registro_sustento_etapa": etapa_sustento,
                 "registro_expediente_flujo": flujo_expediente,
                 "registro_flujo_unificado": flujo_unificado,
+                "registro_caracterizacion_secciones": _carac_render_sync,
+                "registro_replica_capacitaciones": _obtener_capacitaciones_para_replica(),
                 "registro_iged_catalogo": catalogo_iged,
                 "registro_iged_regiones": regiones_iged,
                 "registro_origen_actual": origen_actual,
@@ -3743,8 +3809,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 flujo_diag_ed = _construir_flujo_diagnostico(editar_secciones_render, editar_valores)
                 etapa_sustento_ed = _construir_pasarela_sustento(flujo_matriz_ed, flujo_diag_ed, editar_secciones_render, editar_valores)
                 flujo_exp_ed = _construir_flujo_expediente(editar_secciones_render, editar_valores)
+                _carac_render_ed_sync = _construir_caracterizacion_secciones_render(
+                    editar_valores,
+                    usuarios_especialista=_obtener_usuarios_especialista(),
+                )
                 editar_flujo_unificado = _construir_flujo_unificado(
                     editar_secciones_render, editar_valores, solicitud_ed, etapa_sustento_ed, flujo_exp_ed,
+                    caracterizacion_secciones=_carac_render_ed_sync,
                 )
 
                 context.update({
@@ -3761,14 +3832,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "editar_matriz_flujo": flujo_matriz_ed,
                     "editar_diagnostico_flujo": flujo_diag_ed,
                     "editar_sustento_etapa": etapa_sustento_ed,
+                    "editar_caracterizacion_secciones": _carac_render_ed_sync,
+                    "editar_replica_capacitaciones": _obtener_capacitaciones_para_replica(excluir_id=editar_cap.pk),
                     "registro_iged_catalogo": catalogo_iged_ed if solicitud_ed else {},
                 })
-
-                # Caracterizacion oficial (Excel 16.04): bloque adicional editable.
-                _usuarios_esp = _obtener_usuarios_especialista()
-                context["editar_caracterizacion_secciones"] = _construir_caracterizacion_secciones_render(
-                    editar_valores, usuarios_especialista=_usuarios_esp,
-                )
 
             context["editar_lista"] = editar_lista
 
@@ -4553,3 +4620,35 @@ def cert_descargar_lista_excel_view(request, codigo: str):
     )
     response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
     return response
+
+
+@login_required
+def api_caracterizacion_replica_view(request, cap_id: int):
+    """Devuelve los campos de caracterización de una capacitación fuente.
+
+    Se usa para autocompletar el paso de Caracterización cuando el usuario
+    marca la capacitación actual como réplica exacta de otra.
+    """
+    try:
+        from core.models import Capacitacion as _Cap
+        cap = _Cap.objects.filter(pk=int(cap_id)).first()
+    except Exception:
+        cap = None
+    if not cap:
+        return JsonResponse({"ok": False, "error": "Capacitación no encontrada."}, status=404)
+
+    valores: dict[str, str] = {}
+    for campo in iterar_campos_caracterizacion():
+        codigo = str(campo.get("codigo", "")).strip()
+        if not codigo or not hasattr(cap, codigo):
+            continue
+        valores[codigo] = str(getattr(cap, codigo, "") or "")
+
+    return JsonResponse({
+        "ok": True,
+        "id": int(cap.pk),
+        "cap_codigo": str(cap.cap_codigo or ""),
+        "cap_nombre": str(cap.cap_nombre or ""),
+        "cap_anio": cap.cap_anio,
+        "valores": valores,
+    })
