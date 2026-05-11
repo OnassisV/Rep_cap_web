@@ -962,7 +962,12 @@ def _contar_estado_bloque_registro(campos: list[dict[str, Any]]) -> dict[str, in
     }
 
 
-def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, str]) -> dict[str, Any]:
+def _enriquecer_campo_registro(
+    campo: dict[str, Any],
+    valores_form: dict[str, str],
+    *,
+    usuarios_especialista: list[str] | None = None,
+) -> dict[str, Any]:
     """Agrega metadatos de interfaz para renderizar la ficha de registro."""
     codigo = str(campo.get("codigo", "")).strip()
 
@@ -977,6 +982,11 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
     campos_iged = {
         "sol_region_iged",
         "sol_iged_nombre",
+    }
+
+    # Campos visibles solo cuando la solicitud proviene de Unidad orgánica.
+    campos_uo = {
+        "organo_formulador",
     }
 
     # Decisiones binarias mostradas como chips Si/No.
@@ -994,6 +1004,8 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
             es_obligatorio = True
         elif codigo in campos_iged and origen_actual == "IGED":
             es_obligatorio = True
+        elif codigo in campos_uo and origen_actual == "Unidad orgánica":
+            es_obligatorio = True
 
     valor_actual = str(valores_form.get(codigo, "")).strip()
     valor_lista = [
@@ -1002,8 +1014,18 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
         if v.strip()
     ]
 
+    # Si es `especialista_cargo` y se inyectó lista de usuarios desde BD legacy,
+    # reemplaza las opciones del schema por esa lista (preservando el valor actual).
+    opciones_finales = campo.get("opciones")
+    if codigo == "especialista_cargo":
+        if usuarios_especialista:
+            opciones_finales = list(usuarios_especialista)
+            if valor_actual and valor_actual not in opciones_finales:
+                opciones_finales.insert(0, valor_actual)
+
     return {
         **campo,
+        "opciones": opciones_finales,
         "valor": valor_actual,
         "valor_lista": valor_lista,
         "obligatorio": es_obligatorio,
@@ -1011,6 +1033,7 @@ def _enriquecer_campo_registro(campo: dict[str, Any], valores_form: dict[str, st
         "is_decision": codigo in campos_decision,
         "is_external_only": codigo in campos_externos,
         "is_iged_only": codigo in campos_iged,
+        "is_uo_only": codigo in campos_uo,
         "is_convocatoria_abierta_only": codigo == "pt_convocatoria_fin",
     }
 
@@ -2609,6 +2632,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 )
                 seccion.update(estado_bloque)
                 if str(seccion.get("slug", "")) == "solicitud-inicial":
+                    usuarios_esp = _obtener_usuarios_especialista()
                     for campo in seccion.get("campos", []):
                         codigo = str(campo.get("codigo", "")).strip()
                         if codigo == "sol_region_iged":
@@ -2620,6 +2644,15 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                 for item in catalogo_iged.get(region_sel, [])
                                 if str(item.get("nombre", "")).strip()
                             ]
+                        elif codigo == "especialista_cargo":
+                            opciones = list(usuarios_esp) if usuarios_esp else []
+                            valor_actual = str(campo.get("valor", "") or "").strip()
+                            if valor_actual and valor_actual not in opciones:
+                                opciones.insert(0, valor_actual)
+                            campo["opciones"] = opciones
+                            if not opciones:
+                                # Sin BD legacy: degrada a texto libre para no bloquear.
+                                campo["tipo"] = "text_short"
 
                     seccion["special_layout"] = "solicitud"
                     seccion["campos_left"] = [
@@ -2807,6 +2840,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if str(sec_copy.get("slug", "")) == "solicitud-inicial":
                         catalogo_iged_ed = obtener_catalogo_iged_por_region()
                         regiones_iged_ed = sorted(catalogo_iged_ed.keys())
+                        usuarios_esp_ed = _obtener_usuarios_especialista()
                         for campo in sec_copy.get("campos", []):
                             codigo = str(campo.get("codigo", "")).strip()
                             if codigo == "sol_region_iged":
@@ -2818,6 +2852,14 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                     for item in catalogo_iged_ed.get(region_sel, [])
                                     if str(item.get("nombre", "")).strip()
                                 ]
+                            elif codigo == "especialista_cargo":
+                                opciones = list(usuarios_esp_ed) if usuarios_esp_ed else []
+                                valor_actual = str(campo.get("valor", "") or "").strip()
+                                if valor_actual and valor_actual not in opciones:
+                                    opciones.insert(0, valor_actual)
+                                campo["opciones"] = opciones
+                                if not opciones:
+                                    campo["tipo"] = "text_short"
                         sec_copy["special_layout"] = "solicitud"
                         sec_copy["campos_left"] = [
                             c for c in sec_copy.get("campos", [])
@@ -3619,6 +3661,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 estado_bloque = _contar_estado_bloque_registro(list(seccion.get("campos", [])))
                 seccion.update(estado_bloque)
                 if str(seccion.get("slug", "")) == "solicitud-inicial":
+                    usuarios_esp = _obtener_usuarios_especialista()
                     for campo in seccion.get("campos", []):
                         codigo = str(campo.get("codigo", "")).strip()
                         if codigo == "sol_region_iged":
@@ -3630,6 +3673,14 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                 for item in catalogo_iged.get(region_sel, [])
                                 if str(item.get("nombre", "")).strip()
                             ]
+                        elif codigo == "especialista_cargo":
+                            opciones = list(usuarios_esp) if usuarios_esp else []
+                            valor_actual = str(campo.get("valor", "") or "").strip()
+                            if valor_actual and valor_actual not in opciones:
+                                opciones.insert(0, valor_actual)
+                            campo["opciones"] = opciones
+                            if not opciones:
+                                campo["tipo"] = "text_short"
                     seccion["special_layout"] = "solicitud"
                     seccion["campos_left"] = [
                         c for c in seccion.get("campos", []) if str(c.get("ui_zone", "main")) == "left"
@@ -3789,6 +3840,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if str(sec_copy.get("slug", "")) == "solicitud-inicial":
                         catalogo_iged_ed = obtener_catalogo_iged_por_region()
                         regiones_iged_ed = sorted(catalogo_iged_ed.keys())
+                        usuarios_esp_ed = _obtener_usuarios_especialista()
                         for campo in sec_copy.get("campos", []):
                             codigo_c = str(campo.get("codigo", "")).strip()
                             if codigo_c == "sol_region_iged":
@@ -3800,6 +3852,14 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                                     for item in catalogo_iged_ed.get(region_sel, [])
                                     if str(item.get("nombre", "")).strip()
                                 ]
+                            elif codigo_c == "especialista_cargo":
+                                opciones = list(usuarios_esp_ed) if usuarios_esp_ed else []
+                                valor_actual = str(campo.get("valor", "") or "").strip()
+                                if valor_actual and valor_actual not in opciones:
+                                    opciones.insert(0, valor_actual)
+                                campo["opciones"] = opciones
+                                if not opciones:
+                                    campo["tipo"] = "text_short"
                         sec_copy["special_layout"] = "solicitud"
                         sec_copy["campos_left"] = [
                             c for c in sec_copy.get("campos", []) if str(c.get("ui_zone", "main")) == "left"

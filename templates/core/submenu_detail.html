@@ -4033,6 +4033,7 @@
             var originInputs = form.querySelectorAll("input[name='sol_origen_institucional']");
             var externalFields = form.querySelectorAll("[data-origin-dependent='external']");
             var igedFields = form.querySelectorAll("[data-origin-dependent='iged']");
+            var uoFields = form.querySelectorAll("[data-origin-dependent='uo']");
             var regionSelect = form.querySelector("[data-iged-region-select]");
             var igedSelect = form.querySelector("[data-iged-name-select]");
 
@@ -4095,6 +4096,7 @@
                 var origin = getOrigin();
                 var showExternal = origin === "IGED" || origin === "Unidad orgánica";
                 var showIged = origin === "IGED";
+                var showUO = origin === "Unidad orgánica";
 
                 externalFields.forEach(function (wrapper) {
                     wrapper.classList.toggle("is-hidden", !showExternal);
@@ -4131,6 +4133,26 @@
                         if (showIged && !star) {
                             var s = document.createElement("strong"); s.textContent = " *"; labelEl.appendChild(s);
                         } else if (!showIged && star) {
+                            star.remove();
+                        }
+                    }
+                });
+
+                uoFields.forEach(function (wrapper) {
+                    wrapper.classList.toggle("is-hidden", !showUO);
+                    wrapper.setAttribute("aria-hidden", showUO ? "false" : "true");
+
+                    wrapper.querySelectorAll("input, select, textarea").forEach(function (control) {
+                        control.disabled = !showUO;
+                        if (showUO) { control.setAttribute("required", ""); } else { control.removeAttribute("required"); }
+                    });
+
+                    var labelEl = wrapper.querySelector(".registro-field__label");
+                    if (labelEl) {
+                        var star = labelEl.querySelector("strong");
+                        if (showUO && !star) {
+                            var s = document.createElement("strong"); s.textContent = " *"; labelEl.appendChild(s);
+                        } else if (!showUO && star) {
                             star.remove();
                         }
                     }

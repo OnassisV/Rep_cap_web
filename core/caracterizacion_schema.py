@@ -84,15 +84,9 @@ def _campo(
 CARACTERIZACION_SECCIONES: list[dict[str, Any]] = [
     {
         "slug": "carac-identificacion",
-        "titulo": "Identificación y responsable",
-        "descripcion": "Datos administrativos clave para ubicar la capacitación dentro de la oferta.",
+        "titulo": "Tipo de inscripción",
+        "descripcion": "Modalidad de inscripción con la que se abre la capacitación.",
         "campos": [
-            _campo("organo_formulador", "Órgano formulador", "list", True, OPCIONES_ORGANO_FORMULADOR,
-                   "Estrategia a la que pertenece — Órgano que formula la capacitación."),
-            _campo("especialista_cargo", "Especialista a cargo", "list", True, None,
-                   "Persona responsable. La lista se carga desde la tabla de usuarios."),
-            _campo("publico_objetivo_oferta", "Público objetivo", "text_long", True, None,
-                   "Perfil al que está dirigida la capacitación."),
             _campo("tipo_inscripcion", "Tipo de inscripción", "list", True, OPCIONES_TIPO_INSCRIPCION,
                    "Cerrada (lista predefinida) / Abierta (libre) / Mixta."),
         ],
