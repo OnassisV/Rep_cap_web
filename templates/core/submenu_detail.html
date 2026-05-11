@@ -4643,29 +4643,11 @@
 
             var syncReplicaState = function () {
                 var replica = isReplicaActive();
-                // Hide/show the decision cards for matriz and diagnostico
-                ["sol_tiene_matriz", "capacitacion_diagnostico_previo"].forEach(function (fieldName) {
-                    var inputs = form.querySelectorAll("input[name='" + fieldName + "']");
-                    var card = inputs.length ? inputs[0].closest("[data-question-item]") : null;
-                    if (card) {
-                        card.classList.toggle("is-hidden", replica);
-                    }
-                    if (replica) {
-                        // Force "No" when replica is active
-                        inputs.forEach(function (inp) {
-                            inp.checked = (inp.value === "No");
-                        });
-                    }
-                });
-                // Hide/show unified step 2 (sustento)
+                // Mostrar/ocultar el banner de copia de caracterización en el step 2.
                 if (unifiedFlow) {
-                    var step2Panel = unifiedFlow.querySelector("[data-unified-panel][data-step-index='2']");
-                    var step2Tag = unifiedFlow.querySelector("[data-unified-step-tag][data-step-index='2']");
-                    if (step2Panel) {
-                        step2Panel.classList.toggle("is-replica-hidden", replica);
-                    }
-                    if (step2Tag) {
-                        step2Tag.classList.toggle("is-replica-hidden", replica);
+                    var replicaBanner = unifiedFlow.querySelector("[data-replica-banner]");
+                    if (replicaBanner) {
+                        replicaBanner.classList.toggle("is-hidden", !replica);
                     }
                 }
                 renumberQuestions();
@@ -5865,6 +5847,95 @@
 
                 refreshVisibility();
                 refreshOptions();
+            });
+        })();
+    </script>
+
+    {# ── Sub-stepper de caracterización ── #}
+    <style>
+        .caracterizacion-substepper { margin-top: 1rem; }
+        .caracterizacion-substepper__roadmap {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: .5rem;
+            margin-bottom: 1rem;
+        }
+        .caracterizacion-substepper__tab {
+            display: flex; flex-direction: column; align-items: flex-start;
+            gap: .25rem; padding: .65rem .75rem; border-radius: 10px;
+            border: 1px solid #d6dde7; background: #f7f9fc; cursor: pointer;
+            text-align: left; transition: all .15s ease;
+        }
+        .caracterizacion-substepper__tab:hover { background: #eef2f8; }
+        .caracterizacion-substepper__tab.is-active {
+            border-color: #2f6bd6; background: #e9f0fc; box-shadow: 0 1px 3px rgba(47,107,214,.18);
+        }
+        .caracterizacion-substepper__num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #2f6bd6; color: #fff; font-weight: 600; font-size: .75rem;
+        }
+        .caracterizacion-substepper__title { font-weight: 600; font-size: .85rem; color: #1f2937; }
+        .caracterizacion-substepper__desc { color: #6b7280; font-size: .72rem; line-height: 1.2; }
+        .caracterizacion-substepper__panel.is-hidden { display: none !important; }
+        .caracterizacion-substepper__panel-head { margin-bottom: .75rem; }
+        .caracterizacion-substepper__nav {
+            display: flex; justify-content: space-between; gap: .5rem; margin-top: 1rem;
+            padding-top: .75rem; border-top: 1px solid #e5e7eb;
+        }
+        .registro-replica-banner {
+            background: #fff8e1; border: 1px solid #f6c97a; border-radius: 10px;
+            padding: 1rem; margin-bottom: 1rem;
+        }
+        .registro-replica-banner.is-hidden { display: none; }
+        .registro-replica-banner__head strong { color: #8a5b00; }
+        .registro-replica-banner__controls {
+            display: grid; grid-template-columns: 120px 1fr auto; gap: .5rem;
+            align-items: end; margin-top: .75rem;
+        }
+        .registro-replica-banner__field { display: flex; flex-direction: column; gap: .25rem; }
+        .registro-replica-banner__field span { font-size: .8rem; color: #4b5563; }
+        .registro-replica-banner__hint { color: #6b7280; font-size: .75rem; margin-top: .5rem; }
+    </style>
+    <script>
+        (function () {
+            "use strict";
+            document.querySelectorAll("[data-carac-substepper]").forEach(function (root) {
+                var tabs = root.querySelectorAll("[data-carac-tab]");
+                var panels = root.querySelectorAll("[data-carac-panel]");
+                var go = function (idx) {
+                    tabs.forEach(function (t) {
+                        var isActive = String(t.getAttribute("data-carac-tab")) === String(idx);
+                        t.classList.toggle("is-active", isActive);
+                        t.setAttribute("aria-selected", isActive ? "true" : "false");
+                    });
+                    panels.forEach(function (p) {
+                        var isActive = String(p.getAttribute("data-carac-panel")) === String(idx);
+                        p.classList.toggle("is-hidden", !isActive);
+                        p.setAttribute("aria-hidden", isActive ? "false" : "true");
+                    });
+                };
+                tabs.forEach(function (t) {
+                    t.addEventListener("click", function () {
+                        go(t.getAttribute("data-carac-tab"));
+                    });
+                });
+                root.querySelectorAll("[data-carac-prev]").forEach(function (b) {
+                    b.addEventListener("click", function () {
+                        var panel = b.closest("[data-carac-panel]");
+                        if (!panel) return;
+                        var idx = parseInt(panel.getAttribute("data-carac-panel"), 10);
+                        if (idx > 1) go(idx - 1);
+                    });
+                });
+                root.querySelectorAll("[data-carac-next]").forEach(function (b) {
+                    b.addEventListener("click", function () {
+                        var panel = b.closest("[data-carac-panel]");
+                        if (!panel) return;
+                        var idx = parseInt(panel.getAttribute("data-carac-panel"), 10);
+                        if (idx < panels.length) go(idx + 1);
+                    });
+                });
             });
         })();
     </script>

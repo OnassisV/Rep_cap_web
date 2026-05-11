@@ -29,20 +29,14 @@
             <span>Año</span>
             <select data-replica-anio>
                 <option value="">Todos</option>
-                {% for r in replicas %}
-                    {% if r.cap_anio %}
-                        <option value="{{ r.cap_anio }}">{{ r.cap_anio }}</option>
-                    {% endif %}
-                {% endfor %}
+                {% for r in replicas %}{% if r.cap_anio %}<option value="{{ r.cap_anio }}">{{ r.cap_anio }}</option>{% endif %}{% endfor %}
             </select>
         </label>
         <label class="registro-replica-banner__field registro-replica-banner__field--wide">
             <span>Capacitación fuente</span>
             <select name="replica_source_cap_id" data-replica-source>
                 <option value="">— Selecciona una capacitación —</option>
-                {% for r in replicas %}
-                    <option value="{{ r.id }}" data-anio="{{ r.cap_anio }}">{{ r.etiqueta }}</option>
-                {% endfor %}
+                {% for r in replicas %}<option value="{{ r.id }}" data-anio="{{ r.cap_anio }}">{{ r.etiqueta }}</option>{% endfor %}
             </select>
         </label>
         <button type="button" class="btn-primary-soft" data-replica-copy>Copiar caracterización</button>
@@ -51,42 +45,67 @@
 </div>
 {% endif %}
 
-<div class="registro-block registro-block--caracterizacion">
-    {% for seccion in secciones %}
-        <details class="registro-caracterizacion-seccion" {% if forloop.first %}open{% endif %}>
-            <summary>
-                <strong>{{ seccion.titulo }}</strong>
-                {% if seccion.descripcion %}<small>{{ seccion.descripcion }}</small>{% endif %}
-            </summary>
-            <div class="registro-grid">
-                {% for campo in seccion.campos %}
-                    <label class="registro-field{% if campo.tipo == 'text_long' %} registro-field--full{% endif %}">
-                        <span class="registro-field__label">
-                            {{ campo.pregunta }}
-                            {% if campo.obligatorio %}<em class="registro-field__req">*</em>{% endif %}
-                        </span>
-                        {% if campo.tipo == 'list' or campo.tipo == 'list_multi' %}
-                            <select name="{{ campo.codigo }}"{% if campo.tipo == 'list_multi' %} multiple{% endif %}>
-                                {% if campo.tipo == 'list' %}<option value="">— Selecciona —</option>{% endif %}
-                                {% for op in campo.opciones %}
-                                    <option value="{{ op }}" {% if op == campo.valor %}selected{% endif %}>{{ op }}</option>
-                                {% endfor %}
-                            </select>
-                        {% elif campo.tipo == 'text_long' %}
-                            <textarea name="{{ campo.codigo }}" rows="3">{{ campo.valor }}</textarea>
-                        {% elif campo.tipo == 'date' %}
-                            <input type="date" name="{{ campo.codigo }}" value="{{ campo.valor }}">
-                        {% elif campo.tipo == 'integer' %}
-                            <input type="number" step="1" name="{{ campo.codigo }}" value="{{ campo.valor }}">
-                        {% elif campo.tipo == 'decimal' %}
-                            <input type="number" step="0.01" name="{{ campo.codigo }}" value="{{ campo.valor }}">
-                        {% else %}
-                            <input type="text" name="{{ campo.codigo }}" value="{{ campo.valor }}">
-                        {% endif %}
-                        {% if campo.ayuda %}<small class="registro-field__help">{{ campo.ayuda }}</small>{% endif %}
-                    </label>
-                {% endfor %}
-            </div>
-        </details>
-    {% endfor %}
+<div class="caracterizacion-substepper" data-carac-substepper>
+    {# Mini-roadmap: cada sección es un sub-paso visual. #}
+    <div class="caracterizacion-substepper__roadmap" role="tablist">
+        {% for seccion in secciones %}
+            <button type="button"
+                    class="caracterizacion-substepper__tab{% if forloop.first %} is-active{% endif %}"
+                    data-carac-tab="{{ forloop.counter }}"
+                    role="tab"
+                    aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                <span class="caracterizacion-substepper__num">{{ forloop.counter }}</span>
+                <span class="caracterizacion-substepper__title">{{ seccion.titulo }}</span>
+                {% if seccion.descripcion %}<small class="caracterizacion-substepper__desc">{{ seccion.descripcion }}</small>{% endif %}
+            </button>
+        {% endfor %}
+    </div>
+
+    <div class="caracterizacion-substepper__panels">
+        {% for seccion in secciones %}
+            <section class="caracterizacion-substepper__panel{% if not forloop.first %} is-hidden{% endif %}"
+                     data-carac-panel="{{ forloop.counter }}"
+                     aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}">
+                <header class="caracterizacion-substepper__panel-head">
+                    <p class="registro-block__eyebrow">Sub-paso {{ forloop.counter }} de {{ secciones|length }}</p>
+                    <h4>{{ seccion.titulo }}</h4>
+                    {% if seccion.descripcion %}<p class="module-panel__note">{{ seccion.descripcion }}</p>{% endif %}
+                </header>
+                <div class="registro-grid">
+                    {% for campo in seccion.campos %}
+                        <label class="registro-field{% if campo.tipo == 'text_long' %} registro-field--full{% endif %}">
+                            <span class="registro-field__label">
+                                {{ campo.pregunta }}
+                                {% if campo.obligatorio %}<em class="registro-field__req">*</em>{% endif %}
+                            </span>
+                            {% if campo.tipo == 'list' or campo.tipo == 'list_multi' %}
+                                <select name="{{ campo.codigo }}"{% if campo.tipo == 'list_multi' %} multiple{% endif %}>
+                                    {% if campo.tipo == 'list' %}<option value="">— Selecciona —</option>{% endif %}
+                                    {% for op in campo.opciones %}
+                                        <option value="{{ op }}" {% if op == campo.valor %}selected{% endif %}>{{ op }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% elif campo.tipo == 'text_long' %}
+                                <textarea name="{{ campo.codigo }}" rows="3">{{ campo.valor }}</textarea>
+                            {% elif campo.tipo == 'date' %}
+                                <input type="date" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                            {% elif campo.tipo == 'integer' %}
+                                <input type="number" step="1" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                            {% elif campo.tipo == 'decimal' %}
+                                <input type="number" step="0.01" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                            {% else %}
+                                <input type="text" name="{{ campo.codigo }}" value="{{ campo.valor }}">
+                            {% endif %}
+                            {% if campo.ayuda %}<small class="registro-field__help">{{ campo.ayuda }}</small>{% endif %}
+                        </label>
+                    {% endfor %}
+                </div>
+
+                <div class="caracterizacion-substepper__nav">
+                    <button type="button" class="btn-secondary-soft" data-carac-prev {% if forloop.first %}disabled{% endif %}>Sub-paso anterior</button>
+                    <button type="button" class="btn-primary-soft" data-carac-next {% if forloop.last %}disabled{% endif %}>Siguiente sub-paso</button>
+                </div>
+            </section>
+        {% endfor %}
+    </div>
 </div>

@@ -78,8 +78,6 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("cap_tipo", "Tipo de intervención formativa", "list", True, ["Capacitación sincrónica", "Curso", "Curso-taller", "Programa de formación", "Programa de mentoría"], "Clasifica la modalidad del proceso formativo.", "left"),
             _campo("sol_responde_desempeno", "La solicitud responde a un problema de desempeno", "list", False, ["Si", "No"], "Ayuda a perfilar mejor la brecha que se atendera.", "left"),
             _campo("capacitacion_replicada", "¿Es réplica exacta de un año anterior?", "list", False, ["Sí", "No"], "Si marcas Sí, luego podrás reutilizar información de una experiencia previa.", "right"),
-            _campo("sol_tiene_matriz", "La capacitacion contara con matriz de sustento", "list", False, ["Si", "No"], "La matriz de sustento se usa cuando se cuenta con evidencia del (de los) problema(s) de desempeño que se quiere atender en la capacitación.", "right"),
-            _campo("capacitacion_diagnostico_previo", "¿Empieza con diagnóstico de necesidades?", "list", False, ["Sí", "No"], "El diagnóstico se usa cuando no existe evidencia del (de los) problema(s) de desempeño a atender y debe ser levantada mediante un instrumento.", "right"),
         ],
     },
     {
