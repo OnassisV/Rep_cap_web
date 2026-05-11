@@ -118,8 +118,9 @@ CARACTERIZACION_SECCIONES: list[dict[str, Any]] = [
         "titulo": "Caracterización del diseño formativo",
         "descripcion": "Indicadores binarios sobre cómo se diseñó y operó la capacitación.",
         "campos": [
-            _campo("capacitacion_replicada", "¿Es réplica exacta de un año anterior?", "list", False, OPCIONES_SI_NO,
-                   "Si la capa es réplica de un año anterior."),
+            # Nota: `capacitacion_replicada` se gestiona únicamente en el Paso 1
+            # (Solicitud) para evitar inputs duplicados con el mismo `name` que
+            # provocaban que el valor del Paso 2 sobrescribiera al guardar.
             _campo("capacitacion_diagnostico_previo", "¿Empezó con diagnóstico de necesidades?", "list", False, OPCIONES_SI_NO,
                    "Si la capa empezó con un diagnóstico de necesidades."),
             _campo("capacitacion_virtual_sincronica", "¿Fue solo virtual unas pocas horas (sincrónica)?", "list", False, OPCIONES_SI_NO,
