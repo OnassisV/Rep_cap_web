@@ -386,7 +386,11 @@
 
                                         <div class="registro-unified-nav">
                                             <button type="button" class="btn-secondary-soft" data-unified-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
-                                            <button type="button" class="btn-primary-soft" data-unified-next>{% if forloop.last %}Ir al guardado{% else %}Siguiente paso{% endif %}</button>
+                                            {% if not forloop.last %}
+                                                <button type="button" class="btn-primary-soft" data-unified-next>Siguiente paso</button>
+                                            {% else %}
+                                                <button type="submit" class="btn btn--primary btn--xl">Guardar cambios</button>
+                                            {% endif %}
                                         </div>
                                     </section>
                                 {% endfor %}
@@ -2067,7 +2071,11 @@
 
                                             <div class="registro-unified-nav">
                                                 <button type="button" class="btn-secondary-soft" data-unified-prev {% if paso.step_index == 1 %}disabled{% endif %}>Anterior</button>
-                                                <button type="button" class="btn-primary-soft" data-unified-next>{% if forloop.last %}Ir al guardado{% else %}Siguiente paso{% endif %}</button>
+                                                {% if not forloop.last %}
+                                                    <button type="button" class="btn-primary-soft" data-unified-next>Siguiente paso</button>
+                                                {% else %}
+                                                    <button type="submit" class="btn btn--primary btn--xl">Guardar cambios</button>
+                                                {% endif %}
                                             </div>
                                         </section>
                                     {% endfor %}
@@ -2123,8 +2131,8 @@
                             </section>
                         {% endif %}
 
-                        <div class="registro-actions">
-                            <button type="submit" class="btn btn--primary btn--wide">
+                        <div class="registro-actions registro-actions--sticky">
+                            <button type="submit" class="btn btn--primary btn--xl">
                                 Guardar cambios
                             </button>
                         </div>
@@ -5885,6 +5893,15 @@
             display: flex; justify-content: space-between; gap: .5rem; margin-top: 1rem;
             padding-top: .75rem; border-top: 1px solid #e5e7eb;
         }
+        .caracterizacion-substepper__nav [data-carac-prev] { margin-right: auto; }
+        .caracterizacion-substepper__nav [data-carac-next] { margin-left: auto; }
+        /* Botón primario grande para "Guardar cambios" — más visible que el btn--wide. */
+        .btn.btn--xl {
+            padding: .85rem 1.75rem; font-size: 1.05rem; font-weight: 700;
+            border-radius: 10px; min-width: 220px;
+            box-shadow: 0 2px 6px rgba(47,107,214,.25);
+        }
+        .btn.btn--xl:hover { box-shadow: 0 3px 10px rgba(47,107,214,.35); transform: translateY(-1px); }
         .registro-replica-banner {
             background: #fff8e1; border: 1px solid #f6c97a; border-radius: 10px;
             padding: 1rem; margin-bottom: 1rem;

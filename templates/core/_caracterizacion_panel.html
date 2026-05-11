@@ -75,8 +75,12 @@
                 </div>
 
                 <div class="caracterizacion-substepper__nav">
-                    <button type="button" class="btn-secondary-soft" data-carac-prev {% if forloop.first %}disabled{% endif %}>Sub-paso anterior</button>
-                    <button type="button" class="btn-primary-soft" data-carac-next {% if forloop.last %}disabled{% endif %}>Siguiente sub-paso</button>
+                    {% if not forloop.first %}
+                        <button type="button" class="btn-secondary-soft" data-carac-prev>Sub-paso anterior</button>
+                    {% endif %}
+                    {% if not forloop.last %}
+                        <button type="button" class="btn-primary-soft" data-carac-next>Siguiente sub-paso</button>
+                    {% endif %}
                 </div>
             </section>
         {% endfor %}
