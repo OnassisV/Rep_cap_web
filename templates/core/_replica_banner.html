@@ -1,0 +1,31 @@
+{# Banner de réplica de caracterización (se muestra en Paso 1 cuando capacitacion_replicada == "Sí"). #}
+{# Variables esperadas: replicas (lista). #}
+{% if replicas %}
+<div class="registro-replica-banner is-hidden" data-replica-banner>
+    <div class="registro-replica-banner__head">
+        <strong>¿Esta capacitación es una réplica exacta?</strong>
+        <p>Selecciona la capacitación fuente y copia automáticamente todos los campos de caracterización al Paso 2.</p>
+    </div>
+    <div class="registro-replica-banner__controls">
+        <label class="registro-replica-banner__field">
+            <span>Año</span>
+            <select data-replica-anio>
+                <option value="">Todos</option>
+                {% regroup replicas by cap_anio as anios_unicos %}
+                {% for grupo in anios_unicos %}
+                    {% if grupo.grouper %}<option value="{{ grupo.grouper }}">{{ grupo.grouper }}</option>{% endif %}
+                {% endfor %}
+            </select>
+        </label>
+        <label class="registro-replica-banner__field registro-replica-banner__field--wide">
+            <span>Capacitación fuente</span>
+            <select name="replica_source_cap_id" data-replica-source>
+                <option value="">— Selecciona una capacitación —</option>
+                {% for r in replicas %}<option value="{{ r.id }}" data-anio="{{ r.cap_anio }}">{{ r.etiqueta }}</option>{% endfor %}
+            </select>
+        </label>
+        <button type="button" class="btn-primary-soft" data-replica-copy>Copiar caracterización</button>
+    </div>
+    <p class="registro-replica-banner__hint">Al guardar, los campos se copiarán de la capacitación seleccionada (puedes ajustarlos en el Paso 2).</p>
+</div>
+{% endif %}
