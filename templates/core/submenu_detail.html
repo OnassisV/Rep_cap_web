@@ -3818,6 +3818,52 @@
                     Este submenu esta listo en navegacion y diseno. La siguiente fase es conectar su formulario operativo.
                 </p>
             {% endif %}
+
+            <!-- Capacitaciones sin aplicativo: registros SIDI sin ficha en el aplicativo. -->
+            {% if adapter_kind == "cap_sin_aplicativo" %}
+                {% if anios_disponibles %}
+                    <div class="year-filter">
+                        <span class="year-filter__label">Año:</span>
+                        {% for anio in anios_disponibles %}
+                            <a
+                                class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
+                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}"
+                            >{{ anio }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if cap_sin_aplic_filas %}
+                    <p class="module-panel__note">
+                        Se encontraron <strong>{{ cap_sin_aplic_total }}</strong> código(s) con participantes en SIDI que no tienen ficha en el aplicativo.
+                    </p>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th class="text-right">Participantes</th>
+                                    <th class="text-right">Matriculados</th>
+                                    <th class="text-right">Certificados</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fila in cap_sin_aplic_filas %}
+                                    <tr>
+                                        <td class="font-mono">{{ fila.codigo }}</td>
+                                        <td class="text-right">{{ fila.num_participantes }}</td>
+                                        <td class="text-right">{{ fila.num_matriculados }}</td>
+                                        <td class="text-right">{{ fila.num_certificados }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">
+                        No se encontraron capacitaciones en SIDI sin ficha en el aplicativo{% if anio_seleccionado %} para el año {{ anio_seleccionado }}{% endif %}.
+                    </p>
+                {% endif %}
+            {% endif %}
         </section>
     </main>
     <script>

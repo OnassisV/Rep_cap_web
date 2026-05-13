@@ -233,6 +233,67 @@ def obtener_filas_oferta_formativa() -> list[dict[str, Any]]:
         return []
 
 
+def obtener_cap_sin_aplicativo(anio_param: str = "") -> dict[str, Any]:
+    """Retorna codigos presentes en bbdd_difoca que no tienen registro en cap_capacitaciones.
+
+    Compara los codigos agrupados de participantes contra los cap_codigo registrados
+    en el aplicativo web. Util para detectar capacitaciones legacy sin ficha formal.
+    """
+    query = """
+        SELECT
+            b.codigo,
+            COUNT(DISTINCT b.dni) AS num_participantes,
+            SUM(CASE WHEN b.estado = 2 THEN 1 ELSE 0 END) AS num_matriculados,
+            SUM(CASE WHEN b.aprobados_certificados = 1 THEN 1 ELSE 0 END) AS num_certificados
+        FROM bbdd_difoca b
+        LEFT JOIN cap_capacitaciones c ON c.cap_codigo = b.codigo
+        WHERE c.id IS NULL
+          AND b.codigo IS NOT NULL
+          AND TRIM(b.codigo) <> ''
+        GROUP BY b.codigo
+        ORDER BY b.codigo
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                filas = list(cursor.fetchall())
+    except Exception:
+        return {"filas": [], "anios_disponibles": [], "anio_seleccionado": None, "total": 0}
+
+    # Extrae el año del código (ej: "26001I-315" → 2026, "25017I-305" → 2025).
+    def _anio_desde_codigo(codigo: str) -> int | None:
+        m = re.match(r"^(\d{2})", str(codigo or "").strip())
+        if m:
+            prefijo = int(m.group(1))
+            return 2000 + prefijo
+        return None
+
+    for fila in filas:
+        fila["anio_codigo"] = _anio_desde_codigo(str(fila.get("codigo", "")))
+
+    # Construye lista de años disponibles para el filtro.
+    anios_set = sorted({f["anio_codigo"] for f in filas if f.get("anio_codigo")}, reverse=True)
+
+    # Resuelve el año seleccionado.
+    anio_solicitado = _parsear_anio(anio_param)
+    if anio_solicitado not in anios_set:
+        anio_actual = datetime.now().year
+        anio_solicitado = anio_actual if anio_actual in anios_set else (anios_set[0] if anios_set else None)
+
+    # Filtra por año si hay uno seleccionado.
+    filas_filtradas = filas
+    if anio_solicitado is not None:
+        filas_filtradas = [f for f in filas if f.get("anio_codigo") == anio_solicitado]
+
+    return {
+        "filas": filas_filtradas,
+        "anios_disponibles": anios_set,
+        "anio_seleccionado": anio_solicitado,
+        "total": len(filas_filtradas),
+    }
+
+
 def filtrar_capacitaciones_para_usuario(
     filas: list[dict[str, Any]],
     role_effective: str,

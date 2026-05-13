@@ -228,6 +228,14 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
             "list_matricula.py",
             "detalle_cuestionario.py",
         ],
+        "submenus": [
+            {
+                "slug": "cap-sin-aplicativo",
+                "titulo": "Cap. sin aplicativo",
+                "descripcion": "Capacitaciones con participantes en SIDI que aún no tienen ficha en el aplicativo.",
+                "adapter": "cap_sin_aplicativo",
+            },
+        ],
     },
     {
         "slug": "sincronicas-evidencias",
@@ -4581,6 +4589,18 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             "cert_form_disabled": not bool(cert_cap_sel),
         })
         return render(request, "core/submenu_detail.html", context)
+
+    # ── Sección Operaciones de Plataforma ──
+    if section_slug == "operaciones-plataforma":
+        if submenu_slug == "cap-sin-aplicativo":
+            from core.legacy_adapters import obtener_cap_sin_aplicativo
+            resultado = obtener_cap_sin_aplicativo(anio_param)
+            context.update({
+                "cap_sin_aplic_filas": resultado["filas"],
+                "anios_disponibles": resultado["anios_disponibles"],
+                "anio_seleccionado": resultado["anio_seleccionado"],
+                "cap_sin_aplic_total": resultado["total"],
+            })
 
     # Renderiza vista de submenu con adaptacion correspondiente.
     return render(request, "core/submenu_detail.html", context)
