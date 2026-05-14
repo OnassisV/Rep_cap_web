@@ -2536,7 +2536,7 @@
                                             </span>
                                         </td>
                                         <td>{{ item.paso_actual }}/2</td>
-                                        <td>{{ item.creado_nombre|default:"-" }}</td>
+                                        <td>{{ item.especialista_cargo|default:"-" }}</td>
                                         <td>{{ item.creado_en|date:"d/m/Y H:i" }}</td>
                                         <td>
                                             <button type="button" class="btn btn--small btn--outline" data-open-id-plataforma="{{ item.id }}" data-plat-codigo="{{ item.cap_codigo }}" data-plat-id-curso="{{ item.cap_id_curso }}">ID plataforma</button>
