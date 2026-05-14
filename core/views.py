@@ -2805,7 +2805,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     .order_by("_est_ord", "cap_codigo", "cap_id_curso")
                     .values(
                         "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
-                        "cap_estado", "paso_actual", "creado_nombre", "creado_en",
+                        "cap_estado", "paso_actual", "creado_nombre", "creado_en", "especialista_cargo",
                     )[:200]
                 )
             except Exception as _ed_exc:
@@ -3812,7 +3812,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     .order_by("_est_ord", "cap_codigo", "cap_id_curso")
                     .values(
                         "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
-                        "cap_estado", "cap_tipo", "paso_actual", "creado_nombre", "creado_en",
+                        "cap_estado", "cap_tipo", "paso_actual", "creado_nombre", "creado_en", "especialista_cargo",
                     )[:200]
                 )
             except Exception as _ed_exc:
