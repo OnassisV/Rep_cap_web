@@ -69,6 +69,7 @@ from .legacy_adapters import (
     obtener_excel_actividad_fuera_info,
     obtener_certificados_detalle,
     obtener_participantes_certificados_lista_excel,
+    obtener_resumen_ficha_para_excel,
     obtener_participantes_retiro_manual_por_codigo,
     obtener_resumen_satisfaccion,
     obtener_resumen_estandares,
@@ -4643,8 +4644,9 @@ def switch_role_view(request):
 def cert_descargar_lista_excel_view(request, codigo: str):
     """Descarga un Excel con la lista de participantes certificados del curso `codigo`.
 
-    Columnas: DNI, APELLIDOS, NOMBRES, TELEFONO, NOMBRE IGED, NIVEL DE PUESTO,
-    PROMEDIO FINAL.
+    Hoja 1 "Certificados": DNI, APELLIDOS, NOMBRES, TELEFONO, NOMBRE IGED,
+    NIVEL DE PUESTO, PROMEDIO FINAL.
+    Hoja 2 "Resumen": ficha y métricas de cobertura de la capacitación.
     """
     import io
     from openpyxl import Workbook
@@ -4655,6 +4657,7 @@ def cert_descargar_lista_excel_view(request, codigo: str):
         raise Http404("Codigo de curso requerido.")
 
     filas = obtener_participantes_certificados_lista_excel(codigo)
+    resumen = obtener_resumen_ficha_para_excel(codigo)
 
     columnas = [
         "DNI", "APELLIDOS", "NOMBRES", "TELEFONO",
@@ -4696,6 +4699,48 @@ def cert_descargar_lista_excel_view(request, codigo: str):
     for col_idx, nombre in enumerate(columnas, start=1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = anchos.get(nombre, 18)
     ws.freeze_panes = "A2"
+
+    # ── Hoja 2: Resumen de la capacitación ──────────────────────────────────
+    ws2 = wb.create_sheet(title="Resumen")
+    label_font = Font(bold=True)
+    label_fill = PatternFill("solid", fgColor="D9E1F2")
+    section_font = Font(bold=True, color="FFFFFF")
+    section_fill = PatternFill("solid", fgColor="305496")
+    wrap = Alignment(wrap_text=True, vertical="top")
+
+    def _sec(row: int, texto: str) -> None:
+        c = ws2.cell(row=row, column=1, value=texto)
+        c.font = section_font
+        c.fill = section_fill
+        ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+
+    def _fila(row: int, label: str, valor: "_Any") -> None:
+        c1 = ws2.cell(row=row, column=1, value=label)
+        c1.font = label_font
+        c1.fill = label_fill
+        c2 = ws2.cell(row=row, column=2, value=valor)
+        c2.alignment = wrap
+
+    _sec(1, "Datos de la capacitación")
+    _fila(2, "Código", codigo)
+    _fila(3, "Nombre", resumen.get("nombre", ""))
+    _fila(4, "Objetivo", resumen.get("objetivo", ""))
+    _fila(5, "Público objetivo", resumen.get("publico_objetivo", ""))
+
+    _sec(7, "Participación y certificación")
+    _fila(8, "Participantes", resumen.get("participantes", 0))
+    _fila(9, "Certificados", resumen.get("certificados", 0))
+
+    _sec(11, "Cobertura institucional")
+    _fila(12, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
+    _fila(13, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
+    _fila(14, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
+    _fila(15, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
+
+    ws2.column_dimensions["A"].width = 30
+    ws2.column_dimensions["B"].width = 80
+    for r in [3, 4, 5]:
+        ws2.row_dimensions[r].height = 60
 
     buf = io.BytesIO()
     wb.save(buf)

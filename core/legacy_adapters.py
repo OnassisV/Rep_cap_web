@@ -2206,6 +2206,84 @@ def obtener_participantes_certificados_lista_excel(codigo: str, limit: int = 100
         return []
 
 
+def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
+    """Datos de ficha y cobertura para la hoja 'Resumen' del Excel de certificados.
+
+    Combina metadata de cap_capacitaciones (nombre, objetivo, público objetivo)
+    con métricas calculadas desde bbdd_difoca (participantes, certificados,
+    cobertura DRE/GRE y UGEL).
+
+    Filtro base de bbdd_difoca: estado=2 AND compromiso=20.
+    DRE/GRE fortalecidas / UGEL fortalecidas: mismo filtro + aprobados_certificados=1.
+    """
+    codigo = str(codigo or "").strip()
+    if not codigo:
+        return {}
+
+    # -- Metadata de la ficha desde cap_capacitaciones ----------------------
+    sql_ficha = """
+        SELECT
+            cap_nombre,
+            mi_objetivo_capacitacion,
+            publico_objetivo_oferta
+        FROM cap_capacitaciones
+        WHERE cap_codigo = %s
+        LIMIT 1
+    """
+
+    # -- Métricas desde bbdd_difoca -----------------------------------------
+    # Normalización de tipo_iged idéntica a indicadores_adapters:
+    # UPPER(TRIM(REPLACE(tipo_iged, ' ', ''))) → 'DRE/GRE' o 'UGEL'
+    sql_metricas = """
+        SELECT
+            COUNT(*) AS participantes,
+            SUM(CASE WHEN aprobados_certificados = 1 THEN 1 ELSE 0 END) AS certificados,
+            COUNT(DISTINCT CASE
+                WHEN UPPER(TRIM(REPLACE(tipo_iged, ' ', ''))) = 'DRE/GRE'
+                THEN TRIM(nombre_iged) END) AS cobertura_dre,
+            COUNT(DISTINCT CASE
+                WHEN UPPER(TRIM(REPLACE(tipo_iged, ' ', ''))) = 'UGEL'
+                THEN TRIM(nombre_iged) END) AS cobertura_ugel,
+            COUNT(DISTINCT CASE
+                WHEN UPPER(TRIM(REPLACE(tipo_iged, ' ', ''))) = 'DRE/GRE'
+                     AND aprobados_certificados = 1
+                THEN TRIM(nombre_iged) END) AS dre_fortalecidas,
+            COUNT(DISTINCT CASE
+                WHEN UPPER(TRIM(REPLACE(tipo_iged, ' ', ''))) = 'UGEL'
+                     AND aprobados_certificados = 1
+                THEN TRIM(nombre_iged) END) AS ugel_fortalecidas
+        FROM bbdd_difoca
+        WHERE codigo = %s
+          AND estado = 2
+          AND compromiso = 20
+    """
+
+    ficha: dict[str, Any] = {}
+    metricas: dict[str, Any] = {}
+
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql_ficha, (codigo,))
+                ficha = cursor.fetchone() or {}
+                cursor.execute(sql_metricas, (codigo,))
+                metricas = cursor.fetchone() or {}
+    except Exception:
+        pass
+
+    return {
+        "nombre": str(ficha.get("cap_nombre") or "").strip(),
+        "objetivo": str(ficha.get("mi_objetivo_capacitacion") or "").strip(),
+        "publico_objetivo": str(ficha.get("publico_objetivo_oferta") or "").strip(),
+        "participantes": _a_int(metricas.get("participantes")),
+        "certificados": _a_int(metricas.get("certificados")),
+        "cobertura_dre": _a_int(metricas.get("cobertura_dre")),
+        "cobertura_ugel": _a_int(metricas.get("cobertura_ugel")),
+        "dre_fortalecidas": _a_int(metricas.get("dre_fortalecidas")),
+        "ugel_fortalecidas": _a_int(metricas.get("ugel_fortalecidas")),
+    }
+
+
 def resumir_certificados_por_region(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Agrupa certificados por region con promedio de nota final."""
     grouped: dict[str, dict[str, Any]] = {}
