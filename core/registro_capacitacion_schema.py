@@ -76,6 +76,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("sol_iged_nombre", "IGED", "list", False, None, "La lista se actualiza segun la region seleccionada.", "left"),
             _campo("organo_formulador", "Órgano formulador", "list", False, OPCIONES_ORGANO_FORMULADOR, "Solo aplica cuando la solicitud proviene de una Unidad orgánica.", "left"),
             _campo("especialista_cargo", "Especialista a cargo", "list", True, None, "Persona responsable. La lista se carga desde la tabla de usuarios.", "left"),
+            _campo("mi_objetivo_capacitacion", "Objetivo de la capacitacion", "text_long", False, None, "Describe el proposito principal de la intervención formativa.", "left"),
             _campo("publico_objetivo_oferta", "Publico objetivo", "text_long", True, None, "Describe el perfil al que estará dirigida la intervención.", "left"),
             _campo("cap_nombre", "Nombre de la capacitacion", "text_short", True, None, "Titulo preliminar con el que se abrira el proceso.", "left"),
             _campo("cap_anio", "Año de la intervención", "integer", True, None, "Se propone automáticamente según el año vigente.", "left"),

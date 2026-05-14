@@ -195,6 +195,7 @@ def crear_registro_capacitacion(
             capacitacion_replicada=_si_no("capacitacion_replicada"),
             capacitacion_diagnostico_previo=_si_no("capacitacion_diagnostico_previo"),
             publico_objetivo_oferta=str(payload.get("publico_objetivo_oferta") or "").strip(),
+            mi_objetivo_capacitacion=str(payload.get("mi_objetivo_capacitacion") or "").strip(),
             especialista_cargo=str(creado_nombre or "").strip(),
             # Estado
             cap_estado=Capacitacion.Estado.FORMULADA,
