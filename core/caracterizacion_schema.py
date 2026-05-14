@@ -156,7 +156,7 @@ CARACTERIZACION_SECCIONES: list[dict[str, Any]] = [
             _campo("evaluacion_eficacia_grupo_control", "¿Busca contar con información posterior (grupo control)?", "list", False, OPCIONES_SI_NO,
                    "Si la capa busca contar con información posterior a la capacitación."),
             _campo("resultado_aprendizaje", "Resultado de aprendizaje", "list", False, OPCIONES_RESULTADO_APRENDIZAJE,
-                   "Si la capa busca modificar conocimientos, comportamientos o competencias (Kirkpatrick)."),
+                   "Si la capa busca modificar conocimientos, comportamientos o competencias."),
             _campo("encuesta_satisfaccion", "¿Tiene encuesta de satisfacción?", "list", False, OPCIONES_SI_NO,
                    "Si el curso tiene encuesta de satisfacción."),
             _campo("incluido_reporte_cneb", "¿Incluida en reporte CNEB?", "list", False, OPCIONES_SI_NO,
