@@ -253,6 +253,7 @@ def obtener_cursos_aula_virtual(anio_param: str = "") -> dict[str, Any]:
             cr.category_code,
             CAST(REGEXP_SUBSTR(cr.category_code, '[0-9]{4}') AS UNSIGNED) AS anio,
             c.id           AS cap_id,
+            c.cap_id_curso AS cap_id_curso,
             c.cap_codigo,
             c.cap_nombre
         FROM course cr
