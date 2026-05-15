@@ -3821,17 +3821,7 @@
 
             <!-- Cursos del Aula Virtual y su vinculación con el aplicativo. -->
             {% if adapter_kind == "cursos_aula_virtual" %}
-                {% if anios_disponibles %}
-                    <div class="year-filter">
-                        <span class="year-filter__label">Año:</span>
-                        {% for anio in anios_disponibles %}
-                            <a
-                                class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
-                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}"
-                            >{{ anio }}</a>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+                {# Usar el filtro anual común arriba; eliminar duplicado local aquí. #}
                 {% if cursos_av_filas %}
                     <p class="module-panel__note">
                         <strong>{{ cursos_av_total }}</strong> curso(s) en Aula Virtual —
