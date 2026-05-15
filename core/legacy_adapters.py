@@ -234,6 +234,83 @@ def obtener_filas_oferta_formativa() -> list[dict[str, Any]]:
         return []
 
 
+def obtener_cursos_aula_virtual(anio_param: str = "") -> dict[str, Any]:
+    """Lista cursos del Aula Virtual (tablas course en Railway) y su vinculación
+    con cap_capacitaciones.
+
+    Devuelve para cada curso:
+    - id_aula, codigo_aula, titulo_aula, anio
+    - cap_id, cap_codigo, cap_nombre (NULL si no tiene ficha aún)
+    - vinculado: True/False
+
+    Filtro: solo categorías CV20xxDIFOCA. Si anio_param se indica, filtra por año.
+    """
+    query = """
+        SELECT
+            cr.id          AS id_aula,
+            cr.code        AS codigo_aula,
+            cr.title       AS titulo_aula,
+            cr.category_code,
+            CAST(REGEXP_SUBSTR(cr.category_code, '[0-9]{4}') AS UNSIGNED) AS anio,
+            c.id           AS cap_id,
+            c.cap_codigo,
+            c.cap_nombre
+        FROM course cr
+        LEFT JOIN cap_capacitaciones c ON c.cap_id_curso = cr.id
+        WHERE cr.category_code REGEXP '^CV[0-9]{4}DIFOCA$'
+        ORDER BY anio DESC, cr.code ASC
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                rows = list(cursor.fetchall())
+    except Exception:
+        rows = []
+
+    # Deduplicar: si un curso tiene múltiples fichas vinculadas, conservar la
+    # primera (más reciente por ORDER BY implícito del id de cap_capacitaciones).
+    seen: set[int] = set()
+    filas_unicas: list[dict[str, Any]] = []
+    for r in rows:
+        id_aula = r.get("id_aula")
+        if id_aula in seen:
+            continue
+        seen.add(id_aula)
+        filas_unicas.append(dict(r))
+
+    # Obtener lista de años disponibles
+    anios_disponibles: list[int] = sorted(
+        {int(r["anio"]) for r in filas_unicas if r.get("anio")},
+        reverse=True,
+    )
+    anio_seleccionado: int | None = None
+    if anio_param:
+        try:
+            anio_seleccionado = int(anio_param)
+        except ValueError:
+            pass
+    if not anio_seleccionado and anios_disponibles:
+        anio_seleccionado = anios_disponibles[0]
+
+    if anio_seleccionado:
+        filas_unicas = [r for r in filas_unicas if r.get("anio") == anio_seleccionado]
+
+    for r in filas_unicas:
+        r["vinculado"] = bool(r.get("cap_id"))
+
+    total = len(filas_unicas)
+    sin_ficha = sum(1 for r in filas_unicas if not r["vinculado"])
+
+    return {
+        "filas": filas_unicas,
+        "anios_disponibles": anios_disponibles,
+        "anio_seleccionado": anio_seleccionado,
+        "total": total,
+        "sin_ficha": sin_ficha,
+    }
+
+
 def obtener_cap_sin_aplicativo(anio_param: str = "") -> dict[str, Any]:
     """Retorna codigos presentes en bbdd_difoca que no tienen registro en cap_capacitaciones.
 

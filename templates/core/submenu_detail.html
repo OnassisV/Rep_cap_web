@@ -3864,6 +3864,65 @@
                     </p>
                 {% endif %}
             {% endif %}
+
+            <!-- Cursos del Aula Virtual y su vinculación con el aplicativo. -->
+            {% if adapter_kind == "cursos_aula_virtual" %}
+                {% if anios_disponibles %}
+                    <div class="year-filter">
+                        <span class="year-filter__label">Año:</span>
+                        {% for anio in anios_disponibles %}
+                            <a
+                                class="year-filter__item{% if anio == anio_seleccionado %} is-active{% endif %}"
+                                href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio }}"
+                            >{{ anio }}</a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if cursos_av_filas %}
+                    <p class="module-panel__note">
+                        <strong>{{ cursos_av_total }}</strong> curso(s) en Aula Virtual —
+                        <strong>{{ cursos_av_sin_ficha }}</strong> sin ficha en el aplicativo.
+                    </p>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Aula</th>
+                                    <th>Código Aula</th>
+                                    <th>Título del curso</th>
+                                    <th>Estado</th>
+                                    <th>Código Aplicativo</th>
+                                    <th>ID Ficha</th>
+                                    <th>Nombre en Aplicativo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fila in cursos_av_filas %}
+                                    <tr class="{% if not fila.vinculado %}row--warning{% endif %}">
+                                        <td class="font-mono text-right">{{ fila.id_aula }}</td>
+                                        <td class="font-mono">{{ fila.codigo_aula }}</td>
+                                        <td>{{ fila.titulo_aula }}</td>
+                                        <td>
+                                            {% if fila.vinculado %}
+                                                <span class="registro-status registro-status--finalizada">Vinculado</span>
+                                            {% else %}
+                                                <span class="registro-status registro-status--porfinalizar">Sin ficha</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="font-mono">{{ fila.cap_codigo|default:"—" }}</td>
+                                        <td class="font-mono text-right">{{ fila.cap_id|default:"—" }}</td>
+                                        <td>{{ fila.cap_nombre|default:"—" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">
+                        No se encontraron cursos del Aula Virtual{% if anio_seleccionado %} para el año {{ anio_seleccionado }}{% endif %}.
+                    </p>
+                {% endif %}
+            {% endif %}
         </section>
     </main>
     <script>
