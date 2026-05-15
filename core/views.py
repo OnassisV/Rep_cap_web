@@ -2034,8 +2034,8 @@ def section_detail_view(request, section_slug: str):
         raise Http404("Seccion no encontrada.")
 
     section_submenus = section.get("submenus", [])
-    if section_slug in ("reporte-indicadores",) and len(section_submenus) == 1:
-        return redirect("core:submenu_detail", section_slug, str(section_submenus[0].get("slug", "dashboard-kpi")))
+    if len(section_submenus) == 1:
+        return redirect("core:submenu_detail", section_slug, str(section_submenus[0].get("slug", "")))
 
     # Construye contexto de identidad.
     user_context = _build_user_context(request)
