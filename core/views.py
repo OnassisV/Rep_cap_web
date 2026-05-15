@@ -231,12 +231,6 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         ],
         "submenus": [
             {
-                "slug": "cap-sin-aplicativo",
-                "titulo": "Cap. sin aplicativo",
-                "descripcion": "Capacitaciones con participantes en SIDI que aún no tienen ficha en el aplicativo.",
-                "adapter": "cap_sin_aplicativo",
-            },
-            {
                 "slug": "cursos-aula-virtual",
                 "titulo": "Cursos Aula Virtual",
                 "descripcion": "Cursos del Aula Virtual trasladados a Railway y su vinculación con el aplicativo.",
@@ -4599,16 +4593,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
     # ── Sección Operaciones de Plataforma ──
     if section_slug == "operaciones-plataforma":
-        if submenu_slug == "cap-sin-aplicativo":
-            from core.legacy_adapters import obtener_cap_sin_aplicativo
-            resultado = obtener_cap_sin_aplicativo(anio_param)
-            context.update({
-                "cap_sin_aplic_filas": resultado["filas"],
-                "anios_disponibles": resultado["anios_disponibles"],
-                "anio_seleccionado": resultado["anio_seleccionado"],
-                "cap_sin_aplic_total": resultado["total"],
-            })
-        elif submenu_slug == "cursos-aula-virtual":
+        if submenu_slug == "cursos-aula-virtual":
             from core.legacy_adapters import obtener_cursos_aula_virtual
             resultado = obtener_cursos_aula_virtual(anio_param)
             context.update({
