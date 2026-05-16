@@ -3831,7 +3831,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>ID Aula</th>
+                                    <th>ID Ficha</th>
                                     <th>Código Aula</th>
                                     <th>Título del curso</th>
                                     <th>Estado</th>
@@ -3854,7 +3854,7 @@
                                             {% endif %}
                                         </td>
                                         <td class="font-mono">{{ fila.cap_codigo|default:"—" }}</td>
-                                        <td class="font-mono text-right">{{ fila.cap_id_curso|default:"—" }}</td>
+                                        <td class="font-mono text-right">{{ fila.cap_id|default:"—" }}</td>
                                         <td>{{ fila.cap_nombre|default:"—" }}</td>
                                     </tr>
                                 {% endfor %}
