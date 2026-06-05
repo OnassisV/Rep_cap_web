@@ -4727,20 +4727,21 @@ def cert_descargar_lista_excel_view(request, codigo: str):
     _fila(3, "Nombre", resumen.get("nombre", ""))
     _fila(4, "Objetivo", resumen.get("objetivo", ""))
     _fila(5, "Público objetivo", resumen.get("publico_objetivo", ""))
+    _fila(6, "Especialista responsable", resumen.get("especialista", ""))
 
-    _sec(7, "Participación y certificación")
-    _fila(8, "Participantes", resumen.get("participantes", 0))
-    _fila(9, "Certificados", resumen.get("certificados", 0))
+    _sec(8, "Participación y certificación")
+    _fila(9, "Participantes", resumen.get("participantes", 0))
+    _fila(10, "Certificados", resumen.get("certificados", 0))
 
-    _sec(11, "Cobertura institucional")
-    _fila(12, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
-    _fila(13, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
-    _fila(14, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
-    _fila(15, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
+    _sec(12, "Cobertura institucional")
+    _fila(13, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
+    _fila(14, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
+    _fila(15, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
+    _fila(16, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
 
     ws2.column_dimensions["A"].width = 30
     ws2.column_dimensions["B"].width = 80
-    for r in [3, 4, 5]:
+    for r in [3, 4, 5, 6]:
         ws2.row_dimensions[r].height = 60
 
     buf = io.BytesIO()

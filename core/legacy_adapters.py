@@ -26,6 +26,7 @@ logger = logging.getLogger("core")
 # Lista heredada de DNIs que no deben entrar a reportes operativos.
 DNIS_EXCLUIDOS_PLANTILLA = {
     "40231243",
+    "42116227",
     "09616505",
     "25790623",
     "40773688",
@@ -35,7 +36,6 @@ DNIS_EXCLUIDOS_PLANTILLA = {
     "10525745",
     "10090934",
     "40222323",
-    "42116227",
     "18113751",
     "44803184",
     "43989121",
@@ -2304,7 +2304,8 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
         SELECT
             cap_nombre,
             mi_objetivo_capacitacion,
-            publico_objetivo_oferta
+            publico_objetivo_oferta,
+            creado_nombre AS especialista_cargo
         FROM cap_capacitaciones
         WHERE cap_codigo = %s
         LIMIT 1
@@ -2344,7 +2345,8 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
         SELECT
             denominacion_proceso_formativo AS cap_nombre,
             objetivo_capacitacion          AS mi_objetivo_capacitacion,
-            publico_objetivo               AS publico_objetivo_oferta
+            publico_objetivo               AS publico_objetivo_oferta,
+            NULL                           AS especialista_cargo
         FROM oferta_formativa_difoca
         WHERE codigo = %s
         LIMIT 1
@@ -2369,6 +2371,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
         "nombre": str(ficha.get("cap_nombre") or "").strip(),
         "objetivo": str(ficha.get("mi_objetivo_capacitacion") or "").strip(),
         "publico_objetivo": str(ficha.get("publico_objetivo_oferta") or "").strip(),
+        "especialista": str(ficha.get("especialista_cargo") or "").strip(),
         "participantes": _a_int(metricas.get("participantes")),
         "certificados": _a_int(metricas.get("certificados")),
         "cobertura_dre": _a_int(metricas.get("cobertura_dre")),
@@ -3453,7 +3456,8 @@ def _aplicar_estado_matricula_y_retiros(
             fila["retiros"] = 1
 
         fila["estado"] = estado
-        if estado == 2 and _valor_vacio(fila.get("compromiso")):
+        compromiso_num = _a_float_nullable(fila.get("compromiso"))
+        if estado == 2 and (_valor_vacio(fila.get("compromiso")) or compromiso_num == 0.0):
             fila["compromiso"] = 20
         # Normalizacion legacy: compromiso 1 o 20 se exporta como 20.
         compromiso_num = _a_float_nullable(fila.get("compromiso"))
