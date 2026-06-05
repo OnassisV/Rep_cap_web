@@ -2313,6 +2313,9 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             mi_objetivo_capacitacion,
             publico_objetivo_oferta,
             organo_formulador,
+            sol_origen_institucional,
+            sol_region_iged,
+            sol_iged_nombre,
             COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo
         FROM cap_capacitaciones
         WHERE (cap_codigo = %s AND cap_id_curso = %s)
@@ -2376,11 +2379,23 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
     except Exception:
         pass
 
+    origen = str(ficha.get("sol_origen_institucional") or "").strip()
+    _organo_raw = str(ficha.get("organo_formulador") or "").strip()
+    _region = str(ficha.get("sol_region_iged") or "").strip()
+    _iged = str(ficha.get("sol_iged_nombre") or "").strip()
+    if origen == "DIFOCA":
+        organo_display = "DIFOCA"
+    elif origen == "IGED":
+        partes_iged = [p for p in [_region, _iged] if p]
+        organo_display = " - ".join(partes_iged) if partes_iged else _organo_raw
+    else:
+        organo_display = _organo_raw
+
     return {
         "nombre": str(ficha.get("cap_nombre") or "").strip(),
         "objetivo": str(ficha.get("mi_objetivo_capacitacion") or "").strip(),
         "publico_objetivo": str(ficha.get("publico_objetivo_oferta") or "").strip(),
-        "organo_formulador": str(ficha.get("organo_formulador") or "").strip(),
+        "organo_formulador": organo_display,
         "especialista": str(ficha.get("especialista_cargo") or "").strip(),
         "participantes": _a_int(metricas.get("participantes")),
         "certificados": _a_int(metricas.get("certificados")),
