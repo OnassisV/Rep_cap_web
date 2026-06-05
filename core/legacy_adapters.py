@@ -2299,6 +2299,13 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
     if not codigo:
         return {}
 
+    # Códigos importados desde legacy se almacenan divididos:
+    # "26001I-315" → cap_codigo="26001I", cap_id_curso="315".
+    # Buscar por ambas formas para cubrir cursos legacy e importados.
+    partes = codigo.split("-", 1)
+    cap_codigo_prefix = partes[0].strip()
+    cap_id_curso_suffix = partes[1].strip() if len(partes) > 1 else ""
+
     # -- Metadata de la ficha desde cap_capacitaciones ----------------------
     sql_ficha = """
         SELECT
@@ -2307,7 +2314,8 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             publico_objetivo_oferta,
             COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo
         FROM cap_capacitaciones
-        WHERE cap_codigo = %s
+        WHERE (cap_codigo = %s AND cap_id_curso = %s)
+           OR cap_codigo = %s
         LIMIT 1
     """
 
@@ -2355,10 +2363,10 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
-                cursor.execute(sql_ficha, (codigo,))
+                cursor.execute(sql_ficha, (cap_codigo_prefix, cap_id_curso_suffix, codigo))
                 ficha = cursor.fetchone() or {}
                 # Si el código no tiene ficha en cap_capacitaciones, buscar en
-                # oferta_formativa_difoca (cursos legacy / SIDI sin aplicativo).
+                # oferta_formativa_difoca (cursos sin migrar aún).
                 if not any(ficha.get(k) for k in ("cap_nombre", "mi_objetivo_capacitacion", "publico_objetivo_oferta")):
                     cursor.execute(sql_ficha_legacy, (codigo,))
                     ficha = cursor.fetchone() or {}
