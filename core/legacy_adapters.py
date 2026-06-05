@@ -2305,7 +2305,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             cap_nombre,
             mi_objetivo_capacitacion,
             publico_objetivo_oferta,
-            creado_nombre AS especialista_cargo
+            COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo
         FROM cap_capacitaciones
         WHERE cap_codigo = %s
         LIMIT 1
