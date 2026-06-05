@@ -4744,6 +4744,17 @@ def cert_descargar_lista_excel_view(request, codigo: str):
     for r in [3, 4, 5, 6]:
         ws2.row_dimensions[r].height = 60
 
+    # Área de impresión y configuración de página para que todo entre en una hoja.
+    ws2.print_area = "A1:B16"
+    ws2.page_setup.fitToPage = True
+    ws2.page_setup.fitToWidth = 1
+    ws2.page_setup.fitToHeight = 1
+    ws2.page_setup.paperSize = ws2.PAPERSIZE_A4
+    ws2.page_margins.left = 0.5
+    ws2.page_margins.right = 0.5
+    ws2.page_margins.top = 0.75
+    ws2.page_margins.bottom = 0.75
+
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
