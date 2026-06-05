@@ -2312,6 +2312,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             cap_nombre,
             mi_objetivo_capacitacion,
             publico_objetivo_oferta,
+            organo_formulador,
             COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo
         FROM cap_capacitaciones
         WHERE (cap_codigo = %s AND cap_id_curso = %s)
@@ -2379,6 +2380,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
         "nombre": str(ficha.get("cap_nombre") or "").strip(),
         "objetivo": str(ficha.get("mi_objetivo_capacitacion") or "").strip(),
         "publico_objetivo": str(ficha.get("publico_objetivo_oferta") or "").strip(),
+        "organo_formulador": str(ficha.get("organo_formulador") or "").strip(),
         "especialista": str(ficha.get("especialista_cargo") or "").strip(),
         "participantes": _a_int(metricas.get("participantes")),
         "certificados": _a_int(metricas.get("certificados")),

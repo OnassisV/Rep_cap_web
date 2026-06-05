@@ -4707,45 +4707,50 @@ def cert_descargar_lista_excel_view(request, codigo: str):
     label_fill = PatternFill("solid", fgColor="D9E1F2")
     section_font = Font(bold=True, color="FFFFFF")
     section_fill = PatternFill("solid", fgColor="305496")
-    wrap = Alignment(wrap_text=True, vertical="top")
+    center_sec = Alignment(horizontal="center", vertical="center")
 
     def _sec(row: int, texto: str) -> None:
         c = ws2.cell(row=row, column=1, value=texto)
         c.font = section_font
         c.fill = section_fill
+        c.alignment = center_sec
         ws2.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+
+    center_v = Alignment(wrap_text=True, vertical="center")
 
     def _fila(row: int, label: str, valor: "_Any") -> None:
         c1 = ws2.cell(row=row, column=1, value=label)
         c1.font = label_font
         c1.fill = label_fill
+        c1.alignment = center_v
         c2 = ws2.cell(row=row, column=2, value=valor)
-        c2.alignment = wrap
+        c2.alignment = center_v
 
     _sec(1, "Datos de la capacitación")
     _fila(2, "Código", codigo)
     _fila(3, "Nombre", resumen.get("nombre", ""))
-    _fila(4, "Objetivo", resumen.get("objetivo", ""))
-    _fila(5, "Público objetivo", resumen.get("publico_objetivo", ""))
-    _fila(6, "Especialista responsable", resumen.get("especialista", ""))
+    _fila(4, "Órgano formulador", resumen.get("organo_formulador", ""))
+    _fila(5, "Objetivo", resumen.get("objetivo", ""))
+    _fila(6, "Público objetivo", resumen.get("publico_objetivo", ""))
+    _fila(7, "Especialista responsable", resumen.get("especialista", ""))
 
-    _sec(8, "Participación y certificación")
-    _fila(9, "Participantes", resumen.get("participantes", 0))
-    _fila(10, "Certificados", resumen.get("certificados", 0))
+    _sec(9, "Participación y certificación")
+    _fila(10, "Participantes", resumen.get("participantes", 0))
+    _fila(11, "Certificados", resumen.get("certificados", 0))
 
-    _sec(12, "Cobertura institucional")
-    _fila(13, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
-    _fila(14, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
-    _fila(15, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
-    _fila(16, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
+    _sec(13, "Cobertura institucional")
+    _fila(14, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
+    _fila(15, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
+    _fila(16, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
+    _fila(17, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
 
     ws2.column_dimensions["A"].width = 30
     ws2.column_dimensions["B"].width = 80
-    for r in [3, 4, 5, 6]:
+    for r in [3, 4, 5, 6, 7]:
         ws2.row_dimensions[r].height = 60
 
     # Área de impresión y configuración de página para que todo entre en una hoja.
-    ws2.print_area = "A1:B16"
+    ws2.print_area = "A1:B17"
     ws2.page_setup.fitToPage = True
     ws2.page_setup.fitToWidth = 1
     ws2.page_setup.fitToHeight = 1
