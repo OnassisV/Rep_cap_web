@@ -2346,7 +2346,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             denominacion_proceso_formativo AS cap_nombre,
             objetivo_capacitacion          AS mi_objetivo_capacitacion,
             publico_objetivo               AS publico_objetivo_oferta,
-            NULL                           AS especialista_cargo
+            especialista_cargo
         FROM oferta_formativa_difoca
         WHERE codigo = %s
         LIMIT 1
