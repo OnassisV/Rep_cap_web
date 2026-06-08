@@ -3562,6 +3562,32 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 except Exception:
                     messages.error(request, "No se pudo cancelar la capacitación.")
 
+            # ── Cancelar o eliminar sincrónica desde el modal con contraseña admin ──
+            elif action in ("cancelar_capacitacion", "eliminar_capacitacion") and cap_id:
+                from core.models import Capacitacion
+                from django.contrib.auth import authenticate as _auth_sync
+                adm_user = str(request.POST.get("admin_username", "")).strip()
+                adm_pass = str(request.POST.get("admin_password", "")).strip()
+                auth_user = _auth_sync(username=adm_user, password=adm_pass) if (adm_user and adm_pass) else None
+                if auth_user is None or not (auth_user.is_superuser or auth_user.is_staff):
+                    messages.error(request, "Credenciales de administrador inválidas o sin permisos suficientes.")
+                else:
+                    try:
+                        cap_obj = Capacitacion.objects.get(pk=int(cap_id))
+                        if action == "cancelar_capacitacion":
+                            cap_obj.cap_estado = Capacitacion.Estado.CANCELADA
+                            cap_obj.save(update_fields=["cap_estado", "actualizado_en"])
+                            messages.success(request, f"Capacitación '{cap_obj.cap_nombre}' cancelada.")
+                        else:
+                            nombre = cap_obj.cap_nombre
+                            cap_obj.delete()
+                            messages.success(request, f"Capacitación '{nombre}' eliminada permanentemente.")
+                        redirect_params_ed = {}
+                    except Capacitacion.DoesNotExist:
+                        messages.error(request, "No se encontró la capacitación.")
+                    except Exception as exc:
+                        messages.error(request, f"Error: {exc}")
+
             return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params_ed))
 
         # ── POST: Procesamiento (archivos y proceso) ──
