@@ -11,6 +11,7 @@ from .views import (
     submenu_detail_view,
     switch_role_view,
     api_caracterizacion_replica_view,
+    api_recalcular_estado_view,
 )
 
 
@@ -45,4 +46,9 @@ urlpatterns = [
         api_caracterizacion_replica_view,
         name="api_caracterizacion_replica",
     ),  # Devuelve los campos de caracterización de una capacitación fuente.
+    path(
+        "api/recalcular-estado/<int:cap_id>/",
+        api_recalcular_estado_view,
+        name="api_recalcular_estado",
+    ),  # Fuerza re-evaluación del estado (útil cuando certificados se agregan externamente).
 ]

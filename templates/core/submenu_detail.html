@@ -1864,9 +1864,16 @@
                     <div class="editar-cap-header">
                         <a href="?#" class="editar-cap-back">&larr; Volver a la lista</a>
                         <h3>{{ editar_cap.cap_nombre }}</h3>
-                        <span class="registro-status registro-status--{{ editar_cap.cap_estado|lower|cut:" " }}">
+                        <span class="registro-status registro-status--{{ editar_cap.cap_estado|lower|cut:" " }}" id="badge-estado-cap">
                             {{ editar_cap.cap_estado }}
                         </span>
+                        {% if editar_cap.cap_estado == "Por finalizar" %}
+                        <button type="button" class="btn-secondary-soft" id="btn-recalcular-estado"
+                                data-cap-id="{{ editar_cap.id }}"
+                                title="Re-evalúa si ya hay certificados emitidos en la plataforma">
+                            ↻ Verificar estado
+                        </button>
+                        {% endif %}
                     </div>
 
                     <form method="post" class="editor-form registro-form" data-registro-form data-editar-form novalidate>
@@ -6028,6 +6035,55 @@
                 });
             });
         })();
+    </script>
+
+    <script>
+    (function () {
+        var btn = document.getElementById("btn-recalcular-estado");
+        if (!btn) return;
+        var badge = document.getElementById("badge-estado-cap");
+        var csrfToken = document.querySelector("[name=csrfmiddlewaretoken]");
+        btn.addEventListener("click", function () {
+            var capId = btn.getAttribute("data-cap-id");
+            btn.disabled = true;
+            btn.textContent = "Verificando…";
+            fetch("/app/api/recalcular-estado/" + capId + "/", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken ? csrfToken.value : "",
+                    "Content-Type": "application/json",
+                },
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.ok) {
+                    var estado = data.estado_nuevo;
+                    if (badge) {
+                        badge.textContent = estado;
+                        badge.className = "registro-status registro-status--" + estado.toLowerCase().replace(/ /g, "");
+                    }
+                    if (estado !== "Por finalizar") {
+                        btn.remove();
+                        alert("Estado actualizado a: " + estado);
+                    } else {
+                        var info = "Sigue en 'Por finalizar'.\nPasos completos: " + data.pasos_completos + "\nTiene certificados: " + data.tiene_certificados;
+                        alert(info);
+                        btn.disabled = false;
+                        btn.textContent = "↻ Verificar estado";
+                    }
+                } else {
+                    alert("Error: " + (data.error || "desconocido"));
+                    btn.disabled = false;
+                    btn.textContent = "↻ Verificar estado";
+                }
+            })
+            .catch(function () {
+                alert("No se pudo conectar con el servidor.");
+                btn.disabled = false;
+                btn.textContent = "↻ Verificar estado";
+            });
+        });
+    })();
     </script>
 </body>
 </html>

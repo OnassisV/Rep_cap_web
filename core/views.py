@@ -4803,3 +4803,36 @@ def api_caracterizacion_replica_view(request, cap_id: int):
         "cap_anio": cap.cap_anio,
         "valores": valores,
     })
+
+
+@login_required
+@require_POST
+def api_recalcular_estado_view(request, cap_id: int):
+    """Fuerza el re-cálculo del estado de una capacitación.
+
+    Útil cuando los certificados se generan externamente (bbdd_difoca) después
+    del último guardado del formulario, dejando el estado desactualizado.
+    """
+    from core.models import Capacitacion as _Cap
+
+    try:
+        cap = _Cap.objects.get(pk=int(cap_id))
+    except _Cap.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Capacitación no encontrada."}, status=404)
+
+    estado_anterior = cap.cap_estado
+    tiene_certificados = _cap_tiene_certificados(cap)
+    pasos_completos = int(cap.paso_actual or 0) >= TOTAL_PASOS_FLUJO
+
+    _auto_actualizar_estado(cap)
+    cap.refresh_from_db(fields=["cap_estado"])
+
+    return JsonResponse({
+        "ok": True,
+        "cap_id": cap_id,
+        "estado_anterior": estado_anterior,
+        "estado_nuevo": cap.cap_estado,
+        "paso_actual": cap.paso_actual,
+        "pasos_completos": pasos_completos,
+        "tiene_certificados": tiene_certificados,
+    })
