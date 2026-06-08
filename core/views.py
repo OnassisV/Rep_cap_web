@@ -2214,6 +2214,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     qs = qs.filter(creado_por__in=[username, display_name])
                 cap_obj = qs.get(pk=int(cap_id))
 
+                # Bloquear edición si ya se emitieron certificados — requiere contraseña admin.
+                if cap_obj.cert_pdf_emitido:
+                    from django.contrib.auth import authenticate as _auth_cert
+                    adm_user = str(request.POST.get("admin_username_edicion", "")).strip()
+                    adm_pass = str(request.POST.get("admin_password_edicion", "")).strip()
+                    auth_user = _auth_cert(username=adm_user, password=adm_pass) if (adm_user and adm_pass) else None
+                    if auth_user is None or not (auth_user.is_superuser or auth_user.is_staff):
+                        messages.error(request, "Esta capacitación ya tiene certificados emitidos. Se requiere contraseña de administrador para editarla.")
+                        return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
+
                 # Lee TODOS los campos del formulario (sin filtro de seccion).
                 # cap_codigo y cap_id_curso se gestionan solo desde save_id_plataforma;
                 # excluirlos aquí evita que se borren al guardar otros pasos.
@@ -2904,6 +2914,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         "cap_nombre": editar_cap.cap_nombre,
                         "cap_estado": editar_cap.cap_estado,
                         "paso_actual": editar_cap.paso_actual,
+                        "cert_pdf_emitido": bool(editar_cap.cert_pdf_emitido),
                     },
                     "editar_valores": editar_valores,
                     "editar_secciones_render": editar_secciones_render,
@@ -3480,6 +3491,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         qs = qs.filter(cap_codigo__in=codigos_usuario)
                     cap_obj = qs.get(pk=int(cap_id))
 
+                    # Bloquear edición si ya se emitieron certificados — requiere contraseña admin.
+                    if cap_obj.cert_pdf_emitido:
+                        from django.contrib.auth import authenticate as _auth_cert_sync
+                        adm_user = str(request.POST.get("admin_username_edicion", "")).strip()
+                        adm_pass = str(request.POST.get("admin_password_edicion", "")).strip()
+                        auth_user = _auth_cert_sync(username=adm_user, password=adm_pass) if (adm_user and adm_pass) else None
+                        if auth_user is None or not (auth_user.is_superuser or auth_user.is_staff):
+                            messages.error(request, "Esta capacitación ya tiene certificados emitidos. Se requiere contraseña de administrador para editarla.")
+                            return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params_ed))
+
                     _CAMPOS_EXCLUIDOS_SAVE = {"cap_codigo", "cap_id_curso"}
                     for campo in iterar_campos_registro_capacitacion():
                         codigo_campo = str(campo.get("codigo", "")).strip()
@@ -3901,6 +3922,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         "cap_nombre": editar_cap.cap_nombre,
                         "cap_estado": editar_cap.cap_estado,
                         "paso_actual": editar_cap.paso_actual,
+                        "cert_pdf_emitido": bool(editar_cap.cert_pdf_emitido),
                     },
                     "editar_valores": editar_valores,
                     "editar_secciones_render": editar_secciones_render,
@@ -4452,6 +4474,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 continue
             codigo_completo = f"{cap_codigo}-{cap_id_curso}" if cap_id_curso else cap_codigo
             emitido = bool(row.get("cert_pdf_emitido"))
+            paso = int(row.get("paso_actual") or 0)
+            carac_completa = paso >= TOTAL_PASOS_FLUJO
             cert_lista_completa.append(
                 {
                     "id": int(row.get("id") or 0),
@@ -4461,7 +4485,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "codigo_completo": codigo_completo,
                     "cap_anio": row.get("cap_anio"),
                     "cap_estado": str(row.get("cap_estado") or "").strip(),
-                    "paso_actual": int(row.get("paso_actual") or 0),
+                    "paso_actual": paso,
+                    "carac_completa": carac_completa,
                     "cert_pdf_emitido": emitido,
                     "estado_certificacion": "Emitido" if emitido else "Pendiente",
                     "estado_css": "emitido" if emitido else "pendiente",

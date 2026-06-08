@@ -3658,6 +3658,24 @@ h1 {
     border: 1px solid rgba(217, 119, 6, 0.22);
 }
 
+.cert-badge--bloqueado {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.10);
+    border: 1px solid rgba(124, 58, 237, 0.22);
+    font-size: 0.72rem;
+}
+
+.cert-row-item--bloqueado {
+    opacity: 0.65;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.cert-row-item--bloqueado::before {
+    background: linear-gradient(180deg, #7c3aed 0%, #a78bfa 100%);
+    opacity: 0.7;
+}
+
 .cert-btn-descarga-lista {
     display: inline-flex;
     align-items: center;

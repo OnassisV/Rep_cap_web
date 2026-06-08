@@ -1876,11 +1876,45 @@
                         {% endif %}
                     </div>
 
-                    <form method="post" class="editor-form registro-form" data-registro-form data-editar-form novalidate>
+                    {% if editar_cap.cert_pdf_emitido %}
+                    <div class="module-panel__note" style="background:#fff3e0;border:1px solid #e65100;border-radius:6px;padding:.9rem 1rem;margin-bottom:1rem;">
+                        <strong>🔒 Edición restringida</strong><br>
+                        Esta capacitación ya tiene <strong>certificados emitidos</strong>. Para editar los datos es necesario ingresar credenciales de administrador.
+                        <br><br>
+                        <button type="button" class="btn-secondary-soft" onclick="document.getElementById('modal-admin-edicion').removeAttribute('hidden')">
+                            Ingresar credenciales de administrador
+                        </button>
+                    </div>
+
+                    <!-- Modal contraseña admin para desbloquear edición -->
+                    <div id="modal-admin-edicion" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;">
+                        <div style="background:#fff;border-radius:10px;padding:2rem;min-width:320px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+                            <h3 style="margin-top:0;">Autorización de administrador</h3>
+                            <p style="font-size:.9rem;color:#555;">Ingresa tus credenciales para habilitar la edición.</p>
+                            <label style="display:block;margin-bottom:.5rem;font-size:.9rem;">Usuario admin
+                                <input type="text" id="admin-edicion-user" class="cert-input" style="width:100%;margin-top:.25rem;" autocomplete="username">
+                            </label>
+                            <label style="display:block;margin-bottom:1rem;font-size:.9rem;">Contraseña
+                                <input type="password" id="admin-edicion-pass" class="cert-input" style="width:100%;margin-top:.25rem;" autocomplete="current-password">
+                            </label>
+                            <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+                                <button type="button" class="btn-secondary-soft" onclick="document.getElementById('modal-admin-edicion').setAttribute('hidden','')">Cancelar</button>
+                                <button type="button" class="btn-primary-soft" id="btn-confirmar-admin-edicion">Confirmar</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" class="editor-form registro-form" data-registro-form data-editar-form novalidate
+                          {% if editar_cap.cert_pdf_emitido %}id="form-editar-cap-bloqueado" data-bloqueado-cert{% endif %}>
                         {% csrf_token %}
                         <input type="hidden" name="action" value="save_capacitacion">
                         <input type="hidden" name="cap_id" value="{{ editar_cap.id }}">
                         <input type="hidden" name="paso_actual" value="{{ editar_cap.paso_actual }}">
+                        {% if editar_cap.cert_pdf_emitido %}
+                        <input type="hidden" name="admin_username_edicion" id="hidden-admin-edicion-user">
+                        <input type="hidden" name="admin_password_edicion" id="hidden-admin-edicion-pass">
+                        {% endif %}
                         {{ registro_iged_catalogo|json_script:"registro-iged-catalogo" }}
 
                         {% if editar_flujo_unificado %}
@@ -2696,17 +2730,26 @@
                         </div>
                         {% for item in cert_lista %}
                             <div
+                                {% if item.carac_completa %}
                                 role="link"
                                 tabindex="0"
                                 data-cert-href="{% url 'core:submenu_detail' section.slug submenu.slug %}?anio={{ anio_seleccionado }}&estado_cert={{ cert_estado_sel|default:'todos' }}&codigo={{ item.codigo_completo }}"
                                 onclick="if(!event.target.closest('.cert-btn-descarga-lista')){window.location.href=this.dataset.certHref;}"
                                 onkeydown="if((event.key==='Enter'||event.key===' ')&&!event.target.closest('.cert-btn-descarga-lista')){event.preventDefault();window.location.href=this.dataset.certHref;}"
-                                class="simple-table__row cert-row-item cert-row-item--{{ item.estado_css }}{% if item.codigo_completo == cert_codigo_sel %} is-active{% endif %}"
+                                {% else %}
+                                title="Caracterización incompleta — completa los datos de la capacitación antes de emitir certificados"
+                                {% endif %}
+                                class="simple-table__row cert-row-item cert-row-item--{{ item.estado_css }}{% if item.codigo_completo == cert_codigo_sel %} is-active{% endif %}{% if not item.carac_completa %} cert-row-item--bloqueado{% endif %}"
                                 data-cert-row
                                 data-cert-search="{{ item.codigo_completo|lower }} {{ item.cap_nombre|lower }}"
                             >
                                 <span>{{ item.codigo_completo }}</span>
-                                <span>{{ item.cap_nombre }}</span>
+                                <span>
+                                    {{ item.cap_nombre }}
+                                    {% if not item.carac_completa %}
+                                        <span class="cert-badge cert-badge--bloqueado" title="Caracterización incompleta">⚠ Caracterización incompleta</span>
+                                    {% endif %}
+                                </span>
                                 <span>
                                     {% if item.cert_pdf_emitido %}
                                         <a
@@ -2731,6 +2774,8 @@
                                 <span>
                                     {% if item.cert_pdf_emitido %}
                                         <strong class="cert-badge cert-badge--emitido">Emitido</strong>
+                                    {% elif not item.carac_completa %}
+                                        <strong class="cert-badge cert-badge--bloqueado">Bloqueado</strong>
                                     {% else %}
                                         <strong class="cert-badge cert-badge--pendiente">Pendiente</strong>
                                     {% endif %}
@@ -2751,16 +2796,24 @@
                 <!-- Botón para abrir modal de emisión -->
                 <div class="cert-actions" style="margin-top:1rem;">
                     {% if cert_cap_sel %}
-                        <button type="button" class="gf-btn gf-btn--primary" id="cert-open-modal-btn"
-                                onclick="certAbrirModal()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-                                 fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Emitir certificados por lote — {{ cert_cap_sel.codigo_completo }}
-                        </button>
+                        {% if cert_cap_sel.carac_completa %}
+                            <button type="button" class="gf-btn gf-btn--primary" id="cert-open-modal-btn"
+                                    onclick="certAbrirModal()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Emitir certificados por lote — {{ cert_cap_sel.codigo_completo }}
+                            </button>
+                        {% else %}
+                            <div class="module-panel__note" style="background:#fff8e1;border:1px solid #f9a825;border-radius:6px;padding:.75rem 1rem;">
+                                <strong>⚠ Emisión bloqueada</strong><br>
+                                La capacitación <strong>{{ cert_cap_sel.codigo_completo }}</strong> aún no tiene la caracterización completa.
+                                Completa los datos en el módulo de <em>Editar capacitación</em> (paso 2 del flujo) antes de emitir certificados.
+                            </div>
+                        {% endif %}
                     {% else %}
                         <p class="module-panel__note">
                             Selecciona una capacitación de la lista para habilitar la emisión de certificados.
@@ -6035,6 +6088,49 @@
                 });
             });
         })();
+    </script>
+
+    <script>
+    /* ── Bloqueo de formulario de edición con certificados emitidos ── */
+    (function () {
+        var form = document.querySelector("[data-bloqueado-cert]");
+        if (!form) return;
+
+        // Deshabilitar todos los inputs/selects/textareas/botones del formulario
+        function bloquearForm() {
+            form.querySelectorAll("input:not([type=hidden]), select, textarea, button[type=submit]").forEach(function(el) {
+                el.disabled = true;
+            });
+        }
+        bloquearForm();
+
+        // Confirmar credenciales admin para desbloquear
+        var btnConfirmar = document.getElementById("btn-confirmar-admin-edicion");
+        if (btnConfirmar) {
+            btnConfirmar.addEventListener("click", function () {
+                var user = (document.getElementById("admin-edicion-user") || {}).value || "";
+                var pass = (document.getElementById("admin-edicion-pass") || {}).value || "";
+                if (!user || !pass) {
+                    alert("Ingresa usuario y contraseña.");
+                    return;
+                }
+                // Copiar a los hidden inputs para que se envíen con el form
+                var hiddenUser = document.getElementById("hidden-admin-edicion-user");
+                var hiddenPass = document.getElementById("hidden-admin-edicion-pass");
+                if (hiddenUser) hiddenUser.value = user;
+                if (hiddenPass) hiddenPass.value = pass;
+
+                // Desbloquear el formulario
+                form.querySelectorAll("input:not([type=hidden]), select, textarea, button[type=submit]").forEach(function(el) {
+                    el.disabled = false;
+                });
+                document.getElementById("modal-admin-edicion").setAttribute("hidden", "");
+                // Mostrar aviso
+                var banner = document.querySelector("[data-bloqueado-cert]").previousElementSibling;
+                if (banner) banner.style.borderColor = "#2e7d32";
+            });
+        }
+    })();
     </script>
 
     <script>
