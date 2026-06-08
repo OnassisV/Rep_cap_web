@@ -1877,17 +1877,17 @@
                     </div>
 
                     {% if editar_cap.cert_pdf_emitido %}
-                    <div class="module-panel__note" style="background:#fff3e0;border:1px solid #e65100;border-radius:6px;padding:.9rem 1rem;margin-bottom:1rem;">
+                    <div id="banner-cert-bloqueado" style="background:#fff3e0;border:1px solid #e65100;border-radius:6px;padding:.9rem 1rem;margin-bottom:1rem;">
                         <strong>🔒 Edición restringida</strong><br>
                         Esta capacitación ya tiene <strong>certificados emitidos</strong>. Para editar los datos es necesario ingresar credenciales de administrador.
                         <br><br>
-                        <button type="button" class="btn-secondary-soft" onclick="document.getElementById('modal-admin-edicion').removeAttribute('hidden')">
+                        <button type="button" class="btn-secondary-soft" onclick="abrirModalAdminEdicion()">
                             Ingresar credenciales de administrador
                         </button>
                     </div>
 
                     <!-- Modal contraseña admin para desbloquear edición -->
-                    <div id="modal-admin-edicion" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;">
+                    <div id="modal-admin-edicion" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
                         <div style="background:#fff;border-radius:10px;padding:2rem;min-width:320px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
                             <h3 style="margin-top:0;">Autorización de administrador</h3>
                             <p style="font-size:.9rem;color:#555;">Ingresa tus credenciales para habilitar la edición.</p>
@@ -1898,8 +1898,8 @@
                                 <input type="password" id="admin-edicion-pass" class="cert-input" style="width:100%;margin-top:.25rem;" autocomplete="current-password">
                             </label>
                             <div style="display:flex;gap:.5rem;justify-content:flex-end;">
-                                <button type="button" class="btn-secondary-soft" onclick="document.getElementById('modal-admin-edicion').setAttribute('hidden','')">Cancelar</button>
-                                <button type="button" class="btn-primary-soft" id="btn-confirmar-admin-edicion">Confirmar</button>
+                                <button type="button" class="btn-secondary-soft" onclick="cerrarModalAdminEdicion()">Cancelar</button>
+                                <button type="button" class="btn-primary-soft" onclick="confirmarAdminEdicion()">Confirmar</button>
                             </div>
                         </div>
                     </div>
@@ -6092,44 +6092,48 @@
 
     <script>
     /* ── Bloqueo de formulario de edición con certificados emitidos ── */
+    function abrirModalAdminEdicion() {
+        var m = document.getElementById("modal-admin-edicion");
+        if (m) { m.style.display = "flex"; }
+    }
+    function cerrarModalAdminEdicion() {
+        var m = document.getElementById("modal-admin-edicion");
+        if (m) { m.style.display = "none"; }
+    }
+    function confirmarAdminEdicion() {
+        var userEl = document.getElementById("admin-edicion-user");
+        var passEl = document.getElementById("admin-edicion-pass");
+        var user = userEl ? userEl.value.trim() : "";
+        var pass = passEl ? passEl.value.trim() : "";
+        if (!user || !pass) {
+            alert("Ingresa usuario y contraseña de administrador.");
+            return;
+        }
+        // Copiar al formulario
+        var hiddenUser = document.getElementById("hidden-admin-edicion-user");
+        var hiddenPass = document.getElementById("hidden-admin-edicion-pass");
+        if (hiddenUser) hiddenUser.value = user;
+        if (hiddenPass) hiddenPass.value = pass;
+        // Habilitar todos los campos del formulario bloqueado
+        var form = document.getElementById("form-editar-cap-bloqueado");
+        if (form) {
+            form.querySelectorAll("input:not([type=hidden]), select, textarea, button").forEach(function(el) {
+                el.disabled = false;
+            });
+        }
+        cerrarModalAdminEdicion();
+        // Cambiar borde del banner a verde como confirmación visual
+        var banner = document.getElementById("banner-cert-bloqueado");
+        if (banner) { banner.style.borderColor = "#2e7d32"; banner.style.background = "#f1f8e9"; }
+    }
+
+    // Bloquear formulario al cargar si existe
     (function () {
-        var form = document.querySelector("[data-bloqueado-cert]");
+        var form = document.getElementById("form-editar-cap-bloqueado");
         if (!form) return;
-
-        // Deshabilitar todos los inputs/selects/textareas/botones del formulario
-        function bloquearForm() {
-            form.querySelectorAll("input:not([type=hidden]), select, textarea, button[type=submit]").forEach(function(el) {
-                el.disabled = true;
-            });
-        }
-        bloquearForm();
-
-        // Confirmar credenciales admin para desbloquear
-        var btnConfirmar = document.getElementById("btn-confirmar-admin-edicion");
-        if (btnConfirmar) {
-            btnConfirmar.addEventListener("click", function () {
-                var user = (document.getElementById("admin-edicion-user") || {}).value || "";
-                var pass = (document.getElementById("admin-edicion-pass") || {}).value || "";
-                if (!user || !pass) {
-                    alert("Ingresa usuario y contraseña.");
-                    return;
-                }
-                // Copiar a los hidden inputs para que se envíen con el form
-                var hiddenUser = document.getElementById("hidden-admin-edicion-user");
-                var hiddenPass = document.getElementById("hidden-admin-edicion-pass");
-                if (hiddenUser) hiddenUser.value = user;
-                if (hiddenPass) hiddenPass.value = pass;
-
-                // Desbloquear el formulario
-                form.querySelectorAll("input:not([type=hidden]), select, textarea, button[type=submit]").forEach(function(el) {
-                    el.disabled = false;
-                });
-                document.getElementById("modal-admin-edicion").setAttribute("hidden", "");
-                // Mostrar aviso
-                var banner = document.querySelector("[data-bloqueado-cert]").previousElementSibling;
-                if (banner) banner.style.borderColor = "#2e7d32";
-            });
-        }
+        form.querySelectorAll("input:not([type=hidden]), select, textarea, button").forEach(function(el) {
+            el.disabled = true;
+        });
     })();
     </script>
 
