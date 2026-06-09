@@ -5009,3 +5009,74 @@ def generar_plantilla_seguimiento(
         "files": files_meta,
     }
 
+
+def obtener_caracterizacion_por_dnis(dnis_texto: str) -> dict[str, Any]:
+    """Consulta uvw_usuarios_detalle_completo en SIDI (Railway) para una lista de DNIs.
+
+    Acepta DNIs separados por comas, espacios, puntos y coma o saltos de línea.
+    Devuelve:
+        - filas: lista de dicts con los datos de cada participante encontrado
+        - no_encontrados: lista de DNIs que no tuvieron resultado
+        - total: total de DNIs consultados
+        - encontrados: cantidad encontrada
+    """
+    import re
+
+    dnis_raw = re.split(r"[\s,;]+", dnis_texto.strip())
+    dnis = [_normalizar_dni(d) for d in dnis_raw if _normalizar_dni(d)]
+    dnis = list(dict.fromkeys(dnis))  # deduplicar manteniendo orden
+
+    if not dnis:
+        return {"filas": [], "no_encontrados": [], "total": 0, "encontrados": 0}
+
+    placeholders = ", ".join(["%s"] * len(dnis))
+    query = f"""
+        SELECT
+            CASE WHEN id_tipo_documento = 1 THEN 'DNI' ELSE 'OTROS' END AS tipo_documento,
+            nro_documento AS dni,
+            CONCAT(COALESCE(apellido_paterno, ''), ' ', COALESCE(apellido_materno, '')) AS apellidos,
+            nombres,
+            genero,
+            DATE_FORMAT(fecha_nacimiento, '%%Y-%%m-%%d') AS fecha_nacimiento,
+            email,
+            telefono_celular,
+            telefono_fijo,
+            CASE
+                WHEN fec_modifica < DATE_SUB(CURDATE(), INTERVAL 6 MONTH) THEN 'No'
+                ELSE 'Si'
+            END AS actualizo_datos,
+            SUBSTRING(descripcion_id_dre_gre, 5, 100) AS region,
+            CASE
+                WHEN REPLACE(descripcion_tipo_entidad, ' ', '') = 'DRE/GRE' THEN 'DRE/GRE'
+                ELSE descripcion_tipo_entidad
+            END AS tipo_iged,
+            CASE
+                WHEN REPLACE(descripcion_tipo_entidad, ' ', '') = 'DRE/GRE' THEN descripcion_id_dre_gre
+                WHEN descripcion_tipo_entidad = 'UGEL' THEN descripcion_id_ugel
+                ELSE NULL
+            END AS nombre_iged,
+            descripcion_nivel_puesto AS nivel_puesto,
+            descripcion_puesto AS nombre_puesto,
+            descripcion_regimen_laboral AS regimen_laboral
+        FROM uvw_usuarios_detalle_completo
+        WHERE nro_documento IN ({placeholders})
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, dnis)
+                rows = [dict(r) for r in cur.fetchall()]
+    except Exception:
+        logger.exception("Error consultando caracterización por DNIs")
+        rows = []
+
+    encontrados_set = {_normalizar_dni(r.get("dni")) for r in rows}
+    no_encontrados = [d for d in dnis if d not in encontrados_set]
+
+    return {
+        "filas": rows,
+        "no_encontrados": no_encontrados,
+        "total": len(dnis),
+        "encontrados": len(rows),
+    }
+

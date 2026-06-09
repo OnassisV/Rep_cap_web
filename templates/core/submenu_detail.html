@@ -3927,6 +3927,80 @@
                     </p>
                 {% endif %}
             {% endif %}
+
+            <!-- Caracterización de participantes por lista de DNIs -->
+            {% if adapter_kind == "caracterizacion_por_dnis" %}
+                <form method="post" class="module-panel__form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="dnis_texto" class="form-label">Lista de DNIs</label>
+                        <textarea
+                            id="dnis_texto"
+                            name="dnis_texto"
+                            class="form-control"
+                            rows="6"
+                            placeholder="Ingresa los DNIs separados por comas, espacios o saltos de línea&#10;Ejemplo: 46935574, 40608330, 10540264"
+                        >{{ caract_dnis_texto }}</textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" name="action" value="buscar" class="btn btn--primary">Buscar</button>
+                        {% if caract_resultado and caract_resultado.filas %}
+                            <button type="submit" name="action" value="descargar_excel" class="btn btn--secondary">Descargar Excel</button>
+                        {% endif %}
+                    </div>
+                </form>
+
+                {% if caract_resultado %}
+                    <p class="module-panel__note">
+                        <strong>{{ caract_resultado.encontrados }}</strong> encontrado(s) de
+                        <strong>{{ caract_resultado.total }}</strong> DNI(s) consultado(s).
+                        {% if caract_resultado.no_encontrados %}
+                            No encontrados: {{ caract_resultado.no_encontrados|join:", " }}
+                        {% endif %}
+                    </p>
+                    {% if caract_resultado.filas %}
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>DNI</th>
+                                        <th>Apellidos</th>
+                                        <th>Nombres</th>
+                                        <th>Género</th>
+                                        <th>Región</th>
+                                        <th>Tipo IGED</th>
+                                        <th>IGED</th>
+                                        <th>Nivel Puesto</th>
+                                        <th>Nombre Puesto</th>
+                                        <th>Régimen Laboral</th>
+                                        <th>Email</th>
+                                        <th>Actualizó Datos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fila in caract_resultado.filas %}
+                                        <tr>
+                                            <td class="font-mono">{{ fila.dni }}</td>
+                                            <td>{{ fila.apellidos }}</td>
+                                            <td>{{ fila.nombres }}</td>
+                                            <td>{{ fila.genero|default:"—" }}</td>
+                                            <td>{{ fila.region|default:"—" }}</td>
+                                            <td>{{ fila.tipo_iged|default:"—" }}</td>
+                                            <td>{{ fila.nombre_iged|default:"—" }}</td>
+                                            <td>{{ fila.nivel_puesto|default:"—" }}</td>
+                                            <td>{{ fila.nombre_puesto|default:"—" }}</td>
+                                            <td>{{ fila.regimen_laboral|default:"—" }}</td>
+                                            <td>{{ fila.email|default:"—" }}</td>
+                                            <td>{{ fila.actualizo_datos|default:"—" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+
         </section>
     </main>
     <script>

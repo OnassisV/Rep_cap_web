@@ -236,6 +236,12 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "descripcion": "Cursos del Aula Virtual trasladados a Railway y su vinculación con el aplicativo.",
                 "adapter": "cursos_aula_virtual",
             },
+            {
+                "slug": "caracterizacion-por-dnis",
+                "titulo": "Caracterización por DNIs",
+                "descripcion": "Consulta la caracterización de participantes en sysdifoca a partir de una lista de DNIs.",
+                "adapter": "caracterizacion_por_dnis",
+            },
         ],
     },
     {
@@ -4653,6 +4659,55 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "anio_seleccionado": resultado["anio_seleccionado"],
                 "cursos_av_total": resultado["total"],
                 "cursos_av_sin_ficha": resultado["sin_ficha"],
+            })
+
+        elif submenu_slug == "caracterizacion-por-dnis":
+            from core.legacy_adapters import obtener_caracterizacion_por_dnis
+            dnis_texto = ""
+            caract_resultado = None
+
+            if request.method == "POST":
+                action = str(request.POST.get("action", "")).strip()
+                dnis_texto = str(request.POST.get("dnis_texto", "")).strip()
+
+                if action in ("buscar", "descargar_excel") and dnis_texto:
+                    caract_resultado = obtener_caracterizacion_por_dnis(dnis_texto)
+
+                    if action == "descargar_excel" and caract_resultado["filas"]:
+                        import io
+                        import openpyxl
+                        wb = openpyxl.Workbook()
+                        ws = wb.active
+                        ws.title = "Encontrados"
+                        encabezados_caract = [
+                            "dni", "apellidos", "nombres", "genero",
+                            "fecha_nacimiento", "email", "telefono_celular",
+                            "telefono_fijo", "actualizo_datos", "region",
+                            "tipo_iged", "nombre_iged", "nivel_puesto",
+                            "nombre_puesto", "regimen_laboral",
+                        ]
+                        ws.append(encabezados_caract)
+                        for fila in caract_resultado["filas"]:
+                            ws.append([fila.get(c, "") for c in encabezados_caract])
+                        if caract_resultado["no_encontrados"]:
+                            ws2 = wb.create_sheet("No encontrados")
+                            ws2.append(["DNI"])
+                            for d in caract_resultado["no_encontrados"]:
+                                ws2.append([d])
+                        buf = io.BytesIO()
+                        wb.save(buf)
+                        buf.seek(0)
+                        from django.http import HttpResponse
+                        resp = HttpResponse(
+                            buf.read(),
+                            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        )
+                        resp["Content-Disposition"] = 'attachment; filename="caracterizacion_participantes.xlsx"'
+                        return resp
+
+            context.update({
+                "caract_dnis_texto": dnis_texto,
+                "caract_resultado": caract_resultado,
             })
 
     # Renderiza vista de submenu con adaptacion correspondiente.
