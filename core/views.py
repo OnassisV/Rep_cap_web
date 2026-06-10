@@ -3103,8 +3103,22 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         }
 
                     if target_file and target_file.get("exists"):
-                        with open(str(target_file.get("path", "")), "rb") as file_gen:
-                            content = file_gen.read()
+                        try:
+                            with open(str(target_file.get("path", "")), "rb") as file_gen:
+                                content = file_gen.read()
+                        except OSError:
+                            messages.error(
+                                request,
+                                "El archivo generado ya no está disponible en disco. "
+                                "Vuelve a generar la plantilla.",
+                            )
+                            return redirect(
+                                _build_submenu_url(
+                                    section_slug,
+                                    submenu_slug,
+                                    {"anio": seg_anio_sel, "codigo": codigo_sel, "tab": "plantilla"},
+                                )
+                            )
                         file_name = str(target_file.get("file_name", "")).strip() or "plantilla_generada.xlsx"
                         response = HttpResponse(
                             content,
