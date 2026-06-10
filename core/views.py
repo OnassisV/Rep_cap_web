@@ -4852,24 +4852,28 @@ def cert_descargar_lista_excel_view(request, codigo: str):
     _fila(5, "Objetivo", resumen.get("objetivo", ""))
     _fila(6, "Público objetivo", resumen.get("publico_objetivo", ""))
     _fila(7, "Especialista responsable", resumen.get("especialista", ""))
+    _fila(8, "Modalidad(es)", resumen.get("modalidades", ""))
+    _fila(9, "Número de horas", resumen.get("horas", ""))
+    _fila(10, "Fecha de inicio", resumen.get("fecha_inicio", ""))
+    _fila(11, "Fecha de fin", resumen.get("fecha_fin", ""))
 
-    _sec(9, "Participación y certificación")
-    _fila(10, "Participantes", resumen.get("participantes", 0))
-    _fila(11, "Certificados", resumen.get("certificados", 0))
+    _sec(13, "Participación y certificación")
+    _fila(14, "Participantes", resumen.get("participantes", 0))
+    _fila(15, "Certificados", resumen.get("certificados", 0))
 
-    _sec(13, "Cobertura institucional")
-    _fila(14, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
-    _fila(15, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
-    _fila(16, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
-    _fila(17, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
+    _sec(17, "Cobertura institucional")
+    _fila(18, "Cobertura DRE/GRE", resumen.get("cobertura_dre", 0))
+    _fila(19, "Cobertura UGEL", resumen.get("cobertura_ugel", 0))
+    _fila(20, "DRE/GRE fortalecidas", resumen.get("dre_fortalecidas", 0))
+    _fila(21, "UGEL fortalecidas", resumen.get("ugel_fortalecidas", 0))
 
     ws2.column_dimensions["A"].width = 30
     ws2.column_dimensions["B"].width = 80
-    for r in [3, 4, 5, 6, 7]:
+    for r in [3, 4, 5, 6, 7, 8]:
         ws2.row_dimensions[r].height = 60
 
     # Área de impresión y configuración de página para que todo entre en una hoja.
-    ws2.print_area = "A1:B17"
+    ws2.print_area = "A1:B21"
     ws2.page_setup.fitToPage = True
     ws2.page_setup.fitToWidth = 1
     ws2.page_setup.fitToHeight = 1

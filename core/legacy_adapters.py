@@ -2316,7 +2316,11 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             sol_origen_institucional,
             sol_region_iged,
             sol_iged_nombre,
-            COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo
+            COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo,
+            pt_modalidades_json,
+            pt_horas,
+            pt_implementacion_inicio,
+            pt_implementacion_fin
         FROM cap_capacitaciones
         WHERE (cap_codigo = %s AND cap_id_curso = %s)
            OR cap_codigo = %s
@@ -2391,12 +2395,44 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
     else:
         organo_display = _organo_raw
 
+    # Formatea modalidades desde JSON a texto legible.
+    _modalidades_raw = str(ficha.get("pt_modalidades_json") or "").strip()
+    _modalidades_display = ""
+    try:
+        import json as _json
+        _items = _json.loads(_modalidades_raw) if _modalidades_raw else []
+        _partes = []
+        for _item in _items:
+            _mod = str(_item.get("modalidad", "")).strip()
+            _ses = _item.get("sesiones")
+            if _mod:
+                _partes.append(f"{_mod} ({_ses} ses.)" if _ses else _mod)
+        _modalidades_display = ", ".join(_partes)
+    except Exception:
+        _modalidades_display = _modalidades_raw
+
+    # Formatea fechas.
+    def _fmt_fecha(val: Any) -> str:
+        if not val:
+            return ""
+        try:
+            from datetime import date as _date
+            if isinstance(val, _date):
+                return val.strftime("%d/%m/%Y")
+        except Exception:
+            pass
+        return str(val)
+
     return {
         "nombre": str(ficha.get("cap_nombre") or "").strip(),
         "objetivo": str(ficha.get("mi_objetivo_capacitacion") or "").strip(),
         "publico_objetivo": str(ficha.get("publico_objetivo_oferta") or "").strip(),
         "organo_formulador": organo_display,
         "especialista": str(ficha.get("especialista_cargo") or "").strip(),
+        "modalidades": _modalidades_display,
+        "horas": ficha.get("pt_horas"),
+        "fecha_inicio": _fmt_fecha(ficha.get("pt_implementacion_inicio")),
+        "fecha_fin": _fmt_fecha(ficha.get("pt_implementacion_fin")),
         "participantes": _a_int(metricas.get("participantes")),
         "certificados": _a_int(metricas.get("certificados")),
         "cobertura_dre": _a_int(metricas.get("cobertura_dre")),
