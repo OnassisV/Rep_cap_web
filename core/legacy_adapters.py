@@ -2318,6 +2318,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
             sol_iged_nombre,
             COALESCE(NULLIF(TRIM(especialista_cargo), ''), NULLIF(TRIM(creado_nombre), '')) AS especialista_cargo,
             pt_modalidades_json,
+            pt_modalidad,
             pt_horas,
             pt_implementacion_inicio,
             pt_implementacion_fin
@@ -2395,7 +2396,7 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
     else:
         organo_display = _organo_raw
 
-    # Formatea modalidades desde JSON a texto legible.
+    # Formatea modalidades desde JSON a texto legible; fallback al campo simple.
     _modalidades_raw = str(ficha.get("pt_modalidades_json") or "").strip()
     _modalidades_display = ""
     try:
@@ -2410,6 +2411,8 @@ def obtener_resumen_ficha_para_excel(codigo: str) -> dict[str, Any]:
         _modalidades_display = ", ".join(_partes)
     except Exception:
         _modalidades_display = _modalidades_raw
+    if not _modalidades_display:
+        _modalidades_display = str(ficha.get("pt_modalidad") or "").strip()
 
     # Formatea fechas.
     def _fmt_fecha(val: Any) -> str:
