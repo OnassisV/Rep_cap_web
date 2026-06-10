@@ -81,7 +81,7 @@ REGISTRO_CAPACITACION_SECCIONES: list[dict[str, Any]] = [
             _campo("cap_nombre", "Nombre de la capacitacion", "text_short", True, None, "Titulo preliminar con el que se abrira el proceso.", "left"),
             _campo("cap_anio", "Año de la intervención", "integer", True, None, "Se propone automáticamente según el año vigente.", "left"),
             _campo("cap_tipo", "Tipo de intervención formativa", "list", True, ["Capacitación sincrónica", "Curso", "Curso-taller", "Programa de formación", "Programa de mentoría"], "Clasifica la modalidad del proceso formativo.", "left"),
-            _campo("pt_modalidad", "Modalidad", "list", False, ["Presencial", "Virtual sincrónica", "Virtual asincrónica", "Semipresencial", "Mixta"], "Modalidad de entrega de la capacitación.", "left"),
+            _campo("pt_modalidades_json", "Modalidad y sesiones", "modalidad_multi", False, ["Presencial", "Virtual sincrónica", "Virtual asincrónica", "Semipresencial", "Mixta"], "Selecciona una o más modalidades e indica las sesiones o módulos de cada una.", "left"),
             _campo("pt_horas", "Número de horas", "integer", False, None, "Total de horas de la capacitación.", "left"),
             _campo("pt_implementacion_inicio", "Fecha de inicio", "date", False, None, "Fecha de inicio de la implementación.", "left"),
             _campo("pt_implementacion_fin", "Fecha de fin", "date", False, None, "Fecha de fin de la implementación.", "left"),

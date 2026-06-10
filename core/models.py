@@ -144,6 +144,7 @@ class Capacitacion(models.Model):
     pt_implementacion_fin = models.DateField(null=True, blank=True)
     pt_horas = models.IntegerField(null=True, blank=True)
     pt_modalidad = models.CharField(max_length=80, blank=True, default="")
+    pt_modalidades_json = models.TextField(blank=True, default="")
     pt_tipo_convocatoria = models.CharField(max_length=60, blank=True, default="")
     pt_acciones_seguimiento = models.TextField(blank=True, default="")
     pt_justificacion = models.TextField(blank=True, default="")

@@ -2123,6 +2123,56 @@ h1 {
     font-weight: 600;
 }
 
+/* Selector de modalidad múltiple con sesiones por opción. */
+.modalidad-multi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.modalidad-multi__row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.modalidad-multi__check {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    min-width: 14rem;
+}
+.modalidad-multi__check input[type="checkbox"] {
+    width: 0.95rem;
+    height: 0.95rem;
+    accent-color: var(--brand-blue-mid);
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+}
+.modalidad-multi__label {
+    font-size: 0.875rem;
+    color: var(--text-main, #1a2b3c);
+}
+.modalidad-multi__sesiones {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b7a8d);
+}
+.modalidad-multi__sesiones input[type="number"] {
+    width: 4.5rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #c5cdd8;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    text-align: center;
+}
+.modalidad-multi__sesiones.is-hidden {
+    display: none;
+}
+
 /* Franja de titulo con numero para mantener la secuencia visual. */
 .registro-question-title {
     display: inline-flex;

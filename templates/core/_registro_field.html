@@ -114,6 +114,69 @@ Admite variantes especiales para origen institucional y decisiones binarias.
                 {# Hidden centinela para que getlist devuelva al menos cadena vacia y se respete el "no seleccion". #}
                 <input type="hidden" name="{{ field.codigo }}" value="">
             </div>
+        {% elif field.tipo == "modalidad_multi" %}
+            <div class="modalidad-multi" data-modalidad-multi="{{ field.codigo }}">
+                {% for opcion in field.opciones %}
+                <div class="modalidad-multi__row" data-modalidad-row>
+                    <label class="modalidad-multi__check">
+                        <input type="checkbox" class="modalidad-multi__chk" value="{{ opcion }}">
+                        <span class="modalidad-multi__label">{{ opcion }}</span>
+                    </label>
+                    <label class="modalidad-multi__sesiones is-hidden" data-modalidad-sesiones>
+                        <span>Sesiones / módulos</span>
+                        <input type="number" step="1" min="1" class="modalidad-multi__num" placeholder="0">
+                    </label>
+                </div>
+                {% endfor %}
+                <input type="hidden" name="{{ field.codigo }}" class="modalidad-multi__json" value="{{ field.valor }}">
+            </div>
+            <script>
+            (function(){
+                var container = document.querySelector('[data-modalidad-multi="{{ field.codigo }}"]');
+                if (!container) return;
+                var hidden = container.querySelector('.modalidad-multi__json');
+                function serialize(){
+                    var result = [];
+                    container.querySelectorAll('[data-modalidad-row]').forEach(function(row){
+                        var chk = row.querySelector('.modalidad-multi__chk');
+                        if(chk && chk.checked){
+                            var num = row.querySelector('.modalidad-multi__num');
+                            result.push({modalidad: chk.value, sesiones: num ? (parseInt(num.value)||0) : 0});
+                        }
+                    });
+                    hidden.value = result.length ? JSON.stringify(result) : '';
+                }
+                try {
+                    var init = JSON.parse(hidden.value || '[]');
+                    init.forEach(function(item){
+                        container.querySelectorAll('[data-modalidad-row]').forEach(function(row){
+                            var chk = row.querySelector('.modalidad-multi__chk');
+                            if(chk && chk.value === item.modalidad){
+                                chk.checked = true;
+                                var ses = row.querySelector('[data-modalidad-sesiones]');
+                                var num = row.querySelector('.modalidad-multi__num');
+                                if(ses) ses.classList.remove('is-hidden');
+                                if(num) num.value = item.sesiones || '';
+                            }
+                        });
+                    });
+                } catch(e){}
+                container.querySelectorAll('.modalidad-multi__chk').forEach(function(chk){
+                    chk.addEventListener('change', function(){
+                        var row = chk.closest('[data-modalidad-row]');
+                        var ses = row.querySelector('[data-modalidad-sesiones]');
+                        var num = row.querySelector('.modalidad-multi__num');
+                        if(ses) ses.classList.toggle('is-hidden', !chk.checked);
+                        if(!chk.checked && num) num.value = '';
+                        serialize();
+                    });
+                });
+                container.querySelectorAll('.modalidad-multi__num').forEach(function(n){
+                    n.addEventListener('input', serialize);
+                });
+                serialize();
+            })();
+            </script>
         {% elif field.tipo == "text_long" %}
             <textarea name="{{ field.codigo }}" rows="3" {% if field.obligatorio %}required{% endif %} {% if field.is_external_only and not registro_origen_externo %}disabled{% endif %} {% if field.is_iged_only and registro_origen_actual != 'IGED' %}disabled{% endif %}>{{ field.valor }}</textarea>
         {% elif field.tipo == "integer" %}

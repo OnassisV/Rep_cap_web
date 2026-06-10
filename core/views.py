@@ -939,7 +939,7 @@ def _leer_post_campo_registro(request, codigo: str, tipo: str) -> str:
             if parte and parte not in items:
                 items.append(parte)
         return ", ".join(items)
-    if tipo == "hidden_json":
+    if tipo in {"hidden_json", "modalidad_multi"}:
         return str(request.POST.get(codigo, ""))
     return str(request.POST.get(codigo, "")).strip()
 
