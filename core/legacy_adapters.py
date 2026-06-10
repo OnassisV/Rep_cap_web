@@ -4528,6 +4528,12 @@ def _crear_excel_cumplimiento_iged(
             continue
         filas_base.append(row)
     if not filas_base:
+        estado2 = [r for r in filas if _a_int(r.get("estado")) == 2]
+        comp_vals = [_a_float_nullable(r.get("compromiso")) for r in estado2]
+        logger.warning(
+            "iged: filas_base vacio. total_filas=%d estado2=%d compromisos=%s",
+            len(filas), len(estado2), comp_vals[:20],
+        )
         return False
 
     # Construye indice normalizado de actividad -> grupo desde estructura.
@@ -4561,6 +4567,10 @@ def _crear_excel_cumplimiento_iged(
             grupo_por_actividad[act_txt] = "General"
             actividades.append(act_txt)
     if not actividades:
+        logger.warning(
+            "iged: sin actividades. columnas_actividades=%s estructura_len=%d",
+            columnas_actividades[:10], len(estructura),
+        )
         return False
 
     # Orden de grupos y actividades por grupo.

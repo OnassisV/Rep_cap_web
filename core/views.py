@@ -4711,7 +4711,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         buf = io.BytesIO()
                         wb.save(buf)
                         buf.seek(0)
-                        from django.http import HttpResponse
                         resp = HttpResponse(
                             buf.read(),
                             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
