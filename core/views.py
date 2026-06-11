@@ -3322,7 +3322,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 codigo_card = str(fila.get("codigo", "")).strip()
                 if codigo_card not in actividades_por_codigo:
                     actividades_por_codigo[codigo_card] = len(obtener_estructura_por_codigo(codigo_card))
-                card_params = {"anio": anio_sel, "codigo": codigo_card, "tab": tab_activo}
+                card_params = {"anio": seg_anio_sel, "codigo": codigo_card, "tab": tab_activo}
                 cards.append(
                     {
                         **fila,
