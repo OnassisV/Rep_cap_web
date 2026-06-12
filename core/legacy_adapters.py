@@ -4908,20 +4908,20 @@ def generar_plantilla_seguimiento(
     nominal_config = obtener_config_nominal_reporte(codigo, estructura)
     postulantes_info = obtener_postulantes_excel_info(codigo)
 
-    # Prioriza lista de postulantes cargada; si no existe, combina bbdd_difoca + Chamilo.
+    # Prioriza lista de postulantes cargada, pero preserva también el histórico de bbdd_difoca
+    # y las matrículas actuales de Chamilo, para que retirados solo cambien de estado y no se pierdan.
     dnis_objetivo: list[str] = []
     if postulantes_info.get("exists"):
         dnis_objetivo = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
-    if not dnis_objetivo:
-        # Combina TODOS los DNIs de bbdd_difoca (cualquier estado, incluyendo retirados)
-        # con los matriculados actuales de Chamilo para capturar nuevas altas.
-        dnis_bbdd = _obtener_todos_dnis_por_codigo(codigo)
-        dnis_aula = _obtener_dnis_matriculados_aula(codigo)
-        vistos: set[str] = set()
-        for dni in dnis_bbdd + dnis_aula:
-            if dni not in vistos:
-                vistos.add(dni)
-                dnis_objetivo.append(dni)
+
+    dnis_bbdd = _obtener_todos_dnis_por_codigo(codigo)
+    dnis_aula = _obtener_dnis_matriculados_aula(codigo)
+
+    vistos: set[str] = set()
+    for dni in (dnis_objetivo + dnis_bbdd + dnis_aula):
+        if dni and dni not in vistos:
+            vistos.add(dni)
+            dnis_objetivo.append(dni)
 
     filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, dnis_objetivo)
     if not filas_bbdd and not dnis_objetivo:
