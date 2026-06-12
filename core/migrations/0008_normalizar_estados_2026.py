@@ -9,8 +9,7 @@ def normalizar_estados_existentes(apps, schema_editor):
 
     Capacitacion.objects.exclude(cap_estado='Cancelada').filter(
         cap_anio__gte=2026,
-        cap_estado__in=['Finalizada', 'Por finalizar'],
-    ).update(cap_estado='En proceso')
+    ).exclude(cap_estado__in=['Formulada', 'Borrador', 'En proceso']).update(cap_estado='En proceso')
 
     Capacitacion.objects.exclude(cap_estado='Cancelada').filter(
         Q(cap_codigo__isnull=True) | Q(cap_codigo=''),

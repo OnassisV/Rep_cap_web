@@ -35,7 +35,7 @@ def recalcular_estados_2026(apps, schema_editor):
             if pasos_completos and tiene_certificados:
                 nuevo = 'Finalizada'
             elif pasos_completos or tiene_certificados:
-                nuevo = 'Por finalizar'
+                nuevo = 'En proceso'
             else:
                 nuevo = 'En proceso'
 

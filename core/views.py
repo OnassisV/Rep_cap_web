@@ -3867,10 +3867,9 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 _estado_orden = Case(
                     When(cap_estado__in=["Formulada", "Borrador"], then=Value(1)),
                     When(cap_estado="En proceso", then=Value(2)),
-                    When(cap_estado="Por finalizar", then=Value(3)),
-                    When(cap_estado="Finalizada", then=Value(4)),
-                    When(cap_estado="Cancelada", then=Value(5)),
-                    default=Value(6),
+                    When(cap_estado="Finalizada", then=Value(3)),
+                    When(cap_estado="Cancelada", then=Value(4)),
+                    default=Value(5),
                     output_field=_IntF(),
                 )
                 editar_lista = list(

@@ -33,6 +33,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='capacitacion',
             name='cap_estado',
-            field=models.CharField(choices=[('Borrador', 'Borrador'), ('En proceso', 'En Proceso'), ('Por finalizar', 'Por Finalizar'), ('Finalizada', 'Finalizada'), ('Cancelada', 'Cancelada')], default='Borrador', max_length=30),
+            field=models.CharField(choices=[('Borrador', 'Borrador'), ('En proceso', 'En Proceso'), ('Finalizada', 'Finalizada'), ('Cancelada', 'Cancelada')], default='Borrador', max_length=30),
         ),
     ]
