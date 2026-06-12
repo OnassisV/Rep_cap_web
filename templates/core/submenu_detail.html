@@ -1867,13 +1867,6 @@
                         <span class="registro-status registro-status--{{ editar_cap.cap_estado|lower|cut:" " }}" id="badge-estado-cap">
                             {{ editar_cap.cap_estado }}
                         </span>
-                        {% if editar_cap.cap_estado == "Por finalizar" %}
-                        <button type="button" class="btn-secondary-soft" id="btn-recalcular-estado"
-                                data-cap-id="{{ editar_cap.id }}"
-                                title="Re-evalúa si ya hay certificados emitidos en la plataforma">
-                            ↻ Verificar estado
-                        </button>
-                        {% endif %}
                     </div>
 
                     {% if editar_cap.cert_pdf_emitido %}
@@ -6236,15 +6229,8 @@
                         badge.textContent = estado;
                         badge.className = "registro-status registro-status--" + estado.toLowerCase().replace(/ /g, "");
                     }
-                    if (estado !== "Por finalizar") {
-                        btn.remove();
-                        alert("Estado actualizado a: " + estado);
-                    } else {
-                        var info = "Sigue en 'Por finalizar'.\nPasos completos: " + data.pasos_completos + "\nTiene certificados: " + data.tiene_certificados;
-                        alert(info);
-                        btn.disabled = false;
-                        btn.textContent = "↻ Verificar estado";
-                    }
+                    btn.remove();
+                    alert("Estado actualizado a: " + estado);
                 } else {
                     alert("Error: " + (data.error || "desconocido"));
                     btn.disabled = false;

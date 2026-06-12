@@ -18,7 +18,6 @@ class Capacitacion(models.Model):
         FORMULADA = "Formulada"
         BORRADOR = "Borrador"
         EN_PROCESO = "En proceso"
-        POR_FINALIZAR = "Por finalizar"
         FINALIZADA = "Finalizada"
         CANCELADA = "Cancelada"
 

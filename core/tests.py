@@ -38,7 +38,7 @@ class EstadoCapacitacionTests(TestCase):
 
         self.assertEqual(cap.cap_estado, "En proceso")
 
-    def test_2026_con_pasos_completos_pasa_a_por_finalizar(self):
+    def test_2026_con_pasos_completos_queda_en_en_proceso(self):
         cap = Capacitacion.objects.create(
             cap_nombre="Gestión de Riesgos - G1",
             cap_anio=2026,
@@ -52,7 +52,7 @@ class EstadoCapacitacionTests(TestCase):
             _auto_actualizar_estado(cap)
         cap.refresh_from_db()
 
-        self.assertEqual(cap.cap_estado, "Por finalizar")
+        self.assertEqual(cap.cap_estado, "En proceso")
 
     def test_2026_con_certificados_y_pasos_completos_pasa_a_finalizada(self):
         cap = Capacitacion.objects.create(

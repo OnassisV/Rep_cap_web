@@ -721,7 +721,7 @@ def _auto_actualizar_estado(cap_obj) -> None:
     - Sin código ni ID curso → Formulada
     - Con código o ID curso → En proceso
     - Año 2026 o mayor:
-        * pasos completos O certificados → Por finalizar
+        * pasos completos O certificados → En proceso
         * pasos completos Y certificados → Finalizada
     - Años previos a 2026: pasos completos + código → Finalizada
     No toca registros Cancelados.
@@ -749,7 +749,7 @@ def _auto_actualizar_estado(cap_obj) -> None:
             if pasos_completos and tiene_certificados:
                 nuevo = Capacitacion.Estado.FINALIZADA
             elif pasos_completos or tiene_certificados:
-                nuevo = Capacitacion.Estado.POR_FINALIZAR
+                nuevo = Capacitacion.Estado.EN_PROCESO
         elif pasos_completos and tiene_codigo:
             nuevo = Capacitacion.Estado.FINALIZADA
 
@@ -2810,7 +2810,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 _estado_orden = Case(
                     When(cap_estado__in=["Formulada", "Borrador"], then=Value(1)),
                     When(cap_estado="En proceso", then=Value(2)),
-                    When(cap_estado="Por finalizar", then=Value(3)),
                     When(cap_estado="Finalizada", then=Value(4)),
                     When(cap_estado="Cancelada", then=Value(5)),
                     default=Value(6),
