@@ -1790,6 +1790,48 @@
                 {% endif %}
             {% endif %}
 
+            {% if adapter_kind == "satisfaccion" %}
+                <div class="mini-metrics">
+                    <article class="mini-metric">
+                        <h3>{{ total_capacitaciones_satisfaccion|default:0 }}</h3>
+                        <p>Total capacitaciones</p>
+                    </article>
+                    <article class="mini-metric">
+                        <h3>{{ total_respuestas_satisfaccion|default:0 }}</h3>
+                        <p>Respuestas de satisfacción</p>
+                    </article>
+                </div>
+
+                {% if filas_satisfaccion %}
+                    <div class="simple-table simple-table--satisfaccion">
+                        <div class="simple-table__head">
+                            <span>Código</span>
+                            <span>Proceso</span>
+                            <span>Respuestas</span>
+                            <span>Clasificación</span>
+                        </div>
+                        {% for fila in filas_satisfaccion %}
+                            <div class="simple-table__row">
+                                <span>{{ fila.codigo }}</span>
+                                <span>{{ fila.proceso }}</span>
+                                <span>{{ fila.total_respuestas }}</span>
+                                <span>
+                                    {% if fila.por_categoria %}
+                                        {% for item in fila.por_categoria %}
+                                            {{ item.satisfaccion }}: {{ item.total }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Sin respuestas
+                                    {% endif %}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">No hay datos de satisfacción para el filtro seleccionado.</p>
+                {% endif %}
+            {% endif %}
+
             <!-- Adaptacion inicial de Estandares (estandares_calidad.py). -->
             {% if adapter_kind == "estandares" %}
                 <div class="mini-metrics">

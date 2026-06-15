@@ -153,10 +153,10 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "legacy_module": "core/certificados_adapter.py",
             },
             {
-                "slug": "estandares-calidad",
-                "titulo": "Estándares de calidad",
-                "descripcion": "Matriz de estándares y niveles de cumplimiento por capacitación.",
-                "adapter": "estandares",
+                "slug": "satisfaccion",
+                "titulo": "Satisfacción",
+                "descripcion": "Resumen de satisfacción y resultados de encuestas por capacitación.",
+                "adapter": "satisfaccion",
                 "legacy_module": "core/legacy_adapters.py + templates/core/submenu_detail.html",
             },
         ],
@@ -3375,27 +3375,36 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 }
             )
 
-        # Adaptacion del submenu "Estandares de calidad" (estandares_calidad.py).
-        if submenu_slug == "estandares-calidad":
-            # Recopila codigos visibles en el anio filtrado.
+        # Adaptacion del submenu "Satisfacción" (resumen de encuestas de satisfacción).
+        if submenu_slug == "satisfaccion":
             codigos_visibles = [
                 str(fila.get("codigo", "")).strip()
                 for fila in oferta_anio
                 if str(fila.get("codigo", "")).strip()
             ]
-            # Consulta tabla estandares_calidad y calcula completitud por codigo.
-            resumen_estandares = obtener_resumen_estandares(codigos_visibles)
-            filas_estandares = construir_resumen_estandares_por_capacitacion(
-                capacitaciones=oferta_anio,
-                resumen_estandares=resumen_estandares,
-                total_capitulos=4,  # Capitulo A/B/C/D del esquema vigente.
-            )
-            context["filas_estandares"] = filas_estandares
-            context["total_con_estandares"] = sum(
-                1 for fila in filas_estandares if int(fila.get("respuestas_totales", 0)) > 0
-            )
-            context["total_sin_estandares"] = sum(
-                1 for fila in filas_estandares if int(fila.get("respuestas_totales", 0)) == 0
+            filas_satisfaccion: list[dict[str, Any]] = []
+            total_respuestas_satisfaccion = 0
+            for fila in oferta_anio:
+                codigo = str(fila.get("codigo", "")).strip()
+                if not codigo:
+                    continue
+                resumen = obtener_resumen_satisfaccion(codigo)
+                respuestas = int(resumen.get("total_respuestas", 0))
+                filas_satisfaccion.append(
+                    {
+                        "codigo": codigo,
+                        "proceso": str(fila.get("denominacion_proceso_formativo", "")).strip(),
+                        "total_respuestas": respuestas,
+                        "por_categoria": resumen.get("por_categoria", []),
+                        "por_aspecto": resumen.get("por_aspecto", []),
+                    }
+                )
+                total_respuestas_satisfaccion += respuestas
+            context["filas_satisfaccion"] = filas_satisfaccion
+            context["total_respuestas_satisfaccion"] = total_respuestas_satisfaccion
+            context["total_capacitaciones_satisfaccion"] = len(filas_satisfaccion)
+            context["total_capacitaciones_satisfaccion_sin_respuestas"] = sum(
+                1 for fila in filas_satisfaccion if int(fila.get("total_respuestas", 0)) == 0
             )
 
     # ── Sección Sincrónicas y Evidencias ──
