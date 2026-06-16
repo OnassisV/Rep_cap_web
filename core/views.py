@@ -4969,6 +4969,79 @@ def api_recalcular_estado_view(request, cap_id: int):
 # ── Carga de Satisfacción ──
 
 @login_required
+def cargar_satisfaccion_aula_virtual_view(request):
+    """Vista para cargar datos de satisfacción desde Aula Virtual (Chamilo)."""
+    context = {
+        "title": "Cargar Satisfacción desde Aula Virtual",
+        "df_preview": None,
+        "codigo_compuesto": None,
+        "resultado": None,
+    }
+
+    try:
+        from .satisfaccion_aula_virtual_adapter import extraer_satisfaccion_aula_virtual
+        from .satisfaccion_adapter import guardar_en_satisfaccion
+
+        if request.method == "POST":
+            c_id = request.POST.get("c_id", "").strip()
+            survey_id = request.POST.get("survey_id", "").strip()
+            codigo_capacitacion = request.POST.get("codigo_capacitacion", "").strip()
+
+            if not c_id or not survey_id or not codigo_capacitacion:
+                messages.error(request, "Completa todos los campos requeridos")
+                return render(request, "core/cargar_satisfaccion_aula_virtual.html", context)
+
+            # Extraer datos de Aula Virtual
+            resultado = extraer_satisfaccion_aula_virtual(c_id, survey_id, codigo_capacitacion)
+
+            if not resultado["exito"]:
+                messages.error(
+                    request,
+                    f"Error: {'; '.join(resultado['errores'])}",
+                )
+                return render(request, "core/cargar_satisfaccion_aula_virtual.html", context)
+
+            df = resultado["df"]
+            codigo_compuesto = resultado["codigo_compuesto"]
+
+            # Mostrar preview
+            context["df_preview"] = df.head(50).to_html(classes="table table-sm")
+            context["codigo_compuesto"] = codigo_compuesto
+            context["registros_preview"] = len(df)
+
+            # Guardar si lo solicitó
+            if request.POST.get("guardar") == "on":
+                from .satisfaccion_adapter import procesar_excel_historico
+
+                # Procesar con el adaptador
+                resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=codigo_compuesto)
+
+                if resultado_save["exito"]:
+                    messages.success(
+                        request,
+                        f"✅ Se cargaron {resultado_save['registros_guardados']} registros de Aula Virtual",
+                    )
+                    context["resultado"] = "exito"
+                else:
+                    messages.error(
+                        request,
+                        f"Error guardando: {'; '.join(resultado_save['errores'])}",
+                    )
+                    context["resultado"] = "error"
+
+        context["c_id"] = request.POST.get("c_id", "")
+        context["survey_id"] = request.POST.get("survey_id", "")
+        context["codigo_capacitacion"] = request.POST.get("codigo_capacitacion", "")
+
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        import traceback
+        logger.error(f"Error en cargar_satisfaccion_aula_virtual_view: {traceback.format_exc()}")
+
+    return render(request, "core/cargar_satisfaccion_aula_virtual.html", context)
+
+
+@login_required
 def cargar_satisfaccion_view(request):
     """Vista para cargar datos de satisfacción desde Excel."""
     context = {

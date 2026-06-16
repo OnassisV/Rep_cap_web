@@ -13,6 +13,7 @@ from .views import (
     api_caracterizacion_replica_view,
     api_recalcular_estado_view,
     cargar_satisfaccion_view,
+    cargar_satisfaccion_aula_virtual_view,
 )
 
 
@@ -57,4 +58,9 @@ urlpatterns = [
         cargar_satisfaccion_view,
         name="cargar_satisfaccion",
     ),  # Carga datos de satisfacción desde Excel.
+    path(
+        "cargar-satisfaccion-aula-virtual/",
+        cargar_satisfaccion_aula_virtual_view,
+        name="cargar_satisfaccion_aula_virtual",
+    ),  # Carga datos de satisfacción desde Aula Virtual (Chamilo).
 ]
