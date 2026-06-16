@@ -3381,11 +3381,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             total_respuestas_satisfaccion = 0
             for fila in oferta_anio:
                 codigo = str(fila.get("codigo", "")).strip()
-                cap_id = fila.get("id")
-                if not codigo or not cap_id:
+                cap_id_curso = fila.get("cap_id_curso")
+                if not codigo or not cap_id_curso:
                     continue
-                # Construir código compuesto: codigo-id (ej: 25001I-288)
-                codigo_compuesto = f"{codigo}-{cap_id}"
+                # Construir código compuesto: codigo-cap_id_curso (ej: 25001I-288)
+                codigo_compuesto = f"{codigo}-{cap_id_curso}"
                 resumen = obtener_resumen_satisfaccion(codigo_compuesto)
                 respuestas = int(resumen.get("total_respuestas", 0))
                 filas_satisfaccion.append(
