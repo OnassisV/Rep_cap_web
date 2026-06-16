@@ -3392,6 +3392,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     {
                         "codigo": codigo_compuesto,
                         "proceso": str(fila.get("denominacion_proceso_formativo", "")).strip(),
+                        "estado": str(fila.get("condicion", "")).strip(),
                         "total_respuestas": respuestas,
                         "por_categoria": resumen.get("por_categoria", []),
                         "por_aspecto": resumen.get("por_aspecto", []),

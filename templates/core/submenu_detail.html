@@ -1816,6 +1816,7 @@
                         <div class="simple-table__head">
                             <span>Código</span>
                             <span>Proceso</span>
+                            <span>Estado</span>
                             <span>Respuestas</span>
                             <span>Clasificación</span>
                         </div>
@@ -1823,6 +1824,9 @@
                             <div class="simple-table__row">
                                 <span>{{ fila.codigo }}</span>
                                 <span>{{ fila.proceso }}</span>
+                                <span>
+                                    <span class="badge bg-info">{{ fila.estado }}</span>
+                                </span>
                                 <span>{{ fila.total_respuestas }}</span>
                                 <span>
                                     {% if fila.por_categoria %}
