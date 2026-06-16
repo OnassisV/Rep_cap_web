@@ -120,17 +120,26 @@ def extraer_satisfaccion_aula_virtual(
 
         # Validar que todas las columnas se encontraron
         missing = []
-        if not a_c: missing.append("c_survey_answer.c_id")
+        if not a_c: missing.append("c_survey_answer.c_id (intentó: c_id, c_c_id)")
         if not a_sid: missing.append("c_survey_answer.survey_id")
+        if not a_qid: missing.append("c_survey_answer.question_id")
+        if not a_oid: missing.append("c_survey_answer.option_id")
+        if not a_uid: missing.append("c_survey_answer.user_id")
         if not b_qtxt: missing.append("c_survey_question.question_text")
         if not c_otxt: missing.append("c_survey_question_option.option_text")
         if not u_dni: missing.append("user.dni")
 
         if missing:
+            debug_info = f"\n\nColumnas encontradas:\n"
+            debug_info += f"c_survey_answer: {', '.join(cols_a)}\n"
+            debug_info += f"c_survey_question: {', '.join(cols_b)}\n"
+            debug_info += f"c_survey_question_option: {', '.join(cols_c)}\n"
+            debug_info += f"user: {', '.join(cols_u)}"
+
             return {
                 'exito': False,
                 'registros': 0,
-                'errores': [f"No se encontraron columnas en Chamilo: {', '.join(missing)}"],
+                'errores': [f"No se encontraron columnas en Chamilo: {', '.join(missing)}" + debug_info],
                 'df': None,
                 'codigo_compuesto': None,
             }
