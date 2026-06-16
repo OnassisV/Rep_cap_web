@@ -4971,78 +4971,86 @@ def api_recalcular_estado_view(request, cap_id: int):
 @login_required
 def cargar_satisfaccion_view(request):
     """Vista para cargar datos de satisfacción desde Excel."""
-    from .satisfaccion_forms import CargarSatisfaccionExcelForm
-    from .satisfaccion_adapter import (
-        procesar_excel_historico,
-        guardar_en_satisfaccion,
-        obtener_resumen_por_codigo,
-    )
-
     context = {
         "title": "Cargar Satisfacción",
         "form": None,
         "resultado": None,
         "df_preview": None,
-        "resumen": None,
+        "resumen": [],
     }
 
-    if request.method == "POST":
-        form = CargarSatisfaccionExcelForm(request.POST, request.FILES)
-        if form.is_valid():
-            archivo = request.FILES["archivo_excel"]
-            reemplazar = form.cleaned_data.get("reemplazar", False)
+    try:
+        from .satisfaccion_forms import CargarSatisfaccionExcelForm
+        from .satisfaccion_adapter import (
+            procesar_excel_historico,
+            guardar_en_satisfaccion,
+            obtener_resumen_por_codigo,
+        )
 
-            # Procesar archivo
-            resultado_proc = procesar_excel_historico(archivo)
+        if request.method == "POST":
+            form = CargarSatisfaccionExcelForm(request.POST, request.FILES)
+            if form.is_valid():
+                archivo = request.FILES["archivo_excel"]
+                reemplazar = form.cleaned_data.get("reemplazar", False)
 
-            if not resultado_proc["exito"]:
-                messages.error(
-                    request,
-                    f"Error procesando archivo: {'; '.join(resultado_proc['errores'])}",
-                )
+                # Procesar archivo
+                resultado_proc = procesar_excel_historico(archivo)
+
+                if not resultado_proc["exito"]:
+                    messages.error(
+                        request,
+                        f"Error procesando archivo: {'; '.join(resultado_proc['errores'])}",
+                    )
+                    context["form"] = form
+                    return render(request, "core/cargar_satisfaccion.html", context)
+
+                df = resultado_proc["df"]
+
+                # Mostrar preview
+                context["df_preview"] = df.head(100).to_html(classes="table table-sm")
+                resumen_df = obtener_resumen_por_codigo(df)
+                # Convertir DataFrame a lista de diccionarios para template
+                if resumen_df is not None and not resumen_df.empty:
+                    context["resumen"] = resumen_df.to_dict('records')
+
+                # Determinar códigos a reemplazar
+                codigos_unicos = df["codigo"].unique()
+                if reemplazar:
+                    # Reemplaza el primero, luego inserta todos
+                    primer_codigo = codigos_unicos[0] if len(codigos_unicos) > 0 else None
+                    resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=primer_codigo)
+                else:
+                    resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=None)
+
+                if resultado_save["exito"]:
+                    messages.success(
+                        request,
+                        f"✅ Se cargaron {resultado_save['registros_guardados']} registros de satisfacción.",
+                    )
+                    context["resultado"] = "exito"
+                else:
+                    messages.error(
+                        request,
+                        f"Error guardando en BD: {'; '.join(resultado_save['errores'])}",
+                    )
+                    context["resultado"] = "error"
+
                 context["form"] = form
-                return render(request, "core/cargar_satisfaccion.html", context)
 
-            df = resultado_proc["df"]
-
-            # Mostrar preview
-            context["df_preview"] = df.head(100).to_html(classes="table table-sm")
-            resumen_df = obtener_resumen_por_codigo(df)
-            # Convertir DataFrame a lista de diccionarios para template
-            context["resumen"] = resumen_df.to_dict('records') if resumen_df is not None else []
-
-            # Determinar códigos a reemplazar
-            codigos_unicos = df["codigo"].unique()
-            if reemplazar:
-                # Reemplaza el primero, luego inserta todos
-                primer_codigo = codigos_unicos[0] if len(codigos_unicos) > 0 else None
-                resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=primer_codigo)
             else:
-                resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=None)
-
-            if resultado_save["exito"]:
-                messages.success(
-                    request,
-                    f"✅ Se cargaron {resultado_save['registros_guardados']} registros de satisfacción.",
-                )
-                context["resultado"] = "exito"
-            else:
-                messages.error(
-                    request,
-                    f"Error guardando en BD: {'; '.join(resultado_save['errores'])}",
-                )
-                context["resultado"] = "error"
-
-            context["form"] = form
+                context["form"] = form
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
 
         else:
+            form = CargarSatisfaccionExcelForm()
             context["form"] = form
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
 
-    else:
-        form = CargarSatisfaccionExcelForm()
-        context["form"] = form
+    except Exception as e:
+        messages.error(request, f"Error en vista: {str(e)}")
+        context["form"] = None
+        import traceback
+        logger.error(f"Error en cargar_satisfaccion_view: {traceback.format_exc()}")
 
     return render(request, "core/cargar_satisfaccion.html", context)
