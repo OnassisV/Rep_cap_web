@@ -395,6 +395,8 @@ def filtrar_capacitaciones_para_usuario(
         "cerrado",
         "implementacion",
         "en implementacion",
+        "finalizada",
+        "en proceso",
     }
 
     filas_filtradas: list[dict[str, Any]] = []
