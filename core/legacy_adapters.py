@@ -220,7 +220,7 @@ def _parsear_anio(valor: Any) -> int | None:
 def obtener_filas_oferta_formativa() -> list[dict[str, Any]]:
     """Obtiene filas de capacitaciones desde cap_capacitaciones con aliases compatibles."""
     query = (
-        "SELECT cap_codigo AS codigo, cap_anio AS anio, cap_estado AS condicion,"
+        "SELECT id, cap_codigo AS codigo, cap_anio AS anio, cap_estado AS condicion,"
         " creado_nombre AS especialista_cargo, cap_tipo AS tipo_proceso_formativo,"
         " cap_nombre AS denominacion_proceso_formativo"
         " FROM cap_capacitaciones"

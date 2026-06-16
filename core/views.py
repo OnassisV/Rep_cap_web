@@ -3377,22 +3377,20 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
         # Adaptacion del submenu "Satisfacción" (resumen de encuestas de satisfacción).
         if submenu_slug == "satisfaccion":
-            codigos_visibles = [
-                str(fila.get("codigo", "")).strip()
-                for fila in oferta_anio
-                if str(fila.get("codigo", "")).strip()
-            ]
             filas_satisfaccion: list[dict[str, Any]] = []
             total_respuestas_satisfaccion = 0
             for fila in oferta_anio:
                 codigo = str(fila.get("codigo", "")).strip()
-                if not codigo:
+                cap_id = fila.get("id")
+                if not codigo or not cap_id:
                     continue
-                resumen = obtener_resumen_satisfaccion(codigo)
+                # Construir código compuesto: codigo-id (ej: 25001I-288)
+                codigo_compuesto = f"{codigo}-{cap_id}"
+                resumen = obtener_resumen_satisfaccion(codigo_compuesto)
                 respuestas = int(resumen.get("total_respuestas", 0))
                 filas_satisfaccion.append(
                     {
-                        "codigo": codigo,
+                        "codigo": codigo_compuesto,
                         "proceso": str(fila.get("denominacion_proceso_formativo", "")).strip(),
                         "total_respuestas": respuestas,
                         "por_categoria": resumen.get("por_categoria", []),
