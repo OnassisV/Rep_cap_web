@@ -107,13 +107,13 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         "titulo": "Gestión de la Capacitación",
         "subtitulo": "Planifica, estructura y ejecuta",
         "descripcion": (
-            "Control integral de oferta, estándares y plantillas para gestionar"
+            "Control integral de oferta, satisfacción y plantillas para gestionar"
             " ciclos formativos de extremo a extremo."
         ),
         "imagen": "images/menu/gestion_capacitacion.svg",
         "modulos": [
             "oferta_formativa.py",
-            "estandares_calidad.py",
+            "satisfaccion/procesamiento_satisfaccion.py",
             "plantillas.py",
         ],
         "submenus": [
@@ -4966,3 +4966,83 @@ def api_recalcular_estado_view(request, cap_id: int):
         "pasos_completos": pasos_completos,
         "tiene_certificados": tiene_certificados,
     })
+
+
+# ── Carga de Satisfacción ──
+
+@login_required
+def cargar_satisfaccion_view(request):
+    """Vista para cargar datos de satisfacción desde Excel."""
+    from .satisfaccion_forms import CargarSatisfaccionExcelForm
+    from .satisfaccion_adapter import (
+        procesar_excel_historico,
+        guardar_en_satisfaccion,
+        obtener_resumen_por_codigo,
+    )
+
+    context = {
+        "title": "Cargar Satisfacción",
+        "form": None,
+        "resultado": None,
+        "df_preview": None,
+        "resumen": None,
+    }
+
+    if request.method == "POST":
+        form = CargarSatisfaccionExcelForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES["archivo_excel"]
+            reemplazar = form.cleaned_data.get("reemplazar", False)
+
+            # Procesar archivo
+            resultado_proc = procesar_excel_historico(archivo)
+
+            if not resultado_proc["exito"]:
+                messages.error(
+                    request,
+                    f"Error procesando archivo: {'; '.join(resultado_proc['errores'])}",
+                )
+                context["form"] = form
+                return render(request, "core/cargar_satisfaccion.html", context)
+
+            df = resultado_proc["df"]
+
+            # Mostrar preview
+            context["df_preview"] = df.head(100).to_html(classes="table table-sm")
+            context["resumen"] = obtener_resumen_por_codigo(df)
+
+            # Determinar códigos a reemplazar
+            codigos_unicos = df["codigo"].unique()
+            if reemplazar:
+                # Reemplaza el primero, luego inserta todos
+                primer_codigo = codigos_unicos[0] if len(codigos_unicos) > 0 else None
+                resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=primer_codigo)
+            else:
+                resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=None)
+
+            if resultado_save["exito"]:
+                messages.success(
+                    request,
+                    f"✅ Se cargaron {resultado_save['registros_guardados']} registros de satisfacción.",
+                )
+                context["resultado"] = "exito"
+            else:
+                messages.error(
+                    request,
+                    f"Error guardando en BD: {'; '.join(resultado_save['errores'])}",
+                )
+                context["resultado"] = "error"
+
+            context["form"] = form
+
+        else:
+            context["form"] = form
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+
+    else:
+        form = CargarSatisfaccionExcelForm()
+        context["form"] = form
+
+    return render(request, "core/cargar_satisfaccion.html", context)

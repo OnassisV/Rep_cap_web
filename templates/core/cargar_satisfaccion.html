@@ -1,0 +1,218 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2 mb-2">{{ title }}</h1>
+            <p class="text-muted">
+                Carga datos de satisfacción desde un archivo Excel.
+                El archivo debe contener columnas: <code>codigo</code>, <code>anio</code>, <code>dni</code>, <code>pregunta</code>, <code>respuesta</code>.
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">← Volver al inicio</a>
+        </div>
+    </div>
+
+    <!-- Mensajes de estado -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Formulario de carga -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">📁 Cargar archivo Excel</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    {{ form.archivo_excel }}
+                    {% if form.archivo_excel.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.archivo_excel.errors }}
+                        </div>
+                    {% endif %}
+                    <small class="form-text text-muted d-block mt-2">
+                        Formatos soportados: .xlsx, .xls (máximo 10 MB)
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        {{ form.reemplazar }}
+                        <label class="form-check-label" for="{{ form.reemplazar.id_for_label }}">
+                            {{ form.reemplazar.label }}
+                        </label>
+                        {% if form.reemplazar.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.reemplazar.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <small class="form-text text-muted d-block mt-2">
+                        {{ form.reemplazar.help_text }}
+                    </small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Procesar y cargar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Preview de datos procesados -->
+    {% if df_preview %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">📊 Vista previa (primeras 100 filas)</h5>
+            </div>
+            <div class="card-body table-responsive" style="max-height: 600px; overflow-y: auto;">
+                {{ df_preview | safe }}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Resumen por código -->
+    {% if resumen %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">📈 Resumen por código</h5>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Registros</th>
+                            <th>Años</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for _, row in resumen.iterrows %}
+                            <tr>
+                                <td><code>{{ row.codigo }}</code></td>
+                                <td>{{ row.registros }}</td>
+                                <td>{{ row.anios }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Sin datos</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Resultado de carga -->
+    {% if resultado == "exito" %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>✅ Éxito:</strong> Los datos se cargaron correctamente en la base de datos.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% elif resultado == "error" %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>❌ Error:</strong> Hubo un problema al guardar los datos en la base de datos.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <!-- Información sobre estructura del Excel -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">ℹ️ Estructura esperada del archivo Excel</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Columnas requeridas:</strong></p>
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Columna</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Ejemplo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>codigo</code></td>
+                        <td>String</td>
+                        <td>Código de capacitación</td>
+                        <td>25011I-299</td>
+                    </tr>
+                    <tr>
+                        <td><code>anio</code></td>
+                        <td>Integer</td>
+                        <td>Año</td>
+                        <td>2025</td>
+                    </tr>
+                    <tr>
+                        <td><code>dni</code></td>
+                        <td>String</td>
+                        <td>DNI del participante (8 dígitos)</td>
+                        <td>12345678</td>
+                    </tr>
+                    <tr>
+                        <td><code>pregunta</code></td>
+                        <td>String</td>
+                        <td>Texto de la pregunta (puede incluir aspecto)</td>
+                        <td>Contenido / Temática: ¿Fue clara?</td>
+                    </tr>
+                    <tr>
+                        <td><code>respuesta</code></td>
+                        <td>String</td>
+                        <td>Respuesta del participante</td>
+                        <td>Muy de acuerdo</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="mt-3"><strong>Columnas opcionales:</strong></p>
+            <ul>
+                <li><code>aspecto</code> - Categoría principal (se extrae automáticamente de pregunta si no está)</li>
+                <li><code>aspecto2</code> - Sub-categoría (se extrae automáticamente de pregunta si no está)</li>
+            </ul>
+
+            <p class="mt-3"><strong>Patrones de pregunta soportados:</strong></p>
+            <ul>
+                <li><code>Aspecto-Subaspecto-Pregunta</code></li>
+                <li><code>Aspecto / Subaspecto : Pregunta</code></li>
+                <li><code>Aspecto / Subaspecto - Pregunta</code></li>
+                <li><code>Aspecto : Pregunta</code></li>
+            </ul>
+
+            <p class="mt-3"><strong>Respuestas mapeadas automáticamente:</strong></p>
+            <ul>
+                <li>✅ Satisfecho: "de acuerdo", "muy de acuerdo", "totalmente de acuerdo", "sí"</li>
+                <li>⚠️ Ni satisfecho ni insatisfecho: "medianamente de acuerdo", "ni de acuerdo ni en desacuerdo"</li>
+                <li>❌ Insatisfecho: "en desacuerdo", "muy en desacuerdo", "poco de acuerdo", "no"</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-responsive {
+        border-radius: 0.375rem;
+    }
+    code {
+        background-color: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}

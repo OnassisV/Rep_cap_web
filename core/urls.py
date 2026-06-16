@@ -12,6 +12,7 @@ from .views import (
     switch_role_view,
     api_caracterizacion_replica_view,
     api_recalcular_estado_view,
+    cargar_satisfaccion_view,
 )
 
 
@@ -51,4 +52,9 @@ urlpatterns = [
         api_recalcular_estado_view,
         name="api_recalcular_estado",
     ),  # Fuerza re-evaluación del estado (útil cuando certificados se agregan externamente).
+    path(
+        "cargar-satisfaccion/",
+        cargar_satisfaccion_view,
+        name="cargar_satisfaccion",
+    ),  # Carga datos de satisfacción desde Excel.
 ]
