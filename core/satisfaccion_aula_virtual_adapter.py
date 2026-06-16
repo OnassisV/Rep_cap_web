@@ -101,8 +101,8 @@ def extraer_satisfaccion_aula_virtual(
         a_c = encontrar_columna(cols_a, ["c_id", "c_c_id"])
         a_sid = encontrar_columna(cols_a, ["survey_id"])
         a_qid = encontrar_columna(cols_a, ["question_id", "questionid"])
-        a_oid = encontrar_columna(cols_a, ["option_id", "optionid"])
-        a_uid = encontrar_columna(cols_a, ["user_id", "id_user", "author_id", "author"])
+        a_oid = encontrar_columna(cols_a, ["question_option_id", "option_id", "optionid"])
+        a_uid = encontrar_columna(cols_a, ["survey_user_id", "user_c", "user_id", "id_user", "author_id"])
 
         b_c = encontrar_columna(cols_b, ["c_id", "c_c_id"])
         b_sid = encontrar_columna(cols_b, ["survey_id"])
@@ -112,10 +112,10 @@ def extraer_satisfaccion_aula_virtual(
         c_c = encontrar_columna(cols_c, ["c_id", "c_c_id"])
         c_sid = encontrar_columna(cols_c, ["survey_id"])
         c_qid = encontrar_columna(cols_c, ["question_id", "questionid"])
-        c_oid = encontrar_columna(cols_c, ["id"])
+        c_oid = encontrar_columna(cols_c, ["question_option_id", "id"])
         c_otxt = encontrar_columna(cols_c, ["option_text", "text", "value", "label"])
 
-        u_id = encontrar_columna(cols_u, ["user_id", "id"])
+        u_id = encontrar_columna(cols_u, ["id", "user_id"])
         u_dni = encontrar_columna(cols_u, ["official_code", "username", "login", "email"])
 
         # Validar que todas las columnas se encontraron
