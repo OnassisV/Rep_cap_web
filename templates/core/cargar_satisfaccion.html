@@ -101,7 +101,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for _, row in resumen.iterrows %}
+                        {% for row in resumen %}
                             <tr>
                                 <td><code>{{ row.codigo }}</code></td>
                                 <td>{{ row.registros }}</td>

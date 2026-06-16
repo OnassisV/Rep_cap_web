@@ -5007,7 +5007,9 @@ def cargar_satisfaccion_view(request):
 
             # Mostrar preview
             context["df_preview"] = df.head(100).to_html(classes="table table-sm")
-            context["resumen"] = obtener_resumen_por_codigo(df)
+            resumen_df = obtener_resumen_por_codigo(df)
+            # Convertir DataFrame a lista de diccionarios para template
+            context["resumen"] = resumen_df.to_dict('records') if resumen_df is not None else []
 
             # Determinar códigos a reemplazar
             codigos_unicos = df["codigo"].unique()
