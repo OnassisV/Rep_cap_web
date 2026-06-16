@@ -1802,9 +1802,12 @@
                     </article>
                 </div>
 
-                <div style="margin-bottom: 20px;">
+                <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+                    <a href="{% url 'core:cargar_satisfaccion_aula_virtual' %}" class="btn btn-success btn-sm">
+                        <i class="bi bi-cloud-download"></i> Desde Aula Virtual
+                    </a>
                     <a href="{% url 'core:cargar_satisfaccion' %}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-upload"></i> Cargar nuevas satisfacciones (Excel)
+                        <i class="bi bi-upload"></i> Desde Excel
                     </a>
                 </div>
 
