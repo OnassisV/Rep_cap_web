@@ -5012,10 +5012,18 @@ def cargar_satisfaccion_aula_virtual_view(request):
 
             # Guardar si lo solicitó
             if request.POST.get("guardar") == "on":
-                from .satisfaccion_adapter import procesar_excel_historico
+                from .satisfaccion_adapter import procesar_aula_virtual_para_guardar
+                from datetime import datetime
 
-                # Procesar con el adaptador
-                resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=codigo_compuesto)
+                # Procesar DataFrame de Aula Virtual a formato compatible
+                df_procesado = procesar_aula_virtual_para_guardar(
+                    df,
+                    codigo_compuesto=codigo_compuesto,
+                    anio=datetime.now().year,
+                )
+
+                # Guardar con el adaptador
+                resultado_save = guardar_en_satisfaccion(df_procesado, reemplazar_codigo=codigo_compuesto)
 
                 if resultado_save["exito"]:
                     messages.success(

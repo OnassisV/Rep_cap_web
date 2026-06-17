@@ -347,3 +347,51 @@ def obtener_resumen_por_codigo(df: pd.DataFrame) -> pd.DataFrame:
     resumen['registros'] = df.groupby('codigo').size().values
 
     return resumen[['codigo', 'registros', 'anios']]
+
+
+def procesar_aula_virtual_para_guardar(
+    df: pd.DataFrame,
+    codigo_compuesto: str,
+    anio: int = None,
+) -> pd.DataFrame:
+    """
+    Procesa DataFrame de Aula Virtual para que sea compatible con guardar_en_satisfaccion().
+
+    Transforma:
+    - dni, c_id, pregunta, respuesta
+
+    A:
+    - codigo, anio, dni, pregunta, aspecto, satisfaccion, aspectos
+    """
+    from datetime import datetime
+
+    if df is None or df.empty:
+        return df
+
+    df = df.copy()
+
+    # Agregar codigo y anio
+    df['codigo'] = codigo_compuesto
+    df['anio'] = anio if anio else datetime.now().year
+
+    # Procesar pregunta: extraer aspectos y limpiar
+    aspectos_data = df['pregunta'].apply(
+        lambda p: extraer_aspectos(limpiar_texto(p))
+    )
+    df['aspecto'] = aspectos_data.apply(lambda x: x[0])
+    df['aspecto2'] = aspectos_data.apply(lambda x: x[1])
+
+    # Procesar respuesta: mapear a satisfacción
+    df['satisfaccion'] = df['respuesta'].apply(
+        lambda r: mapear_satisfaccion(limpiar_texto(r))
+    )
+
+    # Crear columna 'aspectos' (plural, lista como string)
+    # Agrupa aspectos únicos por dni-pregunta
+    df['aspectos'] = df['aspecto'].fillna('General')
+
+    # Reordenar y seleccionar columnas necesarias
+    columnas_finales = ['codigo', 'anio', 'dni', 'pregunta', 'aspecto', 'satisfaccion', 'aspectos']
+    df = df[[col for col in columnas_finales if col in df.columns]]
+
+    return df
