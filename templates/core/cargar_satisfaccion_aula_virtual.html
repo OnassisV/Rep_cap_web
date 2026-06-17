@@ -95,20 +95,17 @@
                     <input type="hidden" name="c_id" value="{{ c_id }}">
                     <input type="hidden" name="survey_id" value="{{ survey_id }}">
                     <input type="hidden" name="codigo_capacitacion" value="{{ codigo_capacitacion }}">
+                    <input type="hidden" name="guardar" value="on">
 
-                    <div class="alert alert-info">
-                        <strong>Código a guardar:</strong> <code>{{ codigo_compuesto }}</code>
+                    <div class="alert alert-info mb-3">
+                        <strong>📌 Código a guardar:</strong> <code>{{ codigo_compuesto }}</code>
                     </div>
 
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" name="guardar"
-                               id="guardar" value="on">
-                        <label class="form-check-label" for="guardar">
-                            Reemplazar datos existentes para este código
-                        </label>
+                    <div class="alert alert-warning mb-3">
+                        <strong>⚠️ Importante:</strong> Si ya existen datos para este código, serán reemplazados automáticamente (nunca se duplicarán).
                     </div>
 
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success btn-lg">
                         <i class="bi bi-save"></i> Guardar en tabla satisfaccion
                     </button>
                 </form>

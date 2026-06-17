@@ -5010,7 +5010,7 @@ def cargar_satisfaccion_aula_virtual_view(request):
             context["codigo_compuesto"] = codigo_compuesto
             context["registros_preview"] = len(df)
 
-            # Guardar si lo solicitó
+            # Guardar automáticamente (siempre reemplaza si existen datos para ese código)
             if request.POST.get("guardar") == "on":
                 from .satisfaccion_adapter import procesar_aula_virtual_para_guardar
                 from datetime import datetime
@@ -5022,13 +5022,13 @@ def cargar_satisfaccion_aula_virtual_view(request):
                     anio=datetime.now().year,
                 )
 
-                # Guardar con el adaptador
+                # Guardar SIEMPRE con reemplazo automático (nunca duplica)
                 resultado_save = guardar_en_satisfaccion(df_procesado, reemplazar_codigo=codigo_compuesto)
 
                 if resultado_save["exito"]:
                     messages.success(
                         request,
-                        f"✅ Se cargaron {resultado_save['registros_guardados']} registros de Aula Virtual",
+                        f"✅ Se cargaron {resultado_save['registros_guardados']} registros de Aula Virtual (automáticamente se reemplazaron datos anteriores si existían)",
                     )
                     context["resultado"] = "exito"
                 else:
@@ -5073,7 +5073,6 @@ def cargar_satisfaccion_view(request):
             form = CargarSatisfaccionExcelForm(request.POST, request.FILES)
             if form.is_valid():
                 archivo = request.FILES["archivo_excel"]
-                reemplazar = form.cleaned_data.get("reemplazar", False)
 
                 # Procesar archivo
                 resultado_proc = procesar_excel_historico(archivo)
@@ -5095,27 +5094,26 @@ def cargar_satisfaccion_view(request):
                 if resumen_df is not None and not resumen_df.empty:
                     context["resumen"] = resumen_df.to_dict('records')
 
-                # Determinar códigos a reemplazar
+                # Guardar SIEMPRE con reemplazo automático por código (nunca duplica)
                 codigos_unicos = df["codigo"].unique()
-                if reemplazar:
-                    # Reemplaza el primero, luego inserta todos
-                    primer_codigo = codigos_unicos[0] if len(codigos_unicos) > 0 else None
-                    resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=primer_codigo)
-                else:
-                    resultado_save = guardar_en_satisfaccion(df, reemplazar_codigo=None)
+                for codigo in codigos_unicos:
+                    df_codigo = df[df["codigo"] == codigo]
+                    resultado_save = guardar_en_satisfaccion(df_codigo, reemplazar_codigo=codigo)
 
-                if resultado_save["exito"]:
-                    messages.success(
-                        request,
-                        f"✅ Se cargaron {resultado_save['registros_guardados']} registros de satisfacción.",
-                    )
-                    context["resultado"] = "exito"
-                else:
-                    messages.error(
-                        request,
-                        f"Error guardando en BD: {'; '.join(resultado_save['errores'])}",
-                    )
-                    context["resultado"] = "error"
+                    if not resultado_save["exito"]:
+                        messages.error(
+                            request,
+                            f"Error guardando código {codigo}: {'; '.join(resultado_save['errores'])}",
+                        )
+                        context["resultado"] = "error"
+                        context["form"] = form
+                        return render(request, "core/cargar_satisfaccion.html", context)
+
+                messages.success(
+                    request,
+                    f"✅ Se cargaron {len(df)} registros de satisfacción (datos anteriores reemplazados automáticamente si existían).",
+                )
+                context["resultado"] = "exito"
 
                 context["form"] = form
 
