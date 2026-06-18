@@ -55,6 +55,7 @@ _IGED_NAME_ALIASES = {
     "ugel paucar del sarasara": "UGEL PAUCAR DEL SARA SARA",
     "ugel paucar de sara sara": "UGEL PAUCAR DEL SARA SARA",
     "ugel ramon castilla caballocoha": "UGEL RAMON CASTILLA CABALLOCOCHA",
+    "dre lima provincia": "DRE LIMA PROVINCIAS",
 }
 
 
@@ -196,6 +197,8 @@ def _normalize_iged_name(series: pd.Series) -> pd.Series:
         .str.decode("ascii")
         .str.replace(r"\s+", " ", regex=True)
     )
+    # Unificar variantes con guion: "DRE-AMAZONAS" → "DRE AMAZONAS", "GRE-AREQUIPA" → "GRE AREQUIPA"
+    result = result.str.replace(r"^(DRE|GRE)-", r"\1 ", regex=True)
     normalized_key = result.str.lower()
     for alias, canonical in _IGED_NAME_ALIASES.items():
         result.loc[normalized_key == alias] = canonical
@@ -408,8 +411,8 @@ def _calculate_base_kpis(
         },
     ).reset_index()
 
-    kpis["Tasa Cobertura DRE/GRE"] = (kpis["DRE/GRE Coberturada"] / total_dre_nacional).clip(upper=1.0) if total_dre_nacional else pd.NA
-    kpis["Tasa Cobertura UGEL"] = (kpis["UGEL Coberturada"] / total_ugel_nacional).clip(upper=1.0) if total_ugel_nacional else pd.NA
+    kpis["Tasa Cobertura DRE/GRE"] = (kpis["DRE/GRE Coberturada"] / total_dre_nacional) if total_dre_nacional else pd.NA
+    kpis["Tasa Cobertura UGEL"] = (kpis["UGEL Coberturada"] / total_ugel_nacional) if total_ugel_nacional else pd.NA
     kpis["Tasa DRE/GRE Fortalecida"] = kpis["DRE/GRE Fortalecida"] / kpis["DRE/GRE Coberturada"].replace(0, pd.NA)
     kpis["Tasa UGEL Fortalecida"] = kpis["UGEL Fortalecida"] / kpis["UGEL Coberturada"].replace(0, pd.NA)
     kpis["Tasa Varones"] = kpis["Varones"] / kpis["Participaciones"].replace(0, pd.NA)
@@ -707,8 +710,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
     tasa_finalizacion = finalizaciones / participaciones if participaciones else pd.NA
     tasa_certificacion = certificaciones / finalizaciones if finalizaciones else pd.NA
     tasa_progreso = progreso / evaluados if evaluados else pd.NA
-    tasa_cobertura_dre = min(dre_cobertura / total_dre, 1.0) if total_dre else pd.NA
-    tasa_cobertura_ugel = min(ugel_cobertura / total_ugel, 1.0) if total_ugel else pd.NA
+    tasa_cobertura_dre = dre_cobertura / total_dre if total_dre else pd.NA
+    tasa_cobertura_ugel = ugel_cobertura / total_ugel if total_ugel else pd.NA
     tasa_dre_fortalecida = dre_fortalecida / dre_cobertura if dre_cobertura else pd.NA
     tasa_ugel_fortalecida = ugel_fortalecida / ugel_cobertura if ugel_cobertura else pd.NA
     tasa_varones = varones / participaciones if participaciones else pd.NA
