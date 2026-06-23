@@ -83,6 +83,7 @@ def _fetch_dataframe(table_name: str, columns: list[str]) -> pd.DataFrame:
                 cursor.execute(sql)
                 rows = cursor.fetchall()
     except Exception:
+        logger.exception("Error al leer tabla '%s' de la BD", table_name)
         return pd.DataFrame(columns=columns)
 
     frame = pd.DataFrame(list(rows or []))
@@ -132,6 +133,7 @@ def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Da
             )
             oferta = oferta[oferta_columns]
     except Exception:
+        logger.exception("Error al leer cap_capacitaciones de la BD")
         oferta = pd.DataFrame(columns=oferta_columns)
     bbdd = _fetch_dataframe(
         "bbdd_difoca",
@@ -224,11 +226,6 @@ def _normalize_gender(series: pd.Series) -> pd.Series:
     result.loc[normalized.isin({"m", "masculino", "masculina", "hombre", "varon", "masc"})] = "M"
     result.loc[normalized.isin({"f", "femenino", "femenina", "mujer", "fem"})] = "F"
     return result
-
-
-def _selected_values(values: list[str], options: list[str], default: list[str]) -> list[str]:
-    filtered = [value for value in values if value in options]
-    return filtered or default
 
 
 def _selected_value(value: Any, options: list[str], default: str = "") -> str:
@@ -696,22 +693,17 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
 
     total_dre, total_ugel = _national_iged_totals(iged_df)
 
-    logger.warning(
-        "[CARDS] ugel_cobertura=%d / total_ugel=%d = %.4f%%, "
-        "dre_cobertura=%d / total_dre=%d, merged_rows=%d, "
-        "tipo_norm_counts=%s",
-        ugel_cobertura, total_ugel,
-        (ugel_cobertura / total_ugel * 100) if total_ugel else 0,
-        dre_cobertura, total_dre, len(merged),
-        dict(tipo_norm.value_counts()),
-    )
+    if total_dre and dre_cobertura > total_dre:
+        logger.warning("[CARDS] dre_cobertura=%d supera total_dre=%d — posibles variantes de nombre sin normalizar", dre_cobertura, total_dre)
+    if total_ugel and ugel_cobertura > total_ugel:
+        logger.warning("[CARDS] ugel_cobertura=%d supera total_ugel=%d — posibles variantes de nombre sin normalizar", ugel_cobertura, total_ugel)
 
     tasa_retencion = participaciones / matriculaciones if matriculaciones else pd.NA
     tasa_finalizacion = finalizaciones / participaciones if participaciones else pd.NA
     tasa_certificacion = certificaciones / finalizaciones if finalizaciones else pd.NA
     tasa_progreso = progreso / evaluados if evaluados else pd.NA
-    tasa_cobertura_dre = dre_cobertura / total_dre if total_dre else pd.NA
-    tasa_cobertura_ugel = ugel_cobertura / total_ugel if total_ugel else pd.NA
+    tasa_cobertura_dre = min(dre_cobertura, total_dre) / total_dre if total_dre else pd.NA
+    tasa_cobertura_ugel = min(ugel_cobertura, total_ugel) / total_ugel if total_ugel else pd.NA
     tasa_dre_fortalecida = dre_fortalecida / dre_cobertura if dre_cobertura else pd.NA
     tasa_ugel_fortalecida = ugel_fortalecida / ugel_cobertura if ugel_cobertura else pd.NA
     tasa_varones = varones / participaciones if participaciones else pd.NA
@@ -889,7 +881,7 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     participantes_iged = participantes_base.copy()
     if selected_regions and not participantes_iged.empty:
         participantes_iged = participantes_iged[participantes_iged.get("region", "").fillna("").astype(str).str.strip().isin(selected_regions)]
-    iged_options = _series_options(participantes_iged.get("nombre_iged", pd.Series(dtype=str)))
+    iged_options = _series_options(_normalize_iged_name(participantes_iged.get("nombre_iged", pd.Series(dtype=str))))
     raw_igeds = _getlist("iged") if _getlist else query_data.get("iged")
     selected_igeds = _selected_values(raw_igeds, iged_options, "")
 
