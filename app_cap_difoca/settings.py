@@ -140,13 +140,21 @@ def build_django_database_config(fallback_mysql: dict[str, str | int] | None = N
 SHARED_MYSQL = resolve_shared_mysql_url()
 
 # Clave secreta usada por Django para sesiones y firmado criptografico.
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-change-this-for-production",
-)
+# En producción (DEBUG=False) debe configurarse DJANGO_SECRET_KEY en el entorno.
+_secret_key_env = os.getenv("DJANGO_SECRET_KEY", "")
+if not _secret_key_env:
+    _debug_mode = env_bool("DJANGO_DEBUG", default=False)
+    if not _debug_mode:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY no está configurada. "
+            "Configura esta variable de entorno antes de arrancar en producción."
+        )
+    _secret_key_env = "django-insecure-dev-only-key-do-not-use-in-production"
+SECRET_KEY = _secret_key_env
 
-# Interruptor de desarrollo. Usa "0" en .env para comportamiento tipo produccion.
-DEBUG = env_bool("DJANGO_DEBUG", default=True)
+# Interruptor de desarrollo. Requiere DJANGO_DEBUG=1 explícito para activar.
+DEBUG = env_bool("DJANGO_DEBUG", default=False)
 
 # Hosts permitidos para servir esta aplicacion.
 # Incluye "testserver" para que el cliente de pruebas de Django funcione sin ajustes extra.

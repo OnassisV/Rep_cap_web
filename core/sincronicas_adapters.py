@@ -35,7 +35,7 @@ SINCRONICAS_DIR = BASE_DIR / "Actividades_fuera" / "sincronicas"
 
 
 def _nota_aprobacion() -> float:
-    return float(getattr(settings, "_nota_aprobacion()_SINCRONICAS", 13.5))
+    return float(getattr(settings, "NOTA_APROBACION_SINCRONICAS", 13.5))
 
 
 # ---------------------------------------------------------------------------

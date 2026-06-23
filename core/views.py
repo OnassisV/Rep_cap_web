@@ -2281,6 +2281,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 # Recalcula el avance real desde la completitud de bloques.
                 cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
 
+                from django.core.exceptions import ValidationError as _VE
+                try:
+                    cap_obj.full_clean(exclude=["cap_codigo", "cap_id_curso"])
+                except _VE as ve:
+                    msgs = "; ".join(
+                        f"{f}: {', '.join(errs)}" if f != "__all__" else ", ".join(errs)
+                        for f, errs in ve.message_dict.items()
+                    )
+                    messages.error(request, f"Datos inválidos: {msgs}")
+                    return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
                 cap_obj.save()
                 # Auto-estado según código/ID y completitud.
                 _auto_actualizar_estado(cap_obj)
@@ -3598,6 +3608,17 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     # Mantener tipo sincrónica
                     cap_obj.cap_tipo = "Capacitación sincrónica"
                     cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
+
+                    from django.core.exceptions import ValidationError as _VE
+                    try:
+                        cap_obj.full_clean(exclude=["cap_codigo", "cap_id_curso"])
+                    except _VE as ve:
+                        msgs = "; ".join(
+                            f"{f}: {', '.join(errs)}" if f != "__all__" else ", ".join(errs)
+                            for f, errs in ve.message_dict.items()
+                        )
+                        messages.error(request, f"Datos inválidos: {msgs}")
+                        return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params_ed))
                     cap_obj.save()
                     _auto_actualizar_estado(cap_obj)
                     _log_auditoria(cap_obj, str(request.user.username), "modificada", "Sincrónica")
