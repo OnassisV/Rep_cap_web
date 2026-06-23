@@ -2664,6 +2664,27 @@
                             </tbody>
                         </table>
 
+                        {% if editar_page_obj and editar_page_obj.paginator.num_pages > 1 %}
+                        <nav class="cap-pagination" aria-label="Paginación de capacitaciones">
+                            <span class="cap-pagination__info">
+                                Mostrando {{ editar_page_obj.start_index }}–{{ editar_page_obj.end_index }} de {{ editar_page_obj.paginator.count }}
+                            </span>
+                            <div class="cap-pagination__controls">
+                                {% if editar_page_obj.has_previous %}
+                                    <a class="btn btn--small btn--outline" href="{{ editar_page_base }}page={{ editar_page_obj.previous_page_number }}">← Anterior</a>
+                                {% else %}
+                                    <span class="btn btn--small btn--outline cap-pagination__disabled">← Anterior</span>
+                                {% endif %}
+                                <span class="cap-pagination__current">Página {{ editar_page_obj.number }} de {{ editar_page_obj.paginator.num_pages }}</span>
+                                {% if editar_page_obj.has_next %}
+                                    <a class="btn btn--small btn--outline" href="{{ editar_page_base }}page={{ editar_page_obj.next_page_number }}">Siguiente →</a>
+                                {% else %}
+                                    <span class="btn btn--small btn--outline cap-pagination__disabled">Siguiente →</span>
+                                {% endif %}
+                            </div>
+                        </nav>
+                        {% endif %}
+
                         {# ---- Modal: asignar ID plataforma (código + ID curso) ---- #}
                         <dialog id="id-plataforma-modal" class="id-plataforma-modal">
                             <div class="id-plataforma-modal__panel">

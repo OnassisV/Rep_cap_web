@@ -5900,3 +5900,37 @@ h1 {
     color: #6b7280;
     white-space: nowrap;
 }
+
+.cap-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .75rem;
+    padding: .5rem 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+.cap-pagination__info {
+    font-size: .83rem;
+    color: #6b7280;
+}
+
+.cap-pagination__controls {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.cap-pagination__current {
+    font-size: .85rem;
+    color: #374151;
+    padding: 0 .25rem;
+}
+
+.cap-pagination__disabled {
+    opacity: .4;
+    cursor: default;
+    pointer-events: none;
+}

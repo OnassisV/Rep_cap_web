@@ -9,29 +9,19 @@ import pandas as pd
 import logging
 from typing import Any
 from django.db import connection
-from sqlalchemy import create_engine, text
+
+from accounts.db import get_connection_from_config, has_database_config
 
 logger = logging.getLogger(__name__)
 
 
-def obtener_conexion_aula():
-    """
-    Obtiene conexión SQLAlchemy a BD de Aula Virtual (Chamilo).
-
-    Usa las credenciales del environment o configuración.
-    """
+def _obtener_conexion_aula():
+    """Abre conexión pymysql a BD de Aula Virtual (Chamilo)."""
     from django.conf import settings
-
-    # Si hay configuración específica para Aula Virtual
-    if hasattr(settings, 'AULA_DB'):
-        db = settings.AULA_DB
-        url = f"mysql+pymysql://{db.get('user')}:{db.get('password')}@{db.get('host')}:{db.get('port', 3306)}/{db.get('database')}?charset=utf8mb4"
-        return create_engine(url)
-
-    raise RuntimeError(
-        "No se configuró conexión a Aula Virtual. "
-        "Configura settings.AULA_DB"
-    )
+    db = getattr(settings, "AULA_DB", None)
+    if not has_database_config(db):
+        raise RuntimeError("No se configuró conexión a Aula Virtual. Configura settings.AULA_DB")
+    return get_connection_from_config(db)
 
 
 
@@ -59,7 +49,7 @@ def extraer_satisfaccion_aula_virtual(
         }
     """
     try:
-        conn_aula = obtener_conexion_aula()
+        conn_aula = _obtener_conexion_aula()
     except Exception as e:
         return {
             'exito': False,
@@ -70,10 +60,7 @@ def extraer_satisfaccion_aula_virtual(
         }
 
     try:
-        # SQL basado en estructura real de Chamilo del backup
-        # c_survey_answer.user es varchar (DNI/username del usuario)
-        # c_survey_answer.option_id es longtext (se compara como string con question_option_id)
-        sql = f"""
+        sql = """
             SELECT
                 a.user AS dni,
                 a.c_id,
@@ -95,8 +82,12 @@ def extraer_satisfaccion_aula_virtual(
             ORDER BY a.iid
         """
 
-        # Ejecutar query
-        df = pd.read_sql(sql, conn_aula, params=(c_id, survey_id))
+        with conn_aula as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(sql, (c_id, survey_id))
+                rows = cursor.fetchall()
+
+        df = pd.DataFrame(list(rows or []))
 
         if df.empty:
             return {

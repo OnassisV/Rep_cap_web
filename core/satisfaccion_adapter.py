@@ -7,8 +7,8 @@ pero para Django (no Streamlit).
 
 import re
 import html
-import unicodedata
 import pandas as pd
+from core.utils import normalizar_token as _normalizar_token_util
 import numpy as np
 from typing import Any
 from datetime import datetime
@@ -39,11 +39,7 @@ def limpiar_texto(texto: str | None) -> str | None:
 
 
 def _norm_token(texto: str) -> str:
-    """Normaliza tokens para detección de patrones."""
-    s = str(texto or "").strip().lower()
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
-    s = re.sub(r"\s+", " ", s)
-    return s
+    return _normalizar_token_util(texto)
 
 
 def extraer_aspectos(pregunta: str) -> tuple[str | None, str | None, str | None]:

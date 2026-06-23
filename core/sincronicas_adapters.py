@@ -28,6 +28,7 @@ from accounts.db import get_connection
 logger = logging.getLogger(__name__)
 
 from django.conf import settings
+from core.utils import normalizar_texto_upper as _normalizar_texto_upper_util
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SINCRONICAS_DIR = BASE_DIR / "Actividades_fuera" / "sincronicas"
@@ -456,11 +457,8 @@ def procesar_archivo_individual(df: pd.DataFrame, nombre_archivo: str | None = N
 # ---------------------------------------------------------------------------
 
 def _normalizar_texto_ascii_upper(s: pd.Series) -> pd.Series:
-    """Convierte a MAYUSCULAS quitando tildes vocalicas (conserva Ñ)."""
-    result = s.fillna("").astype(str).str.strip().str.upper()
-    for orig, repl in [("Á", "A"), ("É", "E"), ("Í", "I"), ("Ó", "O"), ("Ú", "U"), ("Ü", "U")]:
-        result = result.str.replace(orig, repl, regex=False)
-    return result
+    """Aplica normalizar_texto_upper de utils sobre una Serie de pandas."""
+    return s.fillna("").astype(str).apply(_normalizar_texto_upper_util)
 
 
 def _obtener_catalogo_iged() -> pd.DataFrame:

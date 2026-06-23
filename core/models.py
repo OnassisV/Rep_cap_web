@@ -556,3 +556,34 @@ class DniExcluido(models.Model):
 
     def __str__(self) -> str:
         return self.dni
+
+
+# ---------------------------------------------------------------------------
+# Audit trail de capacitaciones
+# ---------------------------------------------------------------------------
+class CapacitacionAuditLog(models.Model):
+    """Registro inmutable de acciones sobre capacitaciones."""
+
+    class Accion(models.TextChoices):
+        CREADA = "creada", "Creada"
+        MODIFICADA = "modificada", "Modificada"
+        CANCELADA = "cancelada", "Cancelada"
+        ELIMINADA = "eliminada", "Eliminada"
+        ID_PLATAFORMA = "id_plataforma", "ID plataforma asignado"
+
+    cap_id = models.IntegerField(db_index=True)
+    cap_codigo = models.CharField(max_length=50, blank=True, default="")
+    cap_nombre = models.CharField(max_length=255, blank=True, default="")
+    usuario = models.CharField(max_length=150)
+    accion = models.CharField(max_length=20, choices=Accion.choices)
+    detalle = models.TextField(blank=True, default="")
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "cap_audit_log"
+        ordering = ["-timestamp"]
+        verbose_name = "Registro de auditoría"
+        verbose_name_plural = "Registros de auditoría"
+
+    def __str__(self) -> str:
+        return f"{self.timestamp:%Y-%m-%d %H:%M} | {self.usuario} | {self.accion} | cap_id={self.cap_id}"

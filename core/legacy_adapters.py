@@ -20,6 +20,7 @@ import pymysql
 from accounts.db import get_connection
 # Importa settings para resolver rutas absolutas del proyecto Django.
 from django.conf import settings
+from core.utils import normalizar_texto as _normalizar_texto_util
 
 logger = logging.getLogger("core")
 
@@ -78,14 +79,7 @@ def _actividades_fuera_dir(crear: bool = False) -> Path:
 
 
 def _normalizar_texto(valor: Any) -> str:
-    """Convierte cualquier valor a texto normalizado para comparaciones robustas."""
-    # Convierte a string y recorta espacios en extremos.
-    texto = str(valor or "").strip()
-    # Elimina tildes para comparar "implementacion" y "implementacion".
-    texto = unicodedata.normalize("NFKD", texto)
-    texto = texto.encode("ascii", "ignore").decode("ascii")
-    # Unifica en minusculas para comparaciones case-insensitive.
-    return texto.lower()
+    return _normalizar_texto_util(valor)
 
 
 def obtener_catalogo_iged_por_region() -> dict[str, list[dict[str, Any]]]:
@@ -113,6 +107,7 @@ def obtener_catalogo_iged_por_region() -> dict[str, list[dict[str, Any]]]:
                 cursor.execute(sql)
                 rows = cursor.fetchall()
     except Exception:
+        logger.exception("Error en obtener_catalogo_iged_por_region")
         # Si la tabla no esta disponible, el formulario sigue cargando con listas vacias.
         return {}
 
@@ -225,6 +220,7 @@ def _parsear_anio(valor: Any) -> int | None:
     try:
         return int(str(valor).strip())
     except Exception:
+        logger.exception("Error en _parsear_anio")
         return None
 
 
@@ -242,6 +238,7 @@ def obtener_filas_oferta_formativa() -> list[dict[str, Any]]:
                 cursor.execute(query)
                 return list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en obtener_filas_oferta_formativa")
         return []
 
 
@@ -509,6 +506,7 @@ def obtener_resumen_estandares(codigos: list[str]) -> dict[str, dict[str, Any]]:
             }
         return resumen
     except Exception:
+        logger.exception("Error en obtener_resumen_estandares")
         # Si falla la lectura (tabla inexistente o error de conexion), retorna vacio.
         return {}
 
@@ -978,6 +976,7 @@ def obtener_estructura_por_codigo(codigo: str) -> list[dict[str, Any]]:
                 cursor.execute(query, (id_cap,))
                 return list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en obtener_estructura_por_codigo")
         return []
 
 
@@ -1080,6 +1079,7 @@ def _obtener_actividad_estructura_por_id(id_estructura: int) -> dict[str, Any]:
                 )
                 return cursor.fetchone() or {}
     except Exception:
+        logger.exception("Error en _obtener_actividad_estructura_por_id")
         return {}
 
 
@@ -1192,6 +1192,7 @@ def guardar_excel_actividad_fuera(codigo: str, id_estructura: int, contenido_byt
             connection.commit()
         return True
     except Exception:
+        logger.exception("Error en guardar_excel_actividad_fuera")
         return False
 
 
@@ -1220,6 +1221,7 @@ def eliminar_excel_actividad_fuera(codigo: str, id_estructura: int) -> bool:
             connection.commit()
         return True
     except Exception:
+        logger.exception("Error en eliminar_excel_actividad_fuera")
         return False
 
 
@@ -1273,6 +1275,7 @@ def _leer_config_nominal() -> dict[str, Any]:
         data = json.loads(ruta.read_text(encoding="utf-8-sig"))
         return data if isinstance(data, dict) else {}
     except Exception:
+        logger.exception("Error en _leer_config_nominal")
         return {}
 
 
@@ -1286,6 +1289,7 @@ def _guardar_config_nominal(config: dict[str, Any]) -> bool:
         )
         return True
     except Exception:
+        logger.exception("Error en _guardar_config_nominal")
         return False
 
 
@@ -1493,6 +1497,7 @@ def agregar_actividad_estructura(codigo: str, data: dict[str, Any]) -> bool:
                 )
         return True
     except Exception:
+        logger.exception("Error en agregar_actividad_estructura")
         return False
 
 
@@ -1538,6 +1543,7 @@ def actualizar_actividad_estructura(id_estructura: int, data: dict[str, Any]) ->
                 )
         return True
     except Exception:
+        logger.exception("Error en actualizar_actividad_estructura")
         return False
 
 
@@ -1549,6 +1555,7 @@ def eliminar_actividad_estructura(id_estructura: int) -> bool:
                 cursor.execute("DELETE FROM estructura WHERE id_estructura = %s", (int(id_estructura),))
         return True
     except Exception:
+        logger.exception("Error en eliminar_actividad_estructura")
         return False
 
 
@@ -1570,6 +1577,7 @@ def obtener_formulas_promedio(codigo: str) -> list[dict[str, Any]]:
                 cursor.execute(query, (id_cap,))
                 return list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en obtener_formulas_promedio")
         return []
 
 
@@ -1617,6 +1625,7 @@ def guardar_formula_promedio(codigo: str, aplica_a: str, formula: str) -> bool:
                     )
         return True
     except Exception:
+        logger.exception("Error en guardar_formula_promedio")
         return False
 
 
@@ -1628,6 +1637,7 @@ def eliminar_formula_promedio(id_formula: int) -> bool:
                 cursor.execute("DELETE FROM formula_promedio WHERE id_formula = %s", (int(id_formula),))
         return True
     except Exception:
+        logger.exception("Error en eliminar_formula_promedio")
         return False
 
 
@@ -1907,6 +1917,7 @@ def guardar_rutas_plantilla(codigo: str, excel_path: str, py_path: str) -> bool:
                     )
         return True
     except Exception:
+        logger.exception("Error en guardar_rutas_plantilla")
         return False
 
 
@@ -1939,6 +1950,7 @@ def guardar_postulantes_excel(codigo: str, contenido_bytes: bytes) -> bool:
         ruta.write_bytes(contenido_bytes)
         return True
     except Exception:
+        logger.exception("Error en guardar_postulantes_excel")
         return False
 
 
@@ -1954,6 +1966,7 @@ def eliminar_postulantes_excel(codigo: str) -> bool:
             ruta.unlink()
         return True
     except Exception:
+        logger.exception("Error en eliminar_postulantes_excel")
         return False
 
 
@@ -2222,6 +2235,7 @@ def obtener_certificados_detalle(codigo: str, limit: int = 5000) -> list[dict[st
                 cursor.execute(query, (codigo, int(limit)))
                 return list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en obtener_certificados_detalle")
         return []
 
 
@@ -2259,6 +2273,7 @@ def obtener_participantes_certificacion_para_emision(codigo: str, limit: int = 1
                 cursor.execute(query, (codigo, int(limit)))
                 return list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en obtener_participantes_certificacion_para_emision")
         return []
 
 
@@ -2300,6 +2315,7 @@ def obtener_participantes_certificados_lista_excel(codigo: str, limit: int = 100
                 cursor.execute(query, (codigo, int(limit)))
                 return list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en obtener_participantes_certificados_lista_excel")
         return []
 
 
@@ -2555,6 +2571,7 @@ def _guardar_metadata_plantilla_generada(codigo: str, payload: dict[str, Any]) -
         )
         return True
     except Exception:
+        logger.exception("Error en _guardar_metadata_plantilla_generada")
         return False
 
 
@@ -2695,6 +2712,7 @@ def _leer_excel_postulantes_dni(path_excel: str) -> list[str]:
         # Import local para no romper si el paquete no esta instalado.
         from openpyxl import load_workbook
     except Exception:
+        logger.exception("Error en _leer_excel_postulantes_dni")
         return []
 
     try:
@@ -2725,6 +2743,7 @@ def _leer_excel_postulantes_dni(path_excel: str) -> list[str]:
             dnis.append(dni)
         return dnis
     except Exception:
+        logger.exception("Error en _leer_excel_postulantes_dni")
         return []
 
 
@@ -2737,6 +2756,7 @@ def _leer_excel_fuera_dni_nota(path_excel: str) -> dict[str, Any]:
     try:
         from openpyxl import load_workbook
     except Exception:
+        logger.exception("Error en _leer_excel_fuera_dni_nota")
         return {}
 
     try:
@@ -2780,6 +2800,7 @@ def _leer_excel_fuera_dni_nota(path_excel: str) -> dict[str, Any]:
             resultado[dni] = nota
         return resultado
     except Exception:
+        logger.exception("Error en _leer_excel_fuera_dni_nota")
         return {}
 
 
@@ -2791,6 +2812,7 @@ def _leer_excel_fuera_desde_bytes(contenido: bytes) -> dict[str, Any]:
         from io import BytesIO
         from openpyxl import load_workbook
     except Exception:
+        logger.exception("Error en _leer_excel_fuera_desde_bytes")
         return {}
     try:
         wb = load_workbook(BytesIO(contenido), read_only=True, data_only=True)
@@ -2832,6 +2854,7 @@ def _leer_excel_fuera_desde_bytes(contenido: bytes) -> dict[str, Any]:
             resultado[dni] = nota
         return resultado
     except Exception:
+        logger.exception("Error en _leer_excel_fuera_desde_bytes")
         return {}
 
 
@@ -3057,6 +3080,7 @@ def _obtener_mapa_codigo_iged() -> dict[tuple[str, str], str]:
                 cur.execute("SELECT region, nombre_iged, codigo_iged FROM iged_s3")
                 rows = list(cur.fetchall())
     except Exception:
+        logger.exception("Error en _obtener_mapa_codigo_iged")
         return {}
 
     mapa: dict[tuple[str, str], str] = {}
@@ -3131,6 +3155,7 @@ def _obtener_filas_bbdd_por_codigo_y_dnis(codigo: str, dnis: list[str]) -> list[
                 cursor.execute(query, (codigo,))
                 rows_all = list(cursor.fetchall())
     except Exception:
+        logger.exception("Error en _obtener_filas_bbdd_por_codigo_y_dnis")
         return []
 
     # Si no se pasa lista de DNIs, retorna todos los registros del cÃ³digo.
@@ -3198,6 +3223,7 @@ def _a_float_nullable(valor: Any) -> float | None:
     try:
         return float(texto)
     except Exception:
+        logger.exception("Error en _a_float_nullable")
         return None
 
 
@@ -3486,6 +3512,7 @@ def _obtener_mapa_actividad_plataforma(codigo: str, actividad: dict[str, Any]) -
                             continue
                         resultado[dni] = 1
     except Exception:
+        logger.exception("Error en _obtener_mapa_actividad_plataforma")
         return {}
 
     return resultado
@@ -3508,6 +3535,7 @@ def _obtener_mapa_actividad_fuera(codigo: str, actividad: dict[str, Any]) -> dic
                     return {}
                 return _leer_excel_fuera_desde_bytes(row["contenido"])
     except Exception:
+        logger.exception("Error en _obtener_mapa_actividad_fuera")
         return {}
 
 
@@ -4337,6 +4365,7 @@ def _crear_excel_plantilla(
     try:
         from openpyxl import Workbook
     except Exception:
+        logger.exception("Error en _crear_excel_plantilla")
         return False
 
     wb = Workbook()
@@ -4350,6 +4379,7 @@ def _crear_excel_plantilla(
         wb.save(str(ruta_salida))
         return True
     except Exception:
+        logger.exception("Error en _crear_excel_plantilla")
         return False
     finally:
         try:
@@ -4383,6 +4413,7 @@ def _crear_excel_nominal(
         from openpyxl.formatting.rule import CellIsRule, FormulaRule
         from openpyxl.utils import get_column_letter
     except Exception:
+        logger.exception("Error en _crear_excel_nominal")
         return False
 
     # Filtra solo participantes matriculados (estado=2), como en app_difoca.
@@ -4553,6 +4584,7 @@ def _crear_excel_nominal(
         wb.save(str(ruta_salida))
         return True
     except Exception:
+        logger.exception("Error en _crear_excel_nominal")
         return False
     finally:
         try:
@@ -4573,6 +4605,7 @@ def _crear_excel_cumplimiento_iged(
         from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
         from openpyxl.utils import get_column_letter
     except Exception:
+        logger.exception("Error en _crear_excel_cumplimiento_iged")
         return False
 
     # Filtra solo participantes activos con compromiso valido.
@@ -4805,6 +4838,7 @@ def _crear_excel_cumplimiento_iged(
         wb.save(str(ruta_salida))
         return True
     except Exception:
+        logger.exception("Error en _crear_excel_cumplimiento_iged")
         return False
     finally:
         try:

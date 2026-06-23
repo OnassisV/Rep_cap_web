@@ -14,6 +14,7 @@ from uuid import uuid4
 # Error HTTP para retornar 404 cuando una seccion no exista.
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.core.cache import cache
+from django.core.paginator import Paginator, InvalidPage
 # Decorador que exige sesion autenticada activa.
 from django.contrib.auth.decorators import login_required
 # Framework de mensajes para feedback de operaciones CRUD.
@@ -92,6 +93,22 @@ from .indicadores_adapters import build_indicadores_dashboard_context, build_ind
 from .sync_runtime import build_sync_status_context
 from . import estandares_calidad as ec_mod
 from . import gestion_forms as gf_mod
+
+
+def _log_auditoria(cap_obj, usuario: str, accion: str, detalle: str = "") -> None:
+    """Registra una acción en el audit trail. Falla en silencio para no interrumpir la operación principal."""
+    try:
+        from .models import CapacitacionAuditLog
+        CapacitacionAuditLog.objects.create(
+            cap_id=cap_obj.pk,
+            cap_codigo=str(getattr(cap_obj, "cap_codigo", "") or ""),
+            cap_nombre=str(getattr(cap_obj, "cap_nombre", "") or ""),
+            usuario=usuario,
+            accion=accion,
+            detalle=detalle,
+        )
+    except Exception:
+        logger.exception("_log_auditoria: no se pudo guardar entrada de auditoría")
 
 
 # Estructura central del GeoMenu.
@@ -2147,6 +2164,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 )
                 if resultado.get("ok"):
                     request.session.pop(draft_key, None)
+                    try:
+                        _cap_creado = Capacitacion.objects.get(pk=resultado["id"])
+                        _log_auditoria(_cap_creado, str(request.user.username), "creada")
+                    except Exception:
+                        pass
                     messages.success(
                         request,
                         "Capacitación registrada como formulada. "
@@ -2262,6 +2284,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 cap_obj.save()
                 # Auto-estado según código/ID y completitud.
                 _auto_actualizar_estado(cap_obj)
+                _log_auditoria(cap_obj, str(request.user.username), "modificada")
                 messages.success(request, "Capacitacion actualizada correctamente.")
             except Capacitacion.DoesNotExist:
                 messages.error(request, "No se encontro la capacitacion o no tienes permisos para editarla.")
@@ -2291,9 +2314,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if action == "cancelar_capacitacion":
                         cap_target.cap_estado = Capacitacion.Estado.CANCELADA
                         cap_target.save(update_fields=["cap_estado", "actualizado_en"])
+                        _log_auditoria(cap_target, str(request.user.username), "cancelada",
+                                       f"Cancelada por admin: {admin_user_input}")
                         messages.success(request, f"Capacitación '{cap_target.cap_nombre}' cancelada.")
                     else:
                         nombre = cap_target.cap_nombre
+                        _log_auditoria(cap_target, str(request.user.username), "eliminada",
+                                       f"Eliminada por admin: {admin_user_input}")
                         cap_target.delete()
                         messages.success(request, f"Capacitación '{nombre}' eliminada permanentemente.")
                 except Capacitacion.DoesNotExist:
@@ -2783,6 +2810,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             display_name = str(user_context.get("display_name", ""))
 
             # Obtiene lista de capacitaciones del usuario (o todas si admin).
+            editar_page_obj = None
             try:
                 qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
                 if not is_admin:
@@ -2815,20 +2843,27 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     default=Value(6),
                     output_field=_IntF(),
                 )
-                editar_lista = list(
+                _ed_qs_values = (
                     qs_filtrado.annotate(_est_ord=_estado_orden)
                     .order_by("_est_ord", "cap_codigo", "cap_id_curso")
                     .values(
                         "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
                         "cap_estado", "paso_actual", "creado_nombre", "creado_en", "especialista_cargo",
-                    )[:200]
+                    )
                 )
+                _ed_paginator = Paginator(_ed_qs_values, 50)
+                try:
+                    editar_page_obj = _ed_paginator.page(request.GET.get("page", 1))
+                except InvalidPage:
+                    editar_page_obj = _ed_paginator.page(1)
+                editar_lista = list(editar_page_obj.object_list)
             except Exception as _ed_exc:
                 import logging as _log
                 _log.getLogger("core.views").warning("editar-capacitacion: error al cargar lista: %s", _ed_exc)
                 messages.warning(request, "No se pudo cargar la lista de capacitaciones. Intenta recargar la página.")
                 editar_anios = []
                 editar_lista = []
+                editar_page_obj = None
                 qs = Capacitacion.objects.none()
 
             # Si se recibe ?id=X, carga la capacitacion para edicion.
@@ -2934,6 +2969,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 })
 
             context["editar_lista"] = editar_lista
+            context["editar_page_obj"] = editar_page_obj
+            _ed_qd = request.GET.copy()
+            _ed_qd.pop("page", None)
+            _ed_qs = _ed_qd.urlencode()
+            context["editar_page_base"] = ("?" + _ed_qs + "&") if _ed_qs else "?"
 
         # Adaptacion del submenu "Seguimiento de capacitaciones" (plantillas.py).
         if submenu_slug == "seguimiento-capacitaciones":
@@ -3475,6 +3515,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         )
                         if resultado.get("ok"):
                             request.session.pop(draft_key, None)
+                            try:
+                                _cap_sync = Capacitacion.objects.get(pk=resultado["id"])
+                                _log_auditoria(_cap_sync, str(request.user.username), "creada", "Sincrónica")
+                            except Exception:
+                                pass
                             messages.success(
                                 request,
                                 f"Capacitación sincrónica registrada como formulada. Código: {resultado.get('cap_codigo', '')}.",
@@ -3555,6 +3600,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
                     cap_obj.save()
                     _auto_actualizar_estado(cap_obj)
+                    _log_auditoria(cap_obj, str(request.user.username), "modificada", "Sincrónica")
                     messages.success(request, "Capacitación sincrónica actualizada correctamente.")
                 except Capacitacion.DoesNotExist:
                     messages.error(request, "No se encontró la capacitación o no tienes permisos.")
@@ -3604,9 +3650,13 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         if action == "cancelar_capacitacion":
                             cap_obj.cap_estado = Capacitacion.Estado.CANCELADA
                             cap_obj.save(update_fields=["cap_estado", "actualizado_en"])
+                            _log_auditoria(cap_obj, str(request.user.username), "cancelada",
+                                           f"Cancelada por admin: {adm_user}")
                             messages.success(request, f"Capacitación '{cap_obj.cap_nombre}' cancelada.")
                         else:
                             nombre = cap_obj.cap_nombre
+                            _log_auditoria(cap_obj, str(request.user.username), "eliminada",
+                                           f"Eliminada por admin: {adm_user}")
                             cap_obj.delete()
                             messages.success(request, f"Capacitación '{nombre}' eliminada permanentemente.")
                         redirect_params_ed = {}
@@ -3845,6 +3895,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             }
             display_name = str(user_context.get("display_name", ""))
 
+            editar_page_obj = None
             try:
                 # Solo sincrónicas (opuesto al filtro de gestión)
                 qs = Capacitacion.objects.filter(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
@@ -3880,20 +3931,27 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     default=Value(5),
                     output_field=_IntF(),
                 )
-                editar_lista = list(
+                _ed_qs_values = (
                     qs_filtrado.annotate(_est_ord=_estado_orden)
                     .order_by("_est_ord", "cap_codigo", "cap_id_curso")
                     .values(
                         "id", "cap_nombre", "cap_codigo", "cap_id_curso", "cap_anio",
                         "cap_estado", "cap_tipo", "paso_actual", "creado_nombre", "creado_en", "especialista_cargo",
-                    )[:200]
+                    )
                 )
+                _ed_paginator = Paginator(_ed_qs_values, 50)
+                try:
+                    editar_page_obj = _ed_paginator.page(request.GET.get("page", 1))
+                except InvalidPage:
+                    editar_page_obj = _ed_paginator.page(1)
+                editar_lista = list(editar_page_obj.object_list)
             except Exception as _ed_exc:
                 import logging as _log
                 _log.getLogger("core.views").warning("editar-sincronica: error al cargar lista: %s", _ed_exc)
                 messages.warning(request, "No se pudo cargar la lista de capacitaciones sincrónicas.")
                 editar_anios = []
                 editar_lista = []
+                editar_page_obj = None
                 qs = Capacitacion.objects.none()
 
             cap_id_param = str(request.GET.get("id", "")).strip()
@@ -3989,6 +4047,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 })
 
             context["editar_lista"] = editar_lista
+            context["editar_page_obj"] = editar_page_obj
+            _ed_qd = request.GET.copy()
+            _ed_qd.pop("page", None)
+            _ed_qs = _ed_qd.urlencode()
+            context["editar_page_base"] = ("?" + _ed_qs + "&") if _ed_qs else "?"
 
         # ── GET: Procesamiento sincrónicas ──
         if submenu_slug == "procesamiento-sincronicas":
