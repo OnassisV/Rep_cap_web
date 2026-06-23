@@ -1,7 +1,10 @@
-"""Registros de admin para la app core.
-
-Por ahora no hay registros personalizados porque core no tiene modelos propios.
-"""
-
-# Import de admin Django reservado para registros futuros.
 from django.contrib import admin
+
+from .models import DniExcluido
+
+
+@admin.register(DniExcluido)
+class DniExcluidoAdmin(admin.ModelAdmin):
+    list_display = ("dni", "motivo", "creado_en")
+    search_fields = ("dni", "motivo")
+    ordering = ("dni",)

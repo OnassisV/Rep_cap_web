@@ -5,7 +5,24 @@ normalizada que permite queries directas, integridad referencial y extensiones
 sin romper datos existentes.
 """
 
+from datetime import date
+
+from django.core.exceptions import ValidationError
 from django.db import models
+
+_BINARIO_VALORES = {"", "Sí", "No"}
+_BINARIO_CAMPOS = [
+    "capacitacion_replicada", "capacitacion_diagnostico_previo",
+    "capacitacion_virtual_sincronica", "autoformativo",
+    "necesidad_acompanamiento", "capacitacion_acompanamiento",
+    "monitores", "capacitacion_tutoria", "retroalimentacion",
+    "acompanamiento_uo", "capacitacion_presencialidad",
+    "acciones_sostenidas", "recursos_virtuales",
+    "capacitacion_competencia_especifica", "capacitacion_aplicacion_inmediata",
+    "evidencia_comparativa", "evaluacion_eficacia_grupo_control",
+    "encuesta_satisfaccion", "incluido_reporte_cneb", "mentoria",
+    "trazabilidad_servicio_educativo", "asesorias_personalizadas_colectivas",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +226,20 @@ class Capacitacion(models.Model):
             models.Index(fields=["cap_codigo"], name="idx_cap_codigo"),
             models.Index(fields=["creado_por"], name="idx_cap_creador"),
         ]
+
+    def clean(self) -> None:
+        errores: dict[str, str] = {}
+        for campo in _BINARIO_CAMPOS:
+            val = getattr(self, campo, "")
+            if val not in _BINARIO_VALORES:
+                errores[campo] = f"Valor inválido '{val}'. Debe ser 'Sí', 'No' o estar vacío."
+        anio_min, anio_max = 2010, date.today().year + 1
+        if not (anio_min <= self.cap_anio <= anio_max):
+            errores["cap_anio"] = f"El año debe estar entre {anio_min} y {anio_max}."
+        if not str(self.cap_nombre or "").strip():
+            errores["cap_nombre"] = "El nombre de la capacitación no puede estar vacío."
+        if errores:
+            raise ValidationError(errores)
 
     def __str__(self) -> str:
         return f"{self.cap_nombre} ({self.cap_anio})"
@@ -505,3 +536,23 @@ class CapSincronicaProcesamiento(models.Model):
 
     def __str__(self) -> str:
         return f"{self.codigo} · {self.status}"
+
+
+# ---------------------------------------------------------------------------
+# DNIs excluidos de reportes operativos
+# ---------------------------------------------------------------------------
+class DniExcluido(models.Model):
+    """DNI que debe excluirse de plantillas y reportes operativos."""
+
+    dni = models.CharField(max_length=20, unique=True)
+    motivo = models.CharField(max_length=255, blank=True, default="")
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "cap_dnis_excluidos"
+        ordering = ["dni"]
+        verbose_name = "DNI excluido"
+        verbose_name_plural = "DNIs excluidos"
+
+    def __str__(self) -> str:
+        return self.dni

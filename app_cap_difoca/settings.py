@@ -283,11 +283,12 @@ LOGGING = {
     },
 }
 
-# Cache en memoria para contadores de bloqueo y ventanas de bloqueo de login.
+# Cache persistente en BD para contadores de bloqueo de login (sobrevive reinicios).
+# Requiere haber ejecutado: python manage.py createcachetable
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "app-cap-difoca-login-cache",
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
     }
 }
 

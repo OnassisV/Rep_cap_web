@@ -23,6 +23,17 @@ from django.conf import settings
 
 logger = logging.getLogger("core")
 
+
+def _get_dnis_excluidos() -> set[str]:
+    """Lee los DNIs excluidos desde la BD. Fallback al set vacío si hay error."""
+    try:
+        from core.models import DniExcluido
+        return set(DniExcluido.objects.values_list("dni", flat=True))
+    except Exception:
+        logger.exception("No se pudo leer DniExcluido desde BD; sin exclusiones activas")
+        return set()
+
+
 # Lista heredada de DNIs que no deben entrar a reportes operativos.
 DNIS_EXCLUIDOS_PLANTILLA = {
     "40231243",
@@ -625,15 +636,20 @@ def agregar_retiros_manual(codigo: str, dnis_raw: list[str]) -> tuple[bool, int]
 
     try:
         with get_connection() as connection:
-            with connection.cursor() as cursor:
-                insertados = 0
-                for dni in sorted(nuevos):
-                    cursor.execute(
-                        "INSERT IGNORE INTO cap_retiros_manual (codigo, dni) VALUES (%s, %s)",
-                        [codigo, dni],
-                    )
-                    insertados += cursor.rowcount
-            connection.commit()
+            connection.begin()
+            try:
+                with connection.cursor() as cursor:
+                    insertados = 0
+                    for dni in sorted(nuevos):
+                        cursor.execute(
+                            "INSERT IGNORE INTO cap_retiros_manual (codigo, dni) VALUES (%s, %s)",
+                            [codigo, dni],
+                        )
+                        insertados += cursor.rowcount
+                connection.commit()
+            except Exception:
+                connection.rollback()
+                raise
         return True, insertados
     except Exception:
         logger.exception("Error agregando retiros manuales para %s", codigo)
@@ -4954,8 +4970,9 @@ def generar_plantilla_seguimiento(
             filas_por_dni[dni_norm] = _fila_vacia_para_dni(dni_norm)
 
     # Excluye DNIs administrativos/heredados fuera del universo operativo.
+    dnis_excluidos = _get_dnis_excluidos()
     for dni_excluido in list(filas_por_dni.keys()):
-        if dni_excluido in DNIS_EXCLUIDOS_PLANTILLA:
+        if dni_excluido in dnis_excluidos:
             filas_por_dni.pop(dni_excluido, None)
 
     if not filas_por_dni:
