@@ -50,9 +50,20 @@ def login_view(request):
             return redirect("core:home")
 
         # Si falla autenticacion, muestra error del backend o fallback.
+        is_lockout = getattr(request, "auth_is_lockout", False)
         form.add_error(
             None,
-            getattr(request, "auth_error", "Usuario o contrasena incorrectos."),
+            getattr(request, "auth_error", "Usuario o contraseña incorrectos."),
+        )
+        return render(
+            request,
+            "accounts/login.html",
+            {
+                "form": form,
+                "usernames": usernames,
+                "next_url": request.POST.get("next", ""),
+                "is_lockout": is_lockout,
+            },
         )
 
     # Renderiza plantilla con formulario, sugerencias y next opcional.
@@ -63,6 +74,7 @@ def login_view(request):
             "form": form,
             "usernames": usernames,
             "next_url": request.GET.get("next", ""),
+            "is_lockout": False,
         },
     )
 

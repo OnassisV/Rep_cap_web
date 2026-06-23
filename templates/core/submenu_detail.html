@@ -892,13 +892,21 @@
                                     <span class="seguimiento-collapse__hint seguimiento-collapse__hint--closed">Expandir</span>
                                 </summary>
                                 <p>Selecciona un proceso para operar las pestañas de seguimiento.</p>
-                                <div class="seguimiento-cards">
+                                <input
+                                    type="search"
+                                    class="cap-search-bar__input cap-search-bar__input--sidebar"
+                                    id="seguimiento-search"
+                                    placeholder="Buscar capacitación…"
+                                    autocomplete="off"
+                                >
+                                <div class="seguimiento-cards" id="seguimiento-cards-list">
                                     {% for card in seguimiento_cards %}
                                         {% with condicion_txt=card.condicion|default:""|lower %}
                                             {% if condicion_txt == 'finalizada' or condicion_txt == 'cancelada' or 'cerrado' in condicion_txt %}
                                             <a
                                                 href="{{ card.url }}"
                                                 class="cap-card{% if card.is_active %} is-active{% endif %} is-cerrado"
+                                                data-search="{{ card.codigo|lower }} {{ card.denominacion_proceso_formativo|lower }}"
                                             >
                                                 <span class="cap-card__code">{{ card.codigo }}</span>
                                                 <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
@@ -909,6 +917,7 @@
                                             <a
                                                 href="{{ card.url }}"
                                                 class="cap-card{% if card.is_active %} is-active{% endif %} is-abierto"
+                                                data-search="{{ card.codigo|lower }} {{ card.denominacion_proceso_formativo|lower }}"
                                             >
                                                 <span class="cap-card__code">{{ card.codigo }}</span>
                                                 <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
@@ -2596,7 +2605,17 @@
                     </p>
 
                     {% if editar_lista %}
-                        <table class="data-table editar-cap-table">
+                        <div class="cap-search-bar">
+                            <input
+                                type="search"
+                                id="editar-cap-search"
+                                class="cap-search-bar__input"
+                                placeholder="Buscar por nombre, código, especialista…"
+                                autocomplete="off"
+                            >
+                            <span class="cap-search-bar__count" id="editar-cap-count"></span>
+                        </div>
+                        <table class="data-table editar-cap-table" id="editar-cap-table">
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
@@ -2614,7 +2633,7 @@
                             </thead>
                             <tbody>
                                 {% for item in editar_lista %}
-                                    <tr>
+                                    <tr data-search="{{ item.cap_nombre|lower }} {{ item.cap_codigo|lower }} {{ item.cap_id_curso|lower }} {{ item.cap_anio }} {{ item.cap_estado|lower }} {{ item.especialista_cargo|lower|default:'' }}">
                                         <td>{{ item.cap_nombre }}</td>
                                         <td>{{ item.cap_codigo|default:"-" }}</td>
                                         <td>{{ item.cap_id_curso|default:"-" }}</td>
@@ -6296,6 +6315,43 @@
                 alert("No se pudo conectar con el servidor.");
                 btn.disabled = false;
                 btn.textContent = "↻ Verificar estado";
+            });
+        });
+    })();
+    </script>
+
+    <script>
+    // --- Búsqueda en tabla editar-capacitacion ---
+    (function () {
+        var input = document.getElementById("editar-cap-search");
+        var table = document.getElementById("editar-cap-table");
+        var countEl = document.getElementById("editar-cap-count");
+        if (!input || !table) return;
+        var rows = Array.from(table.querySelectorAll("tbody tr[data-search]"));
+        var total = rows.length;
+        if (countEl) countEl.textContent = total + " capacitacion(es)";
+        input.addEventListener("input", function () {
+            var q = input.value.trim().toLowerCase();
+            var visible = 0;
+            rows.forEach(function (row) {
+                var match = !q || row.dataset.search.indexOf(q) !== -1;
+                row.style.display = match ? "" : "none";
+                if (match) visible++;
+            });
+            if (countEl) countEl.textContent = (q ? visible + " de " + total : total) + " capacitacion(es)";
+        });
+    })();
+
+    // --- Búsqueda en sidebar de seguimiento ---
+    (function () {
+        var input = document.getElementById("seguimiento-search");
+        var list = document.getElementById("seguimiento-cards-list");
+        if (!input || !list) return;
+        var cards = Array.from(list.querySelectorAll("a[data-search]"));
+        input.addEventListener("input", function () {
+            var q = input.value.trim().toLowerCase();
+            cards.forEach(function (card) {
+                card.style.display = (!q || card.dataset.search.indexOf(q) !== -1) ? "" : "none";
             });
         });
     })();

@@ -44,6 +44,7 @@ class LocalhostUsuariosBackend(BaseBackend):
             self._set_error(
                 request,
                 f"Cuenta bloqueada. Intenta en {remaining_minutes} minuto(s).",
+                is_lockout=True,
             )
             return None
 
@@ -57,15 +58,15 @@ class LocalhostUsuariosBackend(BaseBackend):
 
         # Maneja usuario inexistente.
         if not user_record:
-            # Cuenta intento fallido y evalua bloqueo.
             blocked, lockout_minutes = lockout_service.register_failure(username)
             if blocked:
                 self._set_error(
                     request,
-                    f"Demasiados intentos fallidos. Bloqueo por {lockout_minutes} minutos.",
+                    f"Demasiados intentos fallidos. Cuenta bloqueada por {lockout_minutes} minutos.",
+                    is_lockout=True,
                 )
             else:
-                self._set_error(request, "Usuario o contrasena incorrectos.")
+                self._set_error(request, "Usuario o contraseña incorrectos.")
             return None
 
         # Lee hash bcrypt almacenado en BD.
@@ -79,15 +80,15 @@ class LocalhostUsuariosBackend(BaseBackend):
 
         # Maneja contrasena incorrecta.
         if not valid_password:
-            # Cuenta intento fallido y evalua bloqueo.
             blocked, lockout_minutes = lockout_service.register_failure(username)
             if blocked:
                 self._set_error(
                     request,
-                    f"Demasiados intentos fallidos. Bloqueo por {lockout_minutes} minutos.",
+                    f"Demasiados intentos fallidos. Cuenta bloqueada por {lockout_minutes} minutos.",
+                    is_lockout=True,
                 )
             else:
-                self._set_error(request, "Usuario o contrasena incorrectos.")
+                self._set_error(request, "Usuario o contraseña incorrectos.")
             return None
 
         # Login exitoso limpia fallos y bloqueo del usuario.
@@ -133,10 +134,11 @@ class LocalhostUsuariosBackend(BaseBackend):
         return settings.ROLE_MAPPING.get(cargo, "Invitado")
 
     @staticmethod
-    def _set_error(request, message: str) -> None:
+    def _set_error(request, message: str, is_lockout: bool = False) -> None:
         """Adjunta mensaje de error al request para mostrarlo en la vista."""
         if request is not None:
             setattr(request, "auth_error", message)
+            setattr(request, "auth_is_lockout", is_lockout)
 
     @staticmethod
     def _upsert_django_user(username: str, display_name: str, role: str):

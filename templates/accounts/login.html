@@ -59,7 +59,10 @@
 
                 <!-- Errores generales de validacion de autenticacion -->
                 {% if form.non_field_errors %}
-                    <div class="alert-box" role="alert">
+                    <div class="alert-box {% if is_lockout %}alert-box--lockout{% endif %}" role="alert">
+                        {% if is_lockout %}
+                            <span class="alert-box__icon" aria-hidden="true">🔒</span>
+                        {% endif %}
                         {% for error in form.non_field_errors %}
                             <p>{{ error }}</p>
                         {% endfor %}

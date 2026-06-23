@@ -27,10 +27,14 @@ from accounts.db import get_connection
 
 logger = logging.getLogger(__name__)
 
+from django.conf import settings
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SINCRONICAS_DIR = BASE_DIR / "Actividades_fuera" / "sincronicas"
 
-NOTA_APROBACION = 13.5
+
+def _nota_aprobacion() -> float:
+    return float(getattr(settings, "_nota_aprobacion()_SINCRONICAS", 13.5))
 
 
 # ---------------------------------------------------------------------------
@@ -671,19 +675,19 @@ def procesar_sincronicas(codigo: str) -> dict[str, Any]:
 
     # Situacion
     df_tutor["situacion_del_participante"] = df_tutor["cuestionario salida"].apply(
-        lambda x: "Aprueba" if pd.notna(x) and x >= NOTA_APROBACION else "No aprueba"
+        lambda x: "Aprueba" if pd.notna(x) and x >= _nota_aprobacion() else "No aprueba"
     )
     df_tutor["promedio_final_general"] = df_tutor["cuestionario salida"]
     df_tutor["promedio_final_condicion"] = df_tutor["promedio_final_general"].apply(
-        lambda x: "Aprobado" if pd.notna(x) and x >= NOTA_APROBACION else "Desaprobado"
+        lambda x: "Aprobado" if pd.notna(x) and x >= _nota_aprobacion() else "Desaprobado"
     )
 
     # Resultados
     df_tutor["Aprobados/Certificados"] = df_tutor["cuestionario salida"].apply(
-        lambda x: 1 if pd.notna(x) and x >= NOTA_APROBACION else ""
+        lambda x: 1 if pd.notna(x) and x >= _nota_aprobacion() else ""
     )
     df_tutor["Desaprobado/Permanente"] = df_tutor["cuestionario salida"].apply(
-        lambda x: 1 if pd.notna(x) and x < NOTA_APROBACION else ""
+        lambda x: 1 if pd.notna(x) and x < _nota_aprobacion() else ""
     )
     df_tutor["Desaprobado/Abandono"] = df_tutor["cuestionario salida"].apply(
         lambda x: "" if pd.notna(x) else 1

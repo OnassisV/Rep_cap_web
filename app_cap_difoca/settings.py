@@ -44,6 +44,17 @@ def env_int(name: str, default: int) -> int:
     return int(cleaned_value)
 
 
+def env_float(name: str, default: float) -> float:
+    """Convierte variables numéricas a float con fallback seguro."""
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    cleaned_value = raw_value.strip()
+    if not cleaned_value:
+        return default
+    return float(cleaned_value)
+
+
 def split_env_list(name: str, default: str = "") -> list[str]:
     """Divide una variable separada por comas en lista limpia."""
     raw_value = env_str(name, default)
@@ -304,6 +315,9 @@ AUTHENTICATION_BACKENDS = [
     "accounts.backends.LocalhostUsuariosBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+# Umbral de nota mínima para considerar aprobado en capacitaciones sincrónicas.
+NOTA_APROBACION_SINCRONICAS = env_float("NOTA_APROBACION_SINCRONICAS", 13.5)
 
 # Parametros de seguridad para login.
 MAX_LOGIN_ATTEMPTS = env_int("DIFOCA_MAX_LOGIN_ATTEMPTS", 5)

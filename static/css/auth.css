@@ -344,6 +344,22 @@ label {
     margin: 0;
 }
 
+/* Variante naranja para cuentas bloqueadas (distinta de error generico rojo). */
+.alert-box--lockout {
+    border-color: #f4c05a;
+    background: #fff8e1;
+    color: #7a5000;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+}
+
+.alert-box__icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
 /* Texto auxiliar pequeno cuando falla precarga de usuarios. */
 .helper-text {
     color: var(--muted);

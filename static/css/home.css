@@ -5867,3 +5867,36 @@ h1 {
 .btn-danger-small:hover {
     background: #fecaca;
 }
+
+/* Barra de búsqueda para listas de capacitaciones */
+.cap-search-bar {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .75rem;
+}
+.cap-search-bar__input {
+    flex: 1;
+    padding: .45rem .75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: .9rem;
+    font-family: inherit;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s;
+}
+.cap-search-bar__input:focus {
+    border-color: var(--teal, #0891b2);
+    box-shadow: 0 0 0 2px rgba(8,145,178,.12);
+}
+.cap-search-bar__input--sidebar {
+    width: 100%;
+    margin-bottom: .5rem;
+    font-size: .82rem;
+}
+.cap-search-bar__count {
+    font-size: .82rem;
+    color: #6b7280;
+    white-space: nowrap;
+}
