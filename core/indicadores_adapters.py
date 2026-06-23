@@ -22,6 +22,7 @@ RATE_COLUMNS = {
     "Tasa Cobertura UGEL",
     "Tasa DRE/GRE Fortalecida",
     "Tasa UGEL Fortalecida",
+    "Tasa Fortalecida",
     "Tasa Retencion",
     "Tasa Finalizacion",
     "Tasa Certificacion",
@@ -45,6 +46,7 @@ COUNT_COLUMNS = {
     "DRE/GRE Fortalecida",
     "UGEL Coberturada",
     "UGEL Fortalecida",
+    "Fortalecida",
     "Total DRE/GRE",
     "Total UGEL",
     "Capacitaciones",
@@ -568,10 +570,19 @@ def _calculate_iged_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, iged
     capacidades = merged.groupby(["region", "nombre_iged", "tipo_iged"], dropna=False)["codigo"].nunique().reset_index(name="Capacitacion")
     kpis = kpis.merge(capacidades, on=["region", "nombre_iged", "tipo_iged"], how="left")
     kpis["tipo_iged_norm"] = _normalize_iged_type(kpis.get("tipo_iged", pd.Series(dtype=str)))
-    kpis["Tasa Cobertura DRE/GRE"] = kpis.apply(lambda row: 1.0 if row["tipo_iged_norm"] == "DRE/GRE" and row["DRE/GRE Coberturada"] > 0 else pd.NA, axis=1)
-    kpis["Tasa Cobertura UGEL"] = kpis.apply(lambda row: 1.0 if row["tipo_iged_norm"] == "UGEL" and row["UGEL Coberturada"] > 0 else pd.NA, axis=1)
-    kpis["Tasa DRE/GRE Fortalecida"] = kpis["DRE/GRE Fortalecida"] / kpis["DRE/GRE Coberturada"].replace(0, pd.NA)
-    kpis["Tasa UGEL Fortalecida"] = kpis["UGEL Fortalecida"] / kpis["UGEL Coberturada"].replace(0, pd.NA)
+    kpis["Fortalecida"] = kpis.apply(
+        lambda row: 1 if (row["tipo_iged_norm"] == "DRE/GRE" and row["DRE/GRE Fortalecida"] > 0)
+                      or (row["tipo_iged_norm"] == "UGEL" and row["UGEL Fortalecida"] > 0)
+                   else 0, axis=1
+    )
+    kpis["Tasa Fortalecida"] = kpis.apply(
+        lambda row: row["DRE/GRE Fortalecida"] / row["DRE/GRE Coberturada"]
+                    if row["tipo_iged_norm"] == "DRE/GRE" and row["DRE/GRE Coberturada"] > 0
+                    else (row["UGEL Fortalecida"] / row["UGEL Coberturada"]
+                          if row["tipo_iged_norm"] == "UGEL" and row["UGEL Coberturada"] > 0
+                          else pd.NA),
+        axis=1,
+    )
     kpis = kpis.rename(columns={"region": "Region", "nombre_iged": "IGED", "tipo_iged": "Tipo IGED"})
     ordered_columns = [
         "Region",
@@ -584,16 +595,10 @@ def _calculate_iged_kpis(oferta_filtrada: pd.DataFrame, bbdd: pd.DataFrame, iged
         "Mujeres",
         "Finalizaciones",
         "Certificaciones",
-        "DRE/GRE Coberturada",
-        "DRE/GRE Fortalecida",
-        "UGEL Coberturada",
-        "UGEL Fortalecida",
+        "Fortalecida",
         "Tasa Varones",
         "Tasa Mujeres",
-        "Tasa Cobertura DRE/GRE",
-        "Tasa Cobertura UGEL",
-        "Tasa DRE/GRE Fortalecida",
-        "Tasa UGEL Fortalecida",
+        "Tasa Fortalecida",
         "Tasa Retencion",
         "Tasa Finalizacion",
         "Tasa Certificacion",
