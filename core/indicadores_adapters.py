@@ -60,6 +60,13 @@ _IGED_NAME_ALIASES = {
     "dre lima provincia": "DRE LIMA PROVINCIAS",
 }
 
+_REGION_NAME_ALIASES = {
+    "madrededios": "MADRE DE DIOS",
+    "lima provincia": "LIMA PROVINCIAS",
+    "no registra": "",
+    "none": "",
+}
+
 
 def _is_truthy_param(value: Any) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "si", "sí", "on", "yes"}
@@ -209,6 +216,24 @@ def _normalize_iged_name(series: pd.Series) -> pd.Series:
     return result
 
 
+def _normalize_region_name(series: pd.Series) -> pd.Series:
+    result = (
+        series.fillna("")
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .str.normalize("NFKD")
+        .str.encode("ascii", errors="ignore")
+        .str.decode("ascii")
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+    normalized_key = result.str.lower()
+    for alias, canonical in _REGION_NAME_ALIASES.items():
+        result.loc[normalized_key == alias] = canonical
+    return result
+
+
 def _count_distinct_non_empty(series: pd.Series) -> int:
     cleaned = series.fillna("").astype(str).str.strip()
     return int(cleaned[cleaned != ""].nunique())
@@ -321,10 +346,12 @@ def _calculate_base_kpis(
 
     merged["Proceso Formativo"] = _build_process_label(merged)
     merged["tipo_iged_norm"] = _normalize_iged_type(merged.get("tipo_iged", pd.Series(dtype=str)))
-    for _text_col in ["region", "nombre_iged", "tipo_iged"]:
+    for _text_col in ["nombre_iged", "tipo_iged"]:
         if _text_col in merged.columns:
             merged[_text_col] = merged[_text_col].fillna("").astype(str).str.strip()
             merged.loc[merged[_text_col].str.lower() == "none", _text_col] = ""
+    if "region" in merged.columns:
+        merged["region"] = _normalize_region_name(merged["region"])
     if "nombre_iged" in merged.columns:
         merged["nombre_iged"] = _normalize_iged_name(merged["nombre_iged"])
     merged["estado_num"] = pd.to_numeric(merged.get("estado"), errors="coerce")
@@ -879,7 +906,7 @@ def _build_dashboard_data(query_data: Any) -> dict[str, Any]:
     oferta_filtrada_base = _filter_offer(oferta, selected_years, selected_condition, selected_processes, fecha_inicio, fecha_fin)
     codigos_filtrados = oferta_filtrada_base[["codigo"]].copy() if "codigo" in oferta_filtrada_base.columns else pd.DataFrame(columns=["codigo"])
     participantes_base = pd.merge(bbdd, codigos_filtrados.drop_duplicates(), on="codigo", how="inner") if not codigos_filtrados.empty else pd.DataFrame(columns=bbdd.columns)
-    region_options = _series_options(participantes_base.get("region", pd.Series(dtype=str)))
+    region_options = _series_options(_normalize_region_name(participantes_base.get("region", pd.Series(dtype=str))))
     raw_regions = _getlist("region") if _getlist else query_data.get("region")
     selected_regions = _selected_values(raw_regions, region_options, "")
 
