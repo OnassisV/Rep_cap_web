@@ -756,13 +756,13 @@
                                                                     <option value="">Selecciona un perfil</option>
                                                                 </select>
                                                             </label>
-                                                            <button type="button" class="diagnostico-action-tile">
+                                                            <button type="button" class="diagnostico-action-tile" disabled title="Próximamente disponible">
                                                                 <strong>Previsualice el instrumento</strong>
-                                                                <small>Revise la estructura antes de generar la salida final.</small>
+                                                                <small>Función en desarrollo.</small>
                                                             </button>
-                                                            <button type="button" class="diagnostico-action-tile diagnostico-action-tile--accent">
+                                                            <button type="button" class="diagnostico-action-tile diagnostico-action-tile--accent" disabled title="Próximamente disponible">
                                                                 <strong>Genere el link para el llenado</strong>
-                                                                <small>Prepare el enlace operativo del instrumento.</small>
+                                                                <small>Función en desarrollo.</small>
                                                             </button>
                                                         </div>
                                                         <div class="diagnostico-builder diagnostico-builder--mockup" data-diagnostico-builder="generation" data-target-field="diag_generacion_json">
@@ -1028,7 +1028,7 @@
                                                         <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                                         <input type="hidden" name="tab" value="estructura">
                                                         <input type="hidden" name="id_estructura" value="{{ item.id_estructura }}">
-                                                        <button type="submit" class="inline-btn-danger">Eliminar</button>
+                                                        <button type="submit" class="inline-btn-danger" onclick="return confirm('¿Eliminar esta actividad de la estructura? Esta acción no se puede deshacer.')">Eliminar</button>
                                                     </form>
                                                 </span>
                                             </div>
@@ -1230,7 +1230,7 @@
                                                     <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                                     <input type="hidden" name="tab" value="formula">
                                                     <input type="hidden" name="id_formula" value="{{ row.id_formula }}">
-                                                    <button type="submit" class="inline-btn-danger">Eliminar</button>
+                                                    <button type="submit" class="inline-btn-danger" onclick="return confirm('¿Eliminar esta fórmula? Esta acción no se puede deshacer.')">Eliminar</button>
                                                 </form>
                                             </li>
                                         {% endfor %}
@@ -1277,7 +1277,7 @@
                                             <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
                                             <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                             <input type="hidden" name="tab" value="retiros">
-                                            <button type="submit" class="inline-btn-danger">Limpiar todo</button>
+                                            <button type="submit" class="inline-btn-danger" onclick="return confirm('¿Limpiar todos los retiros manuales de esta capacitación? Esta acción no se puede deshacer.')">Limpiar todo</button>
                                         </form>
                                     </div>
                                 {% endif %}
@@ -1476,7 +1476,7 @@
                                                     <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
                                                     <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                                     <input type="hidden" name="tab" value="plantilla">
-                                                    <button type="submit" class="inline-btn-danger">Eliminar archivo</button>
+                                                    <button type="submit" class="inline-btn-danger" onclick="return confirm('¿Eliminar este archivo? Esta acción no se puede deshacer.')">Eliminar archivo</button>
                                                 </form>
                                             </div>
                                         {% endif %}
@@ -1549,7 +1549,7 @@
                                                                     <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                                                     <input type="hidden" name="tab" value="plantilla">
                                                                     <input type="hidden" name="id_estructura" value="{{ item.id_estructura }}">
-                                                                    <button type="submit" class="inline-btn-danger">Eliminar archivo</button>
+                                                                    <button type="submit" class="inline-btn-danger" onclick="return confirm('¿Eliminar este archivo? Esta acción no se puede deshacer.')">Eliminar archivo</button>
                                                                 </form>
                                                             </div>
                                                         {% endif %}
@@ -1812,11 +1812,11 @@
                 </div>
 
                 <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                    <a href="{% url 'core:cargar_satisfaccion_aula_virtual' %}" class="btn btn-success btn-sm">
-                        <i class="bi bi-cloud-download"></i> Desde Aula Virtual
+                    <a href="{% url 'core:cargar_satisfaccion_aula_virtual' %}" class="btn btn--small btn--primary">
+                        ↓ Desde Aula Virtual
                     </a>
-                    <a href="{% url 'core:cargar_satisfaccion' %}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-upload"></i> Desde Excel
+                    <a href="{% url 'core:cargar_satisfaccion' %}" class="btn btn--small btn--outline">
+                        ↑ Desde Excel
                     </a>
                 </div>
 
@@ -1834,7 +1834,7 @@
                                 <span>{{ fila.codigo }}</span>
                                 <span>{{ fila.proceso }}</span>
                                 <span>
-                                    <span class="badge bg-info">{{ fila.estado }}</span>
+                                    <span class="registro-status registro-status--{{ fila.estado|lower|cut:' ' }}">{{ fila.estado }}</span>
                                 </span>
                                 <span>{{ fila.total_respuestas }}</span>
                                 <span>
@@ -6374,6 +6374,22 @@
             cards.forEach(function (card) {
                 card.style.display = (!q || card.dataset.search.indexOf(q) !== -1) ? "" : "none";
             });
+        });
+    })();
+
+    // ── Advertencia al salir con formulario de registro modificado ──
+    (function () {
+        var regForm = document.querySelector("[data-registro-form]");
+        if (!regForm) { return; }
+        var dirty = false;
+        regForm.addEventListener("input", function () { dirty = true; }, { passive: true });
+        regForm.addEventListener("change", function () { dirty = true; }, { passive: true });
+        regForm.addEventListener("submit", function () { dirty = false; });
+        window.addEventListener("beforeunload", function (e) {
+            if (dirty) {
+                e.preventDefault();
+                e.returnValue = "Tienes cambios sin guardar en el formulario. ¿Seguro que quieres salir?";
+            }
         });
     })();
     </script>

@@ -226,6 +226,14 @@ class Capacitacion(models.Model):
             models.Index(fields=["cap_codigo"], name="idx_cap_codigo"),
             models.Index(fields=["creado_por"], name="idx_cap_creador"),
         ]
+        constraints = [
+            # Solo aplica cuando cap_codigo no está vacío — permite múltiples fichas sin código asignado
+            models.UniqueConstraint(
+                fields=["cap_codigo"],
+                condition=models.Q(cap_codigo__gt=""),
+                name="uniq_cap_codigo_no_vacio",
+            ),
+        ]
 
     def clean(self) -> None:
         errores: dict[str, str] = {}

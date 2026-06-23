@@ -298,28 +298,27 @@ def guardar_en_satisfaccion(df: pd.DataFrame, reemplazar_codigo: str | None = No
         }
 
     try:
-        with connection.cursor() as cursor:
-            # Si reemplazar, borra primero
-            if reemplazar_codigo:
-                sql_delete = "DELETE FROM satisfaccion WHERE codigo = %s"
-                cursor.execute(sql_delete, [reemplazar_codigo])
+        from django.db import transaction
+        columns = [col for col in df.columns if col in required + ['respuesta', 'aspecto2']]
+        col_names = ', '.join([f'`{col}`' for col in columns])
+        placeholders = ', '.join(['%s'] * len(columns))
+        sql_insert = f"INSERT INTO satisfaccion ({col_names}) VALUES ({placeholders})"
+        values_batch = [
+            tuple(None if (v != v) else v for v in (row[col] for col in columns))
+            for _, row in df.iterrows()
+        ]
 
-            # Prepara datos para inserción
-            columns = [col for col in df.columns if col in required + ['respuesta', 'aspecto2']]
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                if reemplazar_codigo:
+                    cursor.execute("DELETE FROM satisfaccion WHERE codigo = %s", [reemplazar_codigo])
+                cursor.executemany(sql_insert, values_batch)
 
-            for idx, row in df.iterrows():
-                placeholders = ', '.join(['%s'] * len(columns))
-                col_names = ', '.join([f'`{col}`' for col in columns])
-                sql_insert = f"INSERT INTO satisfaccion ({col_names}) VALUES ({placeholders})"
-
-                values = [row[col] for col in columns]
-                cursor.execute(sql_insert, values)
-
-            return {
-                'exito': True,
-                'registros_guardados': len(df),
-                'errores': [],
-            }
+        return {
+            'exito': True,
+            'registros_guardados': len(df),
+            'errores': [],
+        }
 
     except Exception as e:
         return {

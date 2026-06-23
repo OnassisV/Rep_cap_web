@@ -1048,7 +1048,21 @@ def build_indicadores_download(query_data: Any, download_kind: str, download_for
 
 def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
     """Construye el contexto Django para el dashboard de indicadores."""
-    dashboard = _build_dashboard_data(query_data)
+    import hashlib
+    import json
+    from django.core.cache import cache
+
+    try:
+        _cache_key = "kpi_dashboard:" + hashlib.md5(
+            json.dumps(query_data, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        dashboard = cache.get(_cache_key)
+        if dashboard is None:
+            dashboard = _build_dashboard_data(query_data)
+            cache.set(_cache_key, dashboard, timeout=300)
+    except Exception:
+        logger.warning("KPI cache falló — calculando sin caché", exc_info=True)
+        dashboard = _build_dashboard_data(query_data)
     dataframes = dashboard.get("dataframes", {})
 
     return {

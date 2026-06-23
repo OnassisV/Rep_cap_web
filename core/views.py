@@ -95,6 +95,24 @@ from . import estandares_calidad as ec_mod
 from . import gestion_forms as gf_mod
 
 
+def _safe_err(exc: Exception) -> str:
+    """Devuelve detalle de excepción en DEBUG; mensaje genérico en producción."""
+    from django.conf import settings as _s
+    if _s.DEBUG:
+        return str(exc)
+    return "Ocurrió un error interno. El administrador ha sido notificado."
+
+
+def _es_xlsx_valido(archivo) -> bool:
+    """Verifica que el archivo sea realmente un XLSX comprobando la firma ZIP (PK\\x03\\x04)."""
+    try:
+        header = archivo.read(4)
+        archivo.seek(0)
+        return header == b"PK\x03\x04"
+    except Exception:
+        return False
+
+
 def _log_auditoria(cap_obj, usuario: str, accion: str, detalle: str = "") -> None:
     """Registra una acción en el audit trail. Falla en silencio para no interrumpir la operación principal."""
     try:
@@ -2184,7 +2202,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         except Exception as exc:
             import logging
             logging.getLogger("core.views").exception("Error en create_capacitacion POST")
-            messages.error(request, f"Error inesperado al registrar: {exc}")
+            messages.error(request, f"Error inesperado al registrar: {_safe_err(exc)}")
 
         return redirect(redirect_url)
 
@@ -2299,7 +2317,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             except Capacitacion.DoesNotExist:
                 messages.error(request, "No se encontro la capacitacion o no tienes permisos para editarla.")
             except Exception as exc:
-                messages.error(request, f"Error al guardar: {exc}")
+                messages.error(request, f"Error al guardar: {_safe_err(exc)}")
 
         # ── Cancelar o eliminar capacitación (requiere contraseña admin) ──
         if action in ("cancelar_capacitacion", "eliminar_capacitacion") and cap_id:
@@ -2336,7 +2354,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 except Capacitacion.DoesNotExist:
                     messages.error(request, "No se encontró la capacitación.")
                 except Exception as exc:
-                    messages.error(request, f"Error: {exc}")
+                    messages.error(request, f"Error: {_safe_err(exc)}")
 
         return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
 
@@ -2482,6 +2500,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 messages.error(request, "No se envio archivo de postulantes.")
             elif not str(archivo.name).lower().endswith(".xlsx"):
                 messages.error(request, "El archivo debe tener extension .xlsx.")
+            elif not _es_xlsx_valido(archivo):
+                messages.error(request, "El archivo no es un Excel válido (.xlsx). Verifica el contenido.")
             elif guardar_postulantes_excel(post_codigo, archivo.read()):
                 messages.success(request, "Excel de postulantes cargado correctamente.")
             else:
@@ -2494,6 +2514,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 messages.error(request, "No se envio archivo para la actividad seleccionada.")
             elif not str(archivo.name).lower().endswith(".xlsx"):
                 messages.error(request, "El archivo de actividad debe tener extension .xlsx.")
+            elif not _es_xlsx_valido(archivo):
+                messages.error(request, "El archivo no es un Excel válido (.xlsx). Verifica el contenido.")
             elif not row_id:
                 messages.error(request, "No se pudo identificar la actividad de origen Fuera.")
             elif guardar_excel_actividad_fuera(post_codigo, row_id, archivo.read()):
@@ -3538,7 +3560,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             request.session[draft_key] = payload_raw
                             messages.error(request, resultado.get("error", "No se pudo registrar."))
             except Exception as exc:
-                messages.error(request, f"Error inesperado: {exc}")
+                messages.error(request, f"Error inesperado: {_safe_err(exc)}")
             return redirect(redirect_url)
 
         # ── POST: Editar sincrónica ──
@@ -3626,7 +3648,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 except Capacitacion.DoesNotExist:
                     messages.error(request, "No se encontró la capacitación o no tienes permisos.")
                 except Exception as exc:
-                    messages.error(request, f"Error al guardar: {exc}")
+                    messages.error(request, f"Error al guardar: {_safe_err(exc)}")
 
             elif action == "save_id_plataforma" and cap_id:
                 from core.models import Capacitacion
@@ -3647,14 +3669,20 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             elif action == "cancel_capacitacion" and cap_id:
                 from core.models import Capacitacion
-                try:
-                    cap_obj = Capacitacion.objects.get(pk=int(cap_id))
-                    cap_obj.cap_estado = "Cancelada"
-                    cap_obj.save(update_fields=["cap_estado"])
-                    messages.success(request, "Capacitación sincrónica cancelada.")
-                    redirect_params_ed = {}
-                except Exception:
-                    messages.error(request, "No se pudo cancelar la capacitación.")
+                _role_cancel = str(user_context.get("role_effective", ""))
+                _is_admin_cancel = _normalizar_texto(_role_cancel) in {"administrador", "admin", "superusuario"}
+                if not _is_admin_cancel:
+                    messages.error(request, "Solo un administrador puede cancelar capacitaciones.")
+                else:
+                    try:
+                        cap_obj = Capacitacion.objects.get(pk=int(cap_id))
+                        cap_obj.cap_estado = "Cancelada"
+                        cap_obj.save(update_fields=["cap_estado"])
+                        _log_auditoria(cap_obj, str(request.user.username), "cancelada", "cancel_capacitacion")
+                        messages.success(request, "Capacitación sincrónica cancelada.")
+                        redirect_params_ed = {}
+                    except Exception:
+                        messages.error(request, "No se pudo cancelar la capacitación.")
 
             # ── Cancelar o eliminar sincrónica desde el modal con contraseña admin ──
             elif action in ("cancelar_capacitacion", "eliminar_capacitacion") and cap_id:
@@ -3684,7 +3712,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     except Capacitacion.DoesNotExist:
                         messages.error(request, "No se encontró la capacitación.")
                     except Exception as exc:
-                        messages.error(request, f"Error: {exc}")
+                        messages.error(request, f"Error: {_safe_err(exc)}")
 
             return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params_ed))
 
@@ -3774,7 +3802,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     redirect_params["tab"] = "certificados"
             except Exception as exc:
                 logger.exception("Error en POST procesamiento-sincronicas: %s", exc)
-                messages.error(request, f"Error inesperado: {exc}")
+                messages.error(request, f"Error inesperado: {_safe_err(exc)}")
 
             return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
 
@@ -4306,7 +4334,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         )
                         messages.success(request, f"Respuestas guardadas para {ec_capitulo}.")
                     except Exception as exc:
-                        messages.error(request, f"Error al guardar: {exc}")
+                        messages.error(request, f"Error al guardar: {_safe_err(exc)}")
                 return redirect(redirect_url)
 
             if ec_action == "eliminar" and ec_codigo and ec_capitulo:
