@@ -14,7 +14,7 @@
     <!-- Familias tipograficas del proyecto -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <!-- Estilos de la pantalla de inicio protegida -->
-    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=20260623">
 </head>
 <body>
     <!-- Fondo decorativo sutil -->
@@ -60,7 +60,10 @@
                     <!-- Rol fijo para usuarios sin alternancia permitida. -->
                     <p class="role-pill">Rol: {{ role_effective }}</p>
                 {% endif %}
-                <a href="{% url 'accounts:logout' %}" class="logout-link">Cerrar sesion</a>
+                <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-link">Cerrar sesion</button>
+                </form>
             </div>
         </header>
 

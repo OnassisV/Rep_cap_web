@@ -1088,53 +1088,53 @@
                                             <input type="hidden" name="tab" value="estructura">
                                             <input type="hidden" name="id_estructura" value="{{ seguimiento_edit.id_estructura }}">
 
-                                            <label>Actividad</label>
-                                            <input type="text" name="actividad" value="{{ seguimiento_estructura_form.actividad|default:'' }}">
+                                            <label for="act-actividad">Actividad</label>
+                                            <input type="text" id="act-actividad" name="actividad" value="{{ seguimiento_estructura_form.actividad|default:'' }}">
 
-                                            <label>Código de actividad</label>
-                                            <input type="text" name="codigo_actividad" value="{{ seguimiento_estructura_form.codigo_actividad|default:'' }}">
+                                            <label for="act-codigo-actividad">Código de actividad</label>
+                                            <input type="text" id="act-codigo-actividad" name="codigo_actividad" value="{{ seguimiento_estructura_form.codigo_actividad|default:'' }}">
 
-                                            <label>Tipo</label>
-                                            <select name="tipo">
+                                            <label for="act-tipo">Tipo</label>
+                                            <select id="act-tipo" name="tipo">
                                                 <option value="Ejercicio" {% if seguimiento_estructura_form.tipo == "Ejercicio" %}selected{% endif %}>Ejercicio</option>
                                                 <option value="Tarea" {% if seguimiento_estructura_form.tipo == "Tarea" %}selected{% endif %}>Tarea</option>
                                                 <option value="Encuesta" {% if seguimiento_estructura_form.tipo == "Encuesta" %}selected{% endif %}>Encuesta</option>
                                             </select>
 
-                                            <label>Cumplimiento/Nota</label>
-                                            <select name="cumplimiento_nota">
+                                            <label for="act-cumplimiento-nota">Cumplimiento/Nota</label>
+                                            <select id="act-cumplimiento-nota" name="cumplimiento_nota">
                                                 <option value="Cumplimiento" {% if seguimiento_estructura_form.cumplimiento_nota == "Cumplimiento" %}selected{% endif %}>Cumplimiento</option>
                                                 <option value="Nota" {% if seguimiento_estructura_form.cumplimiento_nota == "Nota" %}selected{% endif %}>Nota</option>
                                             </select>
 
-                                            <label>Origen</label>
-                                            <select name="origen">
+                                            <label for="act-origen">Origen</label>
+                                            <select id="act-origen" name="origen">
                                                 <option value="Plataforma" {% if seguimiento_estructura_form.origen == "Plataforma" %}selected{% endif %}>Plataforma</option>
                                                 <option value="Fuera" {% if seguimiento_estructura_form.origen == "Fuera" %}selected{% endif %}>Fuera</option>
                                                 <option value="Pre inscripción" {% if seguimiento_estructura_form.origen == "Pre inscripción" %}selected{% endif %}>Pre inscripción</option>
                                             </select>
 
-                                            <label>Escala</label>
-                                            <select name="escala">
+                                            <label for="act-escala">Escala</label>
+                                            <select id="act-escala" name="escala">
                                                 <option value="Vigesimal" {% if seguimiento_estructura_form.escala == "Vigesimal" %}selected{% endif %}>Vigesimal</option>
                                                 <option value="Dicotómico" {% if seguimiento_estructura_form.escala == "Dicotómico" %}selected{% endif %}>Dicotómico</option>
                                             </select>
 
-                                            <label>Aplica a</label>
-                                            <select name="aplica_a">
+                                            <label for="act-aplica-a">Aplica a</label>
+                                            <select id="act-aplica-a" name="aplica_a">
                                                 <option value="Ambos" {% if seguimiento_estructura_form.aplica_a == "Ambos" %}selected{% endif %}>Ambos</option>
                                                 <option value="DRE/GRE" {% if seguimiento_estructura_form.aplica_a == "DRE/GRE" %}selected{% endif %}>DRE/GRE</option>
                                                 <option value="UGEL" {% if seguimiento_estructura_form.aplica_a == "UGEL" %}selected{% endif %}>UGEL</option>
                                             </select>
 
-                                            <label>Inicio</label>
-                                            <input type="datetime-local" name="inicio" value="{{ seguimiento_estructura_form.inicio|default:'' }}">
+                                            <label for="act-inicio">Inicio</label>
+                                            <input type="datetime-local" id="act-inicio" name="inicio" value="{{ seguimiento_estructura_form.inicio|default:'' }}">
 
-                                            <label>Fin</label>
-                                            <input type="datetime-local" name="fin" value="{{ seguimiento_estructura_form.fin|default:'' }}">
+                                            <label for="act-fin">Fin</label>
+                                            <input type="datetime-local" id="act-fin" name="fin" value="{{ seguimiento_estructura_form.fin|default:'' }}">
 
-                                            <label>Observaciones</label>
-                                            <textarea name="observaciones" rows="2">{{ seguimiento_estructura_form.observaciones|default:'' }}</textarea>
+                                            <label for="act-observaciones">Observaciones</label>
+                                            <textarea id="act-observaciones" name="observaciones" rows="2">{{ seguimiento_estructura_form.observaciones|default:'' }}</textarea>
 
                                             <div class="checkbox-grid">
                                                 <label class="checkbox-line"><input type="checkbox" name="obligatoria" {% if seguimiento_estructura_form.obligatoria %}checked{% endif %}> Actividad obligatoria</label>
@@ -1159,8 +1159,8 @@
                                     <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
                                     <input type="hidden" name="tab" value="formula">
 
-                                    <label>Aplica a</label>
-                                    <select name="aplica_a">
+                                    <label for="form-aplica-a">Aplica a</label>
+                                    <select id="form-aplica-a" name="aplica_a">
                                         <option value="Ambos">Ambos</option>
                                         <option value="DRE/GRE">DRE/GRE</option>
                                         <option value="UGEL">UGEL</option>
@@ -3195,7 +3195,14 @@
 
                         function iniciarPolling(progressId) {
                             detenerPolling();
+                            var pollCount = 0;
                             pollTimer = setInterval(function () {
+                                pollCount++;
+                                if (pollCount > 300) {
+                                    detenerPolling();
+                                    mostrarError("La generación tardó demasiado. Actualiza la página e inténtalo nuevamente.");
+                                    return;
+                                }
                                 var url = new URL(window.location.href);
                                 url.searchParams.set("cert_progress_id", progressId);
                                 fetch(url.toString(), {
@@ -3850,7 +3857,14 @@
                                                         detenerPolling();
                                                         // Endpoint de progreso vive en el modulo de certificacion regular.
                                                         var pollUrl = "{% url 'core:submenu_detail' 'gestion-capacitacion' 'certificacion' %}";
+                                                        var pollCount = 0;
                                                         pollTimer = setInterval(function () {
+                                                            pollCount++;
+                                                            if (pollCount > 300) {
+                                                                detenerPolling();
+                                                                mostrarError("La generación tardó demasiado. Actualiza la página e inténtalo nuevamente.");
+                                                                return;
+                                                            }
                                                             var u = new URL(pollUrl, window.location.origin);
                                                             u.searchParams.set("cert_progress_id", progressId);
                                                             fetch(u.toString(), {

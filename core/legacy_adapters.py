@@ -27,9 +27,16 @@ logger = logging.getLogger("core")
 
 def _get_dnis_excluidos() -> set[str]:
     """Lee los DNIs excluidos desde la BD. Fallback al set vacío si hay error."""
+    from django.core.cache import cache as _cache
+    _KEY = "dnis_excluidos_v1"
+    cached = _cache.get(_KEY)
+    if cached is not None:
+        return cached
     try:
         from core.models import DniExcluido
-        return set(DniExcluido.objects.values_list("dni", flat=True))
+        result = set(DniExcluido.objects.values_list("dni", flat=True))
+        _cache.set(_KEY, result, timeout=300)
+        return result
     except Exception:
         logger.exception("No se pudo leer DniExcluido desde BD; sin exclusiones activas")
         return set()

@@ -6,6 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 # Atajos para renderizar plantillas y retornar redirecciones.
 from django.shortcuts import redirect, render
+# require_POST fuerza que el logout solo acepte peticiones POST.
+from django.views.decorators.http import require_POST
 # Utilidad para validar que la URL `next` sea segura y local.
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -79,10 +81,9 @@ def login_view(request):
     )
 
 
+@require_POST
 @login_required
 def logout_view(request):
     """Cierra sesion actual y redirige al login."""
-    # Elimina datos de autenticacion de sesion.
     logout(request)
-    # Envia al usuario de vuelta a la pantalla de login.
     return redirect("accounts:login")

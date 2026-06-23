@@ -502,7 +502,7 @@ def _run_generar_certificados_worker(
         import logging as _log
         _log.getLogger("core.views").exception("Error generando certificados ZIP (worker async)")
         _set_progress("error", 0, 0, f"Error al generar certificados: {exc}", 0)
-        cache.set(result_key, {"status": "error", "message": str(exc)}, timeout=1800)
+        cache.set(result_key, {"status": "error", "message": "Error interno al generar certificados. Inténtalo nuevamente."}, timeout=1800)
 
 
 def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
@@ -765,32 +765,39 @@ def _auto_actualizar_estado(cap_obj) -> None:
     soportar el flujo unificado actual de Solicitud + Caracterización.
     """
     from core.models import Capacitacion
+    from django.db import transaction
 
-    if cap_obj.cap_estado == Capacitacion.Estado.CANCELADA:
-        return
+    # select_for_update previene race conditions cuando dos requests
+    # intentan actualizar el estado de la misma capacitación a la vez.
+    with transaction.atomic():
+        locked = Capacitacion.objects.select_for_update().filter(pk=cap_obj.pk).first()
+        if locked is None:
+            return
+        if locked.cap_estado == Capacitacion.Estado.CANCELADA:
+            return
 
-    tiene_codigo = bool(cap_obj.cap_codigo and cap_obj.cap_codigo.strip())
-    tiene_id = bool(cap_obj.cap_id_curso and cap_obj.cap_id_curso.strip())
+        tiene_codigo = bool(locked.cap_codigo and locked.cap_codigo.strip())
+        tiene_id = bool(locked.cap_id_curso and locked.cap_id_curso.strip())
 
-    if not tiene_codigo and not tiene_id:
-        nuevo = Capacitacion.Estado.FORMULADA
-    else:
-        nuevo = Capacitacion.Estado.EN_PROCESO
-        pasos_completos = int(cap_obj.paso_actual or 0) >= TOTAL_PASOS_FLUJO
-        tiene_certificados = _cap_tiene_certificados(cap_obj)
-        anio = int(cap_obj.cap_anio or 0)
+        if not tiene_codigo and not tiene_id:
+            nuevo = Capacitacion.Estado.FORMULADA
+        else:
+            nuevo = Capacitacion.Estado.EN_PROCESO
+            pasos_completos = int(locked.paso_actual or 0) >= TOTAL_PASOS_FLUJO
+            tiene_certificados = _cap_tiene_certificados(locked)
+            anio = int(locked.cap_anio or 0)
 
-        if anio >= 2026:
-            if pasos_completos and tiene_certificados:
+            if anio >= 2026:
+                if pasos_completos and tiene_certificados:
+                    nuevo = Capacitacion.Estado.FINALIZADA
+                elif pasos_completos or tiene_certificados:
+                    nuevo = Capacitacion.Estado.EN_PROCESO
+            elif pasos_completos and tiene_codigo:
                 nuevo = Capacitacion.Estado.FINALIZADA
-            elif pasos_completos or tiene_certificados:
-                nuevo = Capacitacion.Estado.EN_PROCESO
-        elif pasos_completos and tiene_codigo:
-            nuevo = Capacitacion.Estado.FINALIZADA
 
-    if cap_obj.cap_estado != nuevo:
-        cap_obj.cap_estado = nuevo
-        cap_obj.save(update_fields=["cap_estado", "actualizado_en"])
+        if locked.cap_estado != nuevo:
+            locked.cap_estado = nuevo
+            locked.save(update_fields=["cap_estado", "actualizado_en"])
 
 
 def _cap_tiene_certificados(cap_obj) -> bool:
