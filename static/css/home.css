@@ -6061,3 +6061,134 @@ body {
 .progress-value {
     background: linear-gradient(135deg, #0d5fb8 0%, #07b8e4 100%);
 }
+
+/* ================================================================
+   AUDIT FIX — correcciones visuales post-auditoría
+   ================================================================ */
+
+/* btn--primary / btn--xl: clases usadas en template pero sin CSS definido */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 0.6rem;
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.btn--primary {
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    color: #fff;
+    border: 1px solid var(--brand-blue-deep);
+    padding: 0.52rem 0.88rem;
+}
+.btn--primary:hover:not(:disabled),
+.btn--primary:focus-visible:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 24px -16px rgba(10, 47, 87, 0.58);
+    filter: brightness(1.05);
+}
+.btn--xl {
+    font-size: 1rem;
+    padding: 0.68rem 1.2rem;
+    border-radius: 0.72rem;
+}
+
+/* Logout: transición + hover (presente en todas las páginas) */
+.logout-link {
+    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+.logout-link:hover,
+.logout-link:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px -14px rgba(197, 68, 32, 0.62);
+    filter: brightness(1.06);
+}
+
+/* btn-primary-soft y btn-secondary-soft: transición + hover */
+.btn-primary-soft,
+.btn-secondary-soft {
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+.btn-primary-soft:hover:not(:disabled),
+.btn-primary-soft:focus-visible:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 20px -14px rgba(10, 47, 87, 0.55);
+    filter: brightness(1.04);
+}
+.btn-secondary-soft:hover:not(:disabled),
+.btn-secondary-soft:focus-visible:not(:disabled) {
+    background: linear-gradient(150deg, #f2f8ff 0%, #e6f2ff 100%);
+    border-color: #9fc5e8;
+}
+
+/* inline-btn-danger: hover + transición */
+.inline-btn-danger {
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.inline-btn-danger:hover,
+.inline-btn-danger:focus-visible {
+    background: linear-gradient(135deg, #ffe4d4 0%, #ffd5c0 100%);
+    border-color: #d9946e;
+    color: #7a2f0e;
+}
+
+/* submenu-card: transición suave que complementa el hover existente */
+.submenu-card {
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.submenu-card:hover,
+.submenu-card:focus-visible {
+    transform: translateY(-2px);
+}
+
+/* cap-card: hover sutil + transición */
+.cap-card {
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 140ms ease;
+}
+.cap-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px -18px rgba(11, 56, 111, 0.38);
+}
+
+/* year-filter__item: hover + transición */
+.year-filter__item {
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.year-filter__item:hover:not(.is-active):not(.is-disabled) {
+    background: #eaf3ff;
+    border-color: #9fbde4;
+    color: #0a2f57;
+}
+
+/* registro-nav__item: transición para el hover ya existente */
+.registro-nav__item {
+    transition: background 140ms ease, border-color 140ms ease;
+}
+
+/* subsection-title: ancla visual con borde izquierdo acento cian */
+.subsection-title {
+    border-left: 3px solid var(--brand-cyan);
+    padding-left: 0.52rem;
+    color: #1a3d5c;
+}
+
+/* warning-box y ok-box: ícono de reconocimiento inmediato */
+.warning-box::before {
+    content: "⚠\00a0";
+}
+.ok-box::before {
+    content: "✓\00a0";
+    color: #1d8d72;
+}
+
+/* module-list li: hover para items navegables */
+.module-list li {
+    transition: background 130ms ease, border-color 130ms ease;
+}
+.module-list li:hover {
+    background: linear-gradient(160deg, #f4f9ff 0%, #edf5ff 100%);
+    border-color: #aacde8;
+}
