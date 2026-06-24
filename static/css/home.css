@@ -5934,3 +5934,130 @@ h1 {
     cursor: default;
     pointer-events: none;
 }
+
+/* ================================================================
+   UI REFRESH — mejoras visuales transversales a todas las pantallas
+   ================================================================ */
+
+/* Fondo cálido degradado que hace que las tarjetas blancas destaquen */
+body {
+    background: linear-gradient(160deg, #edf4ff 0%, #f5f0ff 48%, #fef8f1 100%);
+    background-attachment: fixed;
+}
+
+/* Geo-card: franja superior más gruesa para mayor peso visual */
+.geo-card::before {
+    height: 6px;
+}
+
+/* Geo-card: tinte de cuerpo por grupo de color (azul / naranja / cian) */
+.geo-card:nth-child(3n + 1) {
+    background: linear-gradient(148deg, #ffffff 0%, #edf6ff 70%, #e6f2ff 100%);
+}
+.geo-card:nth-child(3n + 2) {
+    background: linear-gradient(148deg, #ffffff 0%, #fff6ef 70%, #ffeee0 100%);
+}
+.geo-card:nth-child(3n) {
+    background: linear-gradient(148deg, #ffffff 0%, #e9feff 70%, #dafbff 100%);
+}
+
+/* Geo-card: elevación más pronunciada al pasar el mouse */
+.geo-card:hover,
+.geo-card:focus-visible {
+    transform: translateY(-5px);
+    box-shadow: 0 40px 60px -28px rgba(11, 56, 111, 0.68);
+}
+
+/* Mini-metric: franja superior de color */
+.mini-metric {
+    position: relative;
+    overflow: hidden;
+}
+.mini-metric::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    border-radius: 0.78rem 0.78rem 0 0;
+    background: linear-gradient(90deg, var(--brand-blue-mid) 0%, var(--brand-cyan) 100%);
+}
+
+/* Mini-metric: números más grandes y con más presencia */
+.mini-metric h3 {
+    font-size: 1.58rem;
+    margin-top: 0.14rem;
+}
+
+/* Mini-metric: color distinto por posición dentro del grupo */
+.mini-metrics .mini-metric:nth-child(1) h3 { color: var(--brand-blue-mid); }
+.mini-metrics .mini-metric:nth-child(2) h3 { color: var(--orange); }
+.mini-metrics .mini-metric:nth-child(3) h3 { color: #0d9a88; }
+.mini-metrics .mini-metric:nth-child(2)::before {
+    background: linear-gradient(90deg, var(--orange) 0%, var(--sun) 100%);
+}
+.mini-metrics .mini-metric:nth-child(3)::before {
+    background: linear-gradient(90deg, #0d9a88 0%, #0abba8 100%);
+}
+
+/* Cap-card: borde lateral más grueso y saturado por estado */
+.cap-card.is-cerrado {
+    border-left-width: 4px;
+    border-left-color: var(--orange);
+}
+.cap-card.is-abierto {
+    border-left-width: 4px;
+    border-left-color: var(--brand-cyan);
+}
+
+/* Cap-card badges de estado: más saturados */
+.cap-card__status--cerrado {
+    border-color: #f0aa65;
+    background: linear-gradient(135deg, #fff3e5 0%, #ffe8d2 100%);
+    color: #7a3d14;
+}
+.cap-card__status--abierto {
+    border-color: #73d5ea;
+    background: linear-gradient(135deg, #e3f8fd 0%, #cef3fc 100%);
+    color: #0a5870;
+}
+
+/* Registro roadmap: paso actual con borde y halo de color */
+.registro-roadmap__step.is-current {
+    border-color: var(--brand-blue-mid);
+    border-width: 2px;
+    padding: calc(0.78rem - 1px);
+    box-shadow:
+        0 0 0 3px rgba(13, 95, 184, 0.14),
+        0 16px 32px -24px rgba(13, 95, 184, 0.52);
+}
+
+/* Registro unified step: realce más fuerte en paso activo */
+.registro-unified-step.is-current,
+.registro-unified-step.is-complete.is-current,
+.registro-unified-step.is-started.is-current {
+    box-shadow: 0 0 0 4px rgba(30, 108, 184, 0.22), 0 8px 18px -8px rgba(8, 43, 83, 0.5);
+}
+
+/* Section tab activa: sombra para profundidad */
+.section-tab.is-active {
+    box-shadow: 0 12px 20px -14px rgba(10, 47, 87, 0.58);
+}
+
+/* Seguimiento tab activa: sombra coherente */
+.seguimiento-tab.is-active {
+    box-shadow: 0 10px 18px -14px rgba(10, 47, 87, 0.5);
+}
+
+/* Sync dot: animación de pulso suave en estado exitoso */
+@keyframes pulse-sync-dot {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(29, 141, 114, 0.18); }
+    50%       { box-shadow: 0 0 0 6px rgba(29, 141, 114, 0.06); }
+}
+.sync-status-chip--success .sync-status-chip__dot {
+    animation: pulse-sync-dot 2.6s ease-in-out infinite;
+}
+
+/* Barra de progreso: más vívida */
+.progress-value {
+    background: linear-gradient(135deg, #0d5fb8 0%, #07b8e4 100%);
+}

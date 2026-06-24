@@ -14,7 +14,7 @@
     <!-- Familias tipograficas del proyecto -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <!-- Estilos de la pantalla de inicio protegida -->
-    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=20260623">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=20260624">
 </head>
 <body>
     <!-- Fondo decorativo sutil -->
@@ -90,6 +90,13 @@
                         <p class="geo-card__kicker">{{ section.subtitulo }}</p>
                         <h3>{{ section.titulo }}</h3>
                         <p>{{ section.descripcion }}</p>
+                        {% if section.submenus %}
+                            <ul class="geo-card__list" aria-label="Módulos incluidos">
+                                {% for sub in section.submenus|slice:":4" %}
+                                    <li>{{ sub.titulo }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
                     </div>
                 </a>
             {% endfor %}
