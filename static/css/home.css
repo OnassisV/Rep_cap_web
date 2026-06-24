@@ -6192,3 +6192,59 @@ body {
     background: linear-gradient(160deg, #f4f9ff 0%, #edf5ff 100%);
     border-color: #aacde8;
 }
+
+/* ================================================================
+   VISUAL AUDIT 2 — correcciones post-revisión real en navegador
+   ================================================================ */
+
+/* Submenu action cards: franja de color en borde superior por posición.
+   Rompe la uniformidad de los 6 botones de acción en la sección. */
+.submenu-card--action:nth-child(3n + 1) { border-top: 3px solid var(--brand-blue-mid); }
+.submenu-card--action:nth-child(3n + 2) { border-top: 3px solid var(--orange); }
+.submenu-card--action:nth-child(3n)     { border-top: 3px solid #0d9a88; }
+
+/* data-table: clase usada en registro y módulos de datos sin estilos propios */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.82rem;
+}
+.data-table th {
+    background: linear-gradient(180deg, #e8f2ff 0%, #ddeafd 100%);
+    color: #1a3d5c;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.44rem 0.56rem;
+    text-align: left;
+    border-bottom: 2px solid #b8d0ea;
+}
+.data-table td {
+    padding: 0.42rem 0.56rem;
+    border-bottom: 1px solid #e8f0f8;
+    color: #2c4760;
+    vertical-align: middle;
+}
+.data-table tbody tr:nth-child(even) td { background: #f7fbff; }
+.data-table tbody tr:hover td {
+    background: linear-gradient(90deg, #edf5ff 0%, #e8f2ff 100%);
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* Editor form: ring de foco para indicar campo activo */
+.editor-form input:not([type="checkbox"]):not([type="radio"]):focus,
+.editor-form select:focus,
+.editor-form textarea:focus {
+    border-color: var(--brand-blue-mid);
+    box-shadow: 0 0 0 2.5px rgba(13, 95, 184, 0.14);
+    outline: none;
+}
+
+/* Cabeceras de secciones del formulario de registro: ancla visual */
+.registro-sections-shell__header h2,
+.registro-sections-shell__header h3 {
+    border-left: 3px solid var(--brand-blue-mid);
+    padding-left: 0.52rem;
+}
