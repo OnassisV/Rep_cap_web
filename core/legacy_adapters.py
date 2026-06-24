@@ -1607,34 +1607,16 @@ def guardar_formula_promedio(codigo: str, aplica_a: str, formula: str) -> bool:
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
-                # Verifica existencia previa por id_capacitacion + aplica_a.
+                # INSERT ... ON DUPLICATE KEY UPDATE es atómico: elimina la race
+                # condition del SELECT+INSERT anterior cuando hay unique(id_cap, aplica_a).
                 cursor.execute(
                     """
-                    SELECT id_formula
-                    FROM formula_promedio
-                    WHERE id_capacitacion = %s AND aplica_a = %s
-                    LIMIT 1
+                    INSERT INTO formula_promedio (id_capacitacion, aplica_a, formula, fecha_registro)
+                    VALUES (%s, %s, %s, NOW())
+                    ON DUPLICATE KEY UPDATE formula = VALUES(formula), fecha_registro = NOW()
                     """,
-                    (id_cap, aplica_a),
+                    (id_cap, aplica_a, formula),
                 )
-                row = cursor.fetchone()
-                if row and row.get("id_formula"):
-                    cursor.execute(
-                        """
-                        UPDATE formula_promedio
-                        SET formula = %s, fecha_registro = NOW()
-                        WHERE id_formula = %s
-                        """,
-                        (formula, int(row["id_formula"])),
-                    )
-                else:
-                    cursor.execute(
-                        """
-                        INSERT INTO formula_promedio (id_capacitacion, aplica_a, formula, fecha_registro)
-                        VALUES (%s, %s, %s, NOW())
-                        """,
-                        (id_cap, aplica_a, formula),
-                    )
         return True
     except Exception:
         logger.exception("Error en guardar_formula_promedio")
@@ -1914,19 +1896,13 @@ def guardar_rutas_plantilla(codigo: str, excel_path: str, py_path: str) -> bool:
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
-                # Verifica si el codigo ya existe para decidir update/insert.
-                cursor.execute("SELECT codigo FROM plantillas WHERE codigo = %s LIMIT 1", (codigo,))
-                existe = cursor.fetchone() is not None
-                if existe:
-                    cursor.execute(
-                        "UPDATE plantillas SET EXCEL = %s, PY = %s WHERE codigo = %s",
-                        (excel_path, py_path, codigo),
-                    )
-                else:
-                    cursor.execute(
-                        "INSERT INTO plantillas (codigo, EXCEL, PY) VALUES (%s, %s, %s)",
-                        (codigo, excel_path, py_path),
-                    )
+                # INSERT ... ON DUPLICATE KEY UPDATE es atómico: elimina la race
+                # condition del SELECT+INSERT anterior cuando codigo es PK o UNIQUE.
+                cursor.execute(
+                    "INSERT INTO plantillas (codigo, EXCEL, PY) VALUES (%s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE EXCEL = VALUES(EXCEL), PY = VALUES(PY)",
+                    (codigo, excel_path, py_path),
+                )
         return True
     except Exception:
         logger.exception("Error en guardar_rutas_plantilla")

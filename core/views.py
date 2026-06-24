@@ -604,7 +604,7 @@ def _handle_generar_certificados_post(request, cert_cap_sel: dict[str, Any]):
     # devolvemos JSON inmediatamente. El cliente seguirá el progreso por
     # polling y bajará el ZIP por GET con `cert_download_id` cuando termine.
     # Esto evita que proxies (Railway, etc.) corten conexiones largas.
-    if str(request.POST.get("async", "")).strip() == "1":
+    if str(request.POST.get("async", "1")).strip() != "0":
         import threading as _threading
         result_key = f"cert_result:{request.user.id}:{cert_progress_id}"
         cache.set(result_key, {"status": "pending"}, timeout=1800)
@@ -5035,7 +5035,16 @@ def api_caracterizacion_replica_view(request, cap_id: int):
     """
     try:
         from core.models import Capacitacion as _Cap
-        cap = _Cap.objects.filter(pk=int(cap_id)).first()
+        username = str(request.user.username)
+        display_name = str(
+            request.session.get("difoca_name") or request.user.first_name or username
+        )
+        _, role_eff, _ = _resolve_roles(request)
+        is_admin = _normalizar_texto(str(role_eff)) in {"administrador", "admin", "superusuario"}
+        qs = _Cap.objects.filter(pk=int(cap_id))
+        if not is_admin:
+            qs = qs.filter(creado_por__in=[username, display_name])
+        cap = qs.first()
     except Exception:
         cap = None
     if not cap:

@@ -55,7 +55,7 @@ class Capacitacion(models.Model):
     # -- Identificacion general ----------------------------------------------
     # Nota: cap_direccion, pob_tipo, pob_ambito fueron reemplazados por
     # organo_formulador y publico_objetivo_oferta de la caracterización oficial.
-    cap_nombre = models.CharField(max_length=512)
+    cap_nombre = models.CharField(max_length=255)
     cap_codigo = models.CharField(max_length=120, blank=True, default="")
     cap_id_curso = models.CharField(max_length=120, blank=True, default="")
     cap_tipo = models.CharField(max_length=100, blank=True, default="")
@@ -272,6 +272,7 @@ class CapProblema(models.Model):
     class Meta:
         db_table = "cap_problemas"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_problemas_cap_ord")]
 
     def __str__(self) -> str:
         return f"Problema #{self.orden} – {self.capacitacion_id}"
@@ -292,6 +293,7 @@ class CapDimension(models.Model):
     class Meta:
         db_table = "cap_dimensiones"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_dimensiones_cap_ord")]
 
     def __str__(self) -> str:
         return self.nombre
@@ -309,6 +311,7 @@ class CapSubdimension(models.Model):
     class Meta:
         db_table = "cap_subdimensiones"
         ordering = ["dimension", "orden"]
+        indexes = [models.Index(fields=["dimension", "orden"], name="idx_subdimensiones_dim_ord")]
 
     def __str__(self) -> str:
         return self.nombre[:80]
@@ -326,6 +329,7 @@ class CapIndicador(models.Model):
     class Meta:
         db_table = "cap_indicadores"
         ordering = ["subdimension", "orden"]
+        indexes = [models.Index(fields=["subdimension", "orden"], name="idx_indicadores_sub_ord")]
 
     def __str__(self) -> str:
         return self.descripcion[:80]
@@ -351,6 +355,7 @@ class CapInstrumentoItem(models.Model):
     class Meta:
         db_table = "cap_instrumento_items"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_instrumento_cap_ord")]
 
     def __str__(self) -> str:
         return f"Item #{self.orden} – {self.capacitacion_id}"
@@ -374,6 +379,7 @@ class CapGeneracionOperativa(models.Model):
     class Meta:
         db_table = "cap_generacion_operativa"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_generacion_cap_ord")]
 
 
 # ---------------------------------------------------------------------------
@@ -394,6 +400,7 @@ class CapResultadoEsperado(models.Model):
     class Meta:
         db_table = "cap_resultados_esperados"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_resultados_cap_ord")]
 
 
 # ---------------------------------------------------------------------------
@@ -415,6 +422,7 @@ class CapMatrizIndicador(models.Model):
     class Meta:
         db_table = "cap_matriz_indicadores"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_matriz_cap_ord")]
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +440,7 @@ class CapCompetencia(models.Model):
     class Meta:
         db_table = "cap_competencias"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_competencias_cap_ord")]
 
 
 class CapDesempenio(models.Model):
@@ -446,6 +455,7 @@ class CapDesempenio(models.Model):
     class Meta:
         db_table = "cap_desempenios"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_desempenios_cap_ord")]
 
 
 class CapMallaCurricular(models.Model):
@@ -463,6 +473,7 @@ class CapMallaCurricular(models.Model):
     class Meta:
         db_table = "cap_malla_curricular"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_malla_cap_ord")]
 
 
 class CapFormulaEvaluacion(models.Model):
@@ -479,6 +490,7 @@ class CapFormulaEvaluacion(models.Model):
     class Meta:
         db_table = "cap_formula_evaluacion"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_formula_eval_cap_ord")]
 
 
 # ---------------------------------------------------------------------------
@@ -498,6 +510,7 @@ class CapProductoIndicador(models.Model):
     class Meta:
         db_table = "cap_productos_indicadores"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_productos_cap_ord")]
 
 
 # ---------------------------------------------------------------------------
@@ -515,6 +528,7 @@ class CapCronogramaCampo(models.Model):
     class Meta:
         db_table = "cap_cronograma_campos"
         ordering = ["capacitacion", "orden"]
+        indexes = [models.Index(fields=["capacitacion", "orden"], name="idx_cronograma_cap_ord")]
 
 
 class CapSincronicaProcesamiento(models.Model):
@@ -522,7 +536,7 @@ class CapSincronicaProcesamiento(models.Model):
 
     capacitacion = models.ForeignKey(
         Capacitacion,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="procesamientos_sincronicos",
         null=True,
         blank=True,

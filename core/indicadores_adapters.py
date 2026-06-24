@@ -740,7 +740,7 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
     tasa_ugel_fortalecida = ugel_fortalecida / ugel_cobertura if ugel_cobertura else pd.NA
     tasa_varones = varones / participaciones if participaciones else pd.NA
     tasa_mujeres = mujeres / participaciones if participaciones else pd.NA
-    efectividad = 1 if (finalizaciones > 0 and (certificaciones / finalizaciones) >= 0.6) else 0
+    efectividad = 1 if (finalizaciones > 0 and (certificaciones / finalizaciones) >= 0.6) else (0 if finalizaciones > 0 else pd.NA)
 
     scope_card = {
         "capacitacion": {"label": "Capacitaciones", "value": _format_cell("Capacitacion", num_capacitaciones), "meta": "Procesos formativos con los filtros aplicados"},
@@ -771,7 +771,8 @@ def _summary_cards(active_tab: str, merged: pd.DataFrame, iged_df: pd.DataFrame,
             ("Tasa Certificacion", "Tasa Certificacion", tasa_certificacion, "Certificaciones / Finalizaciones"),
             ("Tasa Progreso", "Tasa Progreso", tasa_progreso, "Progreso / Evaluados"),
             ("Tasa Satisfaccion", "Tasa Satisfaccion", satisf_global, "Tasa global de satisfacción"),
-            ("Efectividad", "Tasa Finalizacion", tasa_certificacion if finalizaciones else pd.NA, f"{'Si' if efectividad else 'No'} — Cert/Fin {'≥' if efectividad else '<'} 60%"),
+            ("Efectividad", "Tasa Finalizacion", tasa_certificacion if finalizaciones else pd.NA,
+             "Sin finalizaciones registradas" if not finalizaciones else f"{'Si' if efectividad else 'No'} — Cert/Fin {'≥' if efectividad else '<'} 60%"),
         ],
         "region": [
             ("Capacitacion", "Capacitacion", num_capacitaciones, "Total con filtros aplicados"),
