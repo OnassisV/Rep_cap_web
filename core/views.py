@@ -3080,8 +3080,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 {"slug": "retiros", "titulo": "Retiros"},
                 {"slug": "plantilla", "titulo": "Generación de plantilla"},
                 {"slug": "confiabilidad", "titulo": "Confiabilidad"},
-                {"slug": "certificados", "titulo": "Certificados"},
-                {"slug": "satisfaccion", "titulo": "Satisfacción"},
             ]
             tabs_validos = {item["slug"] for item in seguimiento_tabs}
 
