@@ -8,6 +8,7 @@ sin romper datos existentes.
 from datetime import date
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 _BINARIO_VALORES = {"", "Sí", "No"}
@@ -158,7 +159,7 @@ class Capacitacion(models.Model):
     pt_convocatoria_fin = models.DateField(null=True, blank=True)
     pt_implementacion_inicio = models.DateField(null=True, blank=True)
     pt_implementacion_fin = models.DateField(null=True, blank=True)
-    pt_horas = models.IntegerField(null=True, blank=True)
+    pt_horas = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     pt_modalidad = models.CharField(max_length=80, blank=True, default="")
     pt_modalidades_json = models.TextField(blank=True, default="")
     pt_tipo_convocatoria = models.CharField(max_length=60, blank=True, default="")
@@ -456,7 +457,7 @@ class CapMallaCurricular(models.Model):
     orden = models.PositiveSmallIntegerField(default=0)
     modulo = models.CharField(max_length=255, blank=True, default="")
     tema = models.CharField(max_length=255, blank=True, default="")
-    horas = models.IntegerField(null=True, blank=True)
+    horas = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     descripcion = models.TextField(blank=True, default="")
 
     class Meta:

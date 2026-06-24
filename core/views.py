@@ -3055,21 +3055,21 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             # Construye lista compatible con el formato que espera el template.
             seg_filas: list[dict[str, Any]] = []
-            for cap in seg_qs:
-                # Reconstruye codigo completo: "XXXX-YYY" o solo "XXXX" si no hay id_curso.
-                codigo_completo = cap.cap_codigo
-                if cap.cap_id_curso:
-                    codigo_completo = f"{cap.cap_codigo}-{cap.cap_id_curso}"
+            _seg_fields = ("id", "cap_codigo", "cap_id_curso", "cap_anio", "cap_estado", "cap_tipo", "cap_nombre", "creado_nombre", "creado_por")
+            for cap in seg_qs.values(*_seg_fields):
+                codigo_completo = cap["cap_codigo"] or ""
+                if cap["cap_id_curso"]:
+                    codigo_completo = f"{cap['cap_codigo']}-{cap['cap_id_curso']}"
                 seg_filas.append({
                     "codigo": codigo_completo,
-                    "cap_codigo": cap.cap_codigo,
-                    "cap_id_curso": cap.cap_id_curso,
-                    "anio": cap.cap_anio,
-                    "condicion": cap.cap_estado,
-                    "tipo_proceso_formativo": cap.cap_tipo,
-                    "denominacion_proceso_formativo": cap.cap_nombre,
-                    "especialista_cargo": cap.creado_nombre or cap.creado_por,
-                    "cap_id": cap.pk,
+                    "cap_codigo": cap["cap_codigo"],
+                    "cap_id_curso": cap["cap_id_curso"],
+                    "anio": cap["cap_anio"],
+                    "condicion": cap["cap_estado"],
+                    "tipo_proceso_formativo": cap["cap_tipo"],
+                    "denominacion_proceso_formativo": cap["cap_nombre"],
+                    "especialista_cargo": cap["creado_nombre"] or cap["creado_por"],
+                    "cap_id": cap["id"],
                 })
 
             # Define pestañas funcionales heredadas del módulo legacy.
@@ -4734,6 +4734,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             tmp_path = result.get("tmp_path")
             filename = result.get("filename") or "certificados.zip"
             if not tmp_path:
+                raise Http404("Ruta del ZIP no disponible.")
+            import tempfile as _tf_mod, os as _os_mod
+            _tmp_real = _os_mod.path.realpath(tmp_path)
+            _tmp_allowed = _os_mod.path.realpath(_tf_mod.gettempdir())
+            if not _tmp_real.startswith(_tmp_allowed + _os_mod.sep):
                 raise Http404("Ruta del ZIP no disponible.")
             try:
                 fh = open(tmp_path, "rb")

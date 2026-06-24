@@ -13,6 +13,7 @@ import io
 import json
 import ast
 import logging
+from contextlib import contextmanager
 from pathlib import Path
 import pymysql
 
@@ -805,11 +806,11 @@ def construir_alertas_seguimiento(metricas: dict[str, Any]) -> list[dict[str, st
     return alertas
 
 
-def _get_aula_connection() -> pymysql.connections.Connection:
-    """Abre conexion a BD de Aula Virtual usando settings.AULA_DB."""
-    # Lee configuracion declarada en settings del proyecto.
+@contextmanager
+def _get_aula_connection():
+    """Context manager que abre y cierra garantizado la conexión al Aula Virtual."""
     db_config = settings.AULA_DB
-    return pymysql.connect(
+    conn = pymysql.connect(
         host=db_config["host"],
         user=db_config["user"],
         password=db_config["password"],
@@ -819,6 +820,10 @@ def _get_aula_connection() -> pymysql.connections.Connection:
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
     )
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _obtener_actividades_aula_por_curso(curso_id: int) -> dict[str, list[dict[str, Any]]]:

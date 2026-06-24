@@ -158,7 +158,7 @@ h1 {
 
 /* Flecha de estado para indicar apertura del menu. */
 .role-switcher > summary::after {
-    content: "v";
+    content: "▾";
     margin-left: 0.42rem;
     font-size: 0.72rem;
     line-height: 1;
