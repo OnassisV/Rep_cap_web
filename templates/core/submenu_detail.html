@@ -4105,7 +4105,7 @@
 
             <!-- Lista de Matrícula por Proceso Formativo -->
             {% if adapter_kind == "lista_matricula" %}
-                <form method="post" class="module-panel__form module-panel__form--filters" data-lm-filters-form>
+                <form method="post" enctype="multipart/form-data" class="module-panel__form module-panel__form--filters" data-lm-filters-form>
                     {% csrf_token %}
                     <div class="module-panel__form-header">
                         <h3>🔍 Filtros</h3>
@@ -4169,6 +4169,19 @@
                                 {% endfor %}
                             </select>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Plantilla Word (opcional)</label>
+                        {% if lm_plantilla_nombre %}
+                            <div class="lm-plantilla-status">
+                                <span>📄 Usando plantilla personalizada: <strong>{{ lm_plantilla_nombre }}</strong></span>
+                                <button type="submit" name="action" value="quitar_plantilla" class="btn btn--secondary btn--small">Quitar plantilla</button>
+                            </div>
+                        {% else %}
+                            <input type="file" name="plantilla" accept=".docx" class="form-control">
+                            <p class="module-panel__copy">Si no subes ninguna, se genera un documento estándar. La plantilla subida se reutiliza en todas las descargas hasta que la quites.</p>
+                        {% endif %}
                     </div>
 
                     <div class="form-actions">

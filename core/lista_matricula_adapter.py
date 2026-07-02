@@ -306,13 +306,27 @@ _COL_WIDTHS = [Cm(1.2), Cm(3.2), Cm(6.0), Cm(5.0), Cm(5.0), Cm(6.0)]
 _COL_WIDTH_SITUACION = Cm(3.0)
 
 
+def validar_plantilla_docx(data: bytes) -> bool:
+    """Confirma que `data` sea un .docx abrible por python-docx."""
+    try:
+        Document(io.BytesIO(data))
+        return True
+    except Exception:
+        return False
+
+
 def crear_documento_word(
     filas_region: list[dict[str, Any]],
     region: str,
     agregar_situacion: bool,
+    plantilla_bytes: bytes | None = None,
 ) -> Document:
-    """Puerto de `crear_documento_word` (list_matricula.py); documento en memoria."""
-    doc = Document()
+    """Puerto de `crear_documento_word` (list_matricula.py); documento en memoria.
+
+    Si `plantilla_bytes` se provee, las tablas se agregan al final de ese
+    documento (igual que el script legado); de lo contrario se crea uno nuevo.
+    """
+    doc = Document(io.BytesIO(plantilla_bytes)) if plantilla_bytes else Document()
 
     section = doc.sections[0]
     section.page_height = Cm(21.0)
@@ -429,6 +443,7 @@ def crear_zip_regiones(
     regiones: list[str],
     agregar_situacion: bool,
     tipo_listado: str,
+    plantilla_bytes: bytes | None = None,
 ) -> bytes:
     """Construye un .zip en memoria con un .docx por region no vacia."""
     tipo_fmt = tipo_listado.replace(" ", "_").upper()
@@ -438,7 +453,7 @@ def crear_zip_regiones(
             filas_region = [f for f in filas if f.get("REGION") == region]
             if not filas_region:
                 continue
-            doc = crear_documento_word(filas_region, region, agregar_situacion)
+            doc = crear_documento_word(filas_region, region, agregar_situacion, plantilla_bytes)
             nombre = f"Lista_{tipo_fmt}_{region.replace(' ', '_')}.docx"
             zf.writestr(nombre, documento_word_a_bytes(doc))
     zip_buf.seek(0)

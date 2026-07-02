@@ -4859,6 +4859,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             })
 
         elif submenu_slug == "lista-matricula":
+            import base64
+
             from core.lista_matricula_adapter import (
                 obtener_opciones_filtro_lista_matricula,
                 obtener_lista_matricula,
@@ -4866,6 +4868,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 crear_documento_word as lm_crear_documento_word,
                 documento_word_a_bytes as lm_documento_word_a_bytes,
                 crear_zip_regiones as lm_crear_zip_regiones,
+                validar_plantilla_docx as lm_validar_plantilla_docx,
                 ANIO_VIGENTE as LM_ANIO_VIGENTE,
             )
 
@@ -4889,6 +4892,24 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 lm_tipo_listado = "Matriculados"
                 lm_fecha_inicio = lm_fecha_fin = None
                 lm_action = ""
+
+            # Plantilla Word personalizada (opcional): se persiste en sesión en
+            # base64 (mismo patrón que gestion-forms-lab) para poder reutilizarla
+            # en descargas posteriores sin volver a subir el archivo cada vez.
+            if lm_action == "quitar_plantilla":
+                request.session.pop("lm_plantilla_bytes", None)
+                request.session.pop("lm_plantilla_nombre", None)
+                messages.success(request, "Se quitó la plantilla personalizada.")
+            elif request.method == "POST" and request.FILES.get("plantilla"):
+                lm_plantilla_up = request.FILES["plantilla"]
+                lm_plantilla_raw = lm_plantilla_up.read()
+                if lm_validar_plantilla_docx(lm_plantilla_raw):
+                    request.session["lm_plantilla_bytes"] = base64.b64encode(lm_plantilla_raw).decode()
+                    request.session["lm_plantilla_nombre"] = lm_plantilla_up.name
+                else:
+                    messages.error(request, "El archivo subido no es un documento Word (.docx) válido.")
+
+            lm_plantilla_nombre = request.session.get("lm_plantilla_nombre", "")
 
             # Los procesos formativos disponibles se acotan a los años/condiciones
             # seleccionados (igual que el script legado); se descartan del lado
@@ -4917,11 +4938,17 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
                     tipo_fmt = lm_tipo_listado.replace(" ", "_").upper()
 
+                    lm_plantilla_bytes = None
+                    if request.session.get("lm_plantilla_bytes"):
+                        lm_plantilla_bytes = base64.b64decode(request.session["lm_plantilla_bytes"])
+
                     if lm_action == "descargar_docx_region" and lm_resultado["filas"]:
                         region_sel = str(request.POST.get("region", "")).strip()
                         filas_region = [f for f in lm_resultado["filas"] if f.get("REGION") == region_sel]
                         if filas_region:
-                            doc = lm_crear_documento_word(filas_region, region_sel, lm_resultado["agregar_situacion"])
+                            doc = lm_crear_documento_word(
+                                filas_region, region_sel, lm_resultado["agregar_situacion"], lm_plantilla_bytes,
+                            )
                             data = lm_documento_word_a_bytes(doc)
                             resp = HttpResponse(
                                 data,
@@ -4938,6 +4965,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                             lm_resultado["regiones"],
                             lm_resultado["agregar_situacion"],
                             lm_tipo_listado,
+                            lm_plantilla_bytes,
                         )
                         resp = HttpResponse(data, content_type="application/zip")
                         resp["Content-Disposition"] = f'attachment; filename="Lista_{tipo_fmt}_Regiones.zip"'
@@ -4957,6 +4985,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "lm_resultado": lm_resultado,
                 "lm_resumen": lm_resumen,
                 "lm_tipos_listado": ["Matriculados", "Participantes", "Certificados"],
+                "lm_plantilla_nombre": lm_plantilla_nombre,
             })
 
     # Renderiza vista de submenu con adaptacion correspondiente.

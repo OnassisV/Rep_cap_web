@@ -3415,6 +3415,20 @@ h1 {
     color: #2f4b64;
 }
 
+/* Estado de la plantilla Word personalizada subida (lista de matrícula). */
+.lm-plantilla-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d8e2ec;
+    border-radius: 0.5rem;
+    background: #f7fbff;
+    color: #2f4b64;
+    font-size: 0.85rem;
+}
+
 /* Checkbox compacto para opciones binarias de la estructura. */
 .checkbox-line input[type="checkbox"] {
     width: 1rem;
