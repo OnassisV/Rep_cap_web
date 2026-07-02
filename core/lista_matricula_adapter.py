@@ -1,9 +1,15 @@
 """Adaptador para el submenu "Lista de Matricula" (Operaciones de Plataforma).
 
 Puerto de app_difoca/herramientas/list_matricula.py (Streamlit + SQLAlchemy)
-a Django + pymysql, consultando oferta_formativa_difoca y bbdd_difoca en
-Railway via accounts.db.get_connection(), siguiendo el patron ya usado en
-core/legacy_adapters.py (obtener_cursos_aula_virtual, obtener_caracterizacion_por_dnis).
+a Django + pymysql. La "oferta formativa" se lee de cap_capacitaciones (no
+de la tabla legada oferta_formativa_difoca): las capacitaciones registradas
+desde 2026 en adelante solo existen en cap_capacitaciones, y la migracion
+historica (ver core/management/commands/importar_oferta_a_cap.py) ya volco
+alli tambien los anios anteriores. Se sigue el mismo patron de alias ya
+usado en core/indicadores_adapters.py (_load_base_tables) y
+core/legacy_adapters.py (obtener_filas_oferta_formativa): cap_estado se
+expone como "condicion" (ahora rotulado "Estado" en la UI) y el codigo que
+cruza con bbdd_difoca se compone de cap_codigo + "-" + cap_id_curso.
 """
 
 import io
@@ -30,19 +36,35 @@ TIPOS_LISTADO = ("Matriculados", "Participantes", "Certificados")
 _COLUMNAS_VACIAS = {"", "-", "NO DISPONIBLE"}
 
 
-def obtener_opciones_filtro_lista_matricula() -> dict[str, Any]:
-    """Distinct anios/condiciones/procesos formativos para poblar los filtros.
+def _compose_course_code(codigo_base: Any, id_curso: Any) -> str:
+    """Reconstruye el `codigo` que usa bbdd_difoca a partir de cap_capacitaciones.
 
-    Equivalente a la carga de `oferta_inicial` del script legado.
+    Misma regla que `core.indicadores_adapters._compose_course_code`
+    (duplicada aqui para no depender de un helper privado de otro modulo).
+    """
+    codigo = str(codigo_base or "").strip()
+    curso = str(id_curso or "").strip()
+    if not codigo:
+        return ""
+    if "-" in codigo or not curso:
+        return codigo
+    return f"{codigo}-{curso}"
+
+
+def obtener_opciones_filtro_lista_matricula() -> dict[str, Any]:
+    """Distinct anios/estados/procesos formativos para poblar los filtros.
+
+    Equivalente a la carga de `oferta_inicial` del script legado, pero
+    leyendo cap_capacitaciones (fuente viva) en vez de oferta_formativa_difoca.
     """
     query = """
         SELECT DISTINCT
-            anio,
-            condicion,
-            tipo_proceso_formativo,
-            denominacion_proceso_formativo
-        FROM oferta_formativa_difoca
-        WHERE anio IS NOT NULL
+            cap_anio AS anio,
+            cap_estado AS condicion,
+            cap_tipo AS tipo_proceso_formativo,
+            cap_nombre AS denominacion_proceso_formativo
+        FROM cap_capacitaciones
+        WHERE cap_anio IS NOT NULL
     """
     try:
         with get_connection() as connection:
@@ -120,21 +142,22 @@ def obtener_lista_matricula(
     where = ["1=1"]
     params: list[Any] = []
     if anios:
-        where.append("anio IN ({})".format(", ".join(["%s"] * len(anios))))
+        where.append("cap_anio IN ({})".format(", ".join(["%s"] * len(anios))))
         params.extend(anios)
     if condiciones:
-        where.append("condicion IN ({})".format(", ".join(["%s"] * len(condiciones))))
+        where.append("cap_estado IN ({})".format(", ".join(["%s"] * len(condiciones))))
         params.extend(condiciones)
 
     oferta_query = f"""
         SELECT
-            codigo,
-            anio,
-            condicion,
-            tipo_proceso_formativo,
-            denominacion_proceso_formativo,
-            implementacion_final
-        FROM oferta_formativa_difoca
+            cap_codigo,
+            cap_id_curso,
+            cap_anio AS anio,
+            cap_estado AS condicion,
+            cap_tipo AS tipo_proceso_formativo,
+            cap_nombre AS denominacion_proceso_formativo,
+            pt_implementacion_fin AS implementacion_final
+        FROM cap_capacitaciones
         WHERE {' AND '.join(where)}
     """
 
@@ -144,8 +167,11 @@ def obtener_lista_matricula(
                 cursor.execute(oferta_query, params)
                 oferta_rows = list(cursor.fetchall())
     except Exception:
-        logger.exception("Error consultando oferta_formativa_difoca en lista de matricula")
+        logger.exception("Error consultando cap_capacitaciones en lista de matricula")
         return vacio
+
+    for row in oferta_rows:
+        row["codigo"] = _compose_course_code(row.get("cap_codigo"), row.get("cap_id_curso"))
 
     # Filtro de fecha sobre Implementacion Final (se aplica en Python: el
     # rango es opcional y el volumen de filas de oferta es pequeño).
@@ -216,10 +242,12 @@ def obtener_lista_matricula(
             return False
         return True
 
-    # Nota: replica una particularidad del script original — solo la
-    # primera condicion seleccionada habilita la columna de situacion.
-    primera_condicion = condiciones[0] if condiciones else None
-    agregar_situacion = tipo_listado == "Participantes" and primera_condicion == "Cerrado"
+    # Nota: replica una particularidad del script original — solo el primer
+    # estado seleccionado habilita la columna de situacion. El script legado
+    # comparaba contra 'Cerrado' (condicion de oferta_formativa_difoca); el
+    # equivalente en cap_estado es 'Finalizada'.
+    primer_estado = condiciones[0] if condiciones else None
+    agregar_situacion = tipo_listado == "Participantes" and primer_estado == "Finalizada"
 
     filas: list[dict[str, Any]] = []
     for oferta_row in oferta_rows:

@@ -4109,7 +4109,7 @@
                     {% csrf_token %}
                     <div class="module-panel__form-header">
                         <h3>🔍 Filtros</h3>
-                        <p class="module-panel__copy">Los procesos formativos disponibles se acotan automáticamente a los años y condiciones marcados.</p>
+                        <p class="module-panel__copy">Los procesos formativos disponibles se acotan automáticamente a los años y estados marcados.</p>
                     </div>
 
                     <div class="lm-filters-row">
@@ -4126,7 +4126,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Condiciones</label>
+                            <label class="form-label">Estado</label>
                             <div class="checkbox-grid">
                                 {% for condicion in lm_opciones.condiciones %}
                                     <label class="checkbox-line checkbox-chip">

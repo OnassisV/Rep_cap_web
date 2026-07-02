@@ -4887,7 +4887,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 lm_action = str(request.POST.get("action", "")).strip()
             else:
                 lm_anios_sel = [LM_ANIO_VIGENTE] if LM_ANIO_VIGENTE in lm_opciones["anios"] else lm_opciones["anios"]
-                lm_condiciones_sel = ["Cerrado"] if "Cerrado" in lm_opciones["condiciones"] else lm_opciones["condiciones"]
+                lm_condiciones_sel = ["Finalizada"] if "Finalizada" in lm_opciones["condiciones"] else lm_opciones["condiciones"]
                 lm_procesos_sel = []
                 lm_tipo_listado = "Matriculados"
                 lm_fecha_inicio = lm_fecha_fin = None
