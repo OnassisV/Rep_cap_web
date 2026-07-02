@@ -4144,7 +4144,7 @@
                             {% for p in lm_procesos_disponibles %}
                                 <label class="checkbox-line checkbox-chip">
                                     <input type="checkbox" name="procesos_formativos" value="{{ p.proceso_formativo }}" {% if p.proceso_formativo in lm_procesos_sel %}checked{% endif %}>
-                                    {{ p.proceso_formativo }} ({{ p.anio }} · {{ p.condicion }})
+                                    {{ p.proceso_formativo }} ({{ p.codigo|default:"sin código" }} · {{ p.condicion }})
                                 </label>
                             {% empty %}
                                 <p class="module-panel__note">No hay procesos formativos para los años/condiciones seleccionados.</p>

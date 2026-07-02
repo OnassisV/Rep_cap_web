@@ -59,6 +59,8 @@ def obtener_opciones_filtro_lista_matricula() -> dict[str, Any]:
     """
     query = """
         SELECT DISTINCT
+            cap_codigo,
+            cap_id_curso,
             cap_anio AS anio,
             cap_estado AS condicion,
             cap_tipo AS tipo_proceso_formativo,
@@ -84,13 +86,14 @@ def obtener_opciones_filtro_lista_matricula() -> dict[str, Any]:
         anio = r.get("anio")
         condicion = str(r.get("condicion") or "").strip()
         proceso = f"{r.get('tipo_proceso_formativo', '')} {r.get('denominacion_proceso_formativo', '')}".strip()
+        codigo = _compose_course_code(r.get("cap_codigo"), r.get("cap_id_curso"))
         if not proceso:
             continue
-        clave = (anio, condicion, proceso)
+        clave = (anio, condicion, proceso, codigo)
         if clave in vistos:
             continue
         vistos.add(clave)
-        procesos.append({"anio": anio, "condicion": condicion, "proceso_formativo": proceso})
+        procesos.append({"anio": anio, "condicion": condicion, "proceso_formativo": proceso, "codigo": codigo})
 
     procesos.sort(key=lambda p: (-(p["anio"] or 0), p["proceso_formativo"]))
 
