@@ -3396,6 +3396,7 @@ h1 {
     align-items: flex-start;
     max-height: 12rem;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0.5rem;
     border: 1px solid #d8e2ec;
     border-radius: 0.5rem;
@@ -6411,11 +6412,13 @@ body {
    formativos, cuyo texto es largo y no conviene envolver en fila). */
 .checkbox-grid--column {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
     gap: 0.4rem;
 }
 .checkbox-grid--column .checkbox-chip {
     width: 100%;
+    box-sizing: border-box;
 }
 
 /* Editor form: ring de foco para indicar campo activo */
