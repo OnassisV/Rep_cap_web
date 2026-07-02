@@ -277,6 +277,13 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "descripcion": "Consulta la caracterización de participantes en sysdifoca a partir de una lista de DNIs.",
                 "adapter": "caracterizacion_por_dnis",
             },
+            {
+                "slug": "lista-matricula",
+                "titulo": "Lista de Matrícula",
+                "descripcion": "Genera listas de matrícula, participantes o certificados por proceso formativo y región, exportables en Word.",
+                "adapter": "lista_matricula",
+                "legacy_module": "core/lista_matricula_adapter.py",
+            },
         ],
     },
     {
@@ -4849,6 +4856,95 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             context.update({
                 "caract_dnis_texto": dnis_texto,
                 "caract_resultado": caract_resultado,
+            })
+
+        elif submenu_slug == "lista-matricula":
+            from core.lista_matricula_adapter import (
+                obtener_opciones_filtro_lista_matricula,
+                obtener_lista_matricula,
+                obtener_resumen_por_region,
+                crear_documento_word as lm_crear_documento_word,
+                documento_word_a_bytes as lm_documento_word_a_bytes,
+                crear_zip_regiones as lm_crear_zip_regiones,
+                ANIO_VIGENTE as LM_ANIO_VIGENTE,
+            )
+
+            # Filtro propio de multi-año reemplaza al filtro genérico de la app.
+            context["mostrar_filtro_anio"] = False
+
+            lm_opciones = obtener_opciones_filtro_lista_matricula()
+
+            if request.method == "POST":
+                lm_anios_sel = [int(a) for a in request.POST.getlist("anios") if str(a).isdigit()]
+                lm_condiciones_sel = request.POST.getlist("condiciones")
+                lm_procesos_sel = request.POST.getlist("procesos_formativos")
+                lm_tipo_listado = str(request.POST.get("tipo_listado", "Matriculados")).strip()
+                lm_fecha_inicio = str(request.POST.get("fecha_inicio", "")).strip() or None
+                lm_fecha_fin = str(request.POST.get("fecha_fin", "")).strip() or None
+                lm_action = str(request.POST.get("action", "")).strip()
+            else:
+                lm_anios_sel = [LM_ANIO_VIGENTE] if LM_ANIO_VIGENTE in lm_opciones["anios"] else lm_opciones["anios"]
+                lm_condiciones_sel = ["Cerrado"] if "Cerrado" in lm_opciones["condiciones"] else lm_opciones["condiciones"]
+                lm_procesos_sel = []
+                lm_tipo_listado = "Matriculados"
+                lm_fecha_inicio = lm_fecha_fin = None
+                lm_action = ""
+
+            lm_resultado = None
+            if request.method == "POST" and lm_action in ("cargar", "descargar_docx_region", "descargar_zip"):
+                if not lm_procesos_sel:
+                    messages.warning(request, "Selecciona al menos un proceso formativo para continuar.")
+                else:
+                    lm_resultado = obtener_lista_matricula(
+                        anios=lm_anios_sel or None,
+                        condiciones=lm_condiciones_sel or None,
+                        procesos_formativos=lm_procesos_sel or None,
+                        tipo_listado=lm_tipo_listado,
+                        fecha_inicio=lm_fecha_inicio,
+                        fecha_fin=lm_fecha_fin,
+                    )
+
+                    tipo_fmt = lm_tipo_listado.replace(" ", "_").upper()
+
+                    if lm_action == "descargar_docx_region" and lm_resultado["filas"]:
+                        region_sel = str(request.POST.get("region", "")).strip()
+                        filas_region = [f for f in lm_resultado["filas"] if f.get("REGION") == region_sel]
+                        if filas_region:
+                            doc = lm_crear_documento_word(filas_region, region_sel, lm_resultado["agregar_situacion"])
+                            data = lm_documento_word_a_bytes(doc)
+                            resp = HttpResponse(
+                                data,
+                                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            )
+                            resp["Content-Disposition"] = (
+                                f'attachment; filename="Lista_{tipo_fmt}_{region_sel.replace(" ", "_")}.docx"'
+                            )
+                            return resp
+
+                    if lm_action == "descargar_zip" and lm_resultado["filas"]:
+                        data = lm_crear_zip_regiones(
+                            lm_resultado["filas"],
+                            lm_resultado["regiones"],
+                            lm_resultado["agregar_situacion"],
+                            lm_tipo_listado,
+                        )
+                        resp = HttpResponse(data, content_type="application/zip")
+                        resp["Content-Disposition"] = f'attachment; filename="Lista_{tipo_fmt}_Regiones.zip"'
+                        return resp
+
+            lm_resumen = obtener_resumen_por_region(lm_resultado["filas"]) if lm_resultado else []
+
+            context.update({
+                "lm_opciones": lm_opciones,
+                "lm_anios_sel": lm_anios_sel,
+                "lm_condiciones_sel": lm_condiciones_sel,
+                "lm_procesos_sel": lm_procesos_sel,
+                "lm_tipo_listado": lm_tipo_listado,
+                "lm_fecha_inicio": lm_fecha_inicio or "",
+                "lm_fecha_fin": lm_fecha_fin or "",
+                "lm_resultado": lm_resultado,
+                "lm_resumen": lm_resumen,
+                "lm_tipos_listado": ["Matriculados", "Participantes", "Certificados"],
             })
 
     # Renderiza vista de submenu con adaptacion correspondiente.

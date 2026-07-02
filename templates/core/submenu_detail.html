@@ -4103,6 +4103,159 @@
                 {% endif %}
             {% endif %}
 
+            <!-- Lista de Matrícula por Proceso Formativo -->
+            {% if adapter_kind == "lista_matricula" %}
+                <form method="post" class="module-panel__form">
+                    {% csrf_token %}
+
+                    <div class="form-group">
+                        <label class="form-label">Años</label>
+                        <div class="checkbox-grid">
+                            {% for anio in lm_opciones.anios %}
+                                <label class="checkbox-line">
+                                    <input type="checkbox" name="anios" value="{{ anio }}" {% if anio in lm_anios_sel %}checked{% endif %}>
+                                    {{ anio }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Condiciones</label>
+                        <div class="checkbox-grid">
+                            {% for condicion in lm_opciones.condiciones %}
+                                <label class="checkbox-line">
+                                    <input type="checkbox" name="condiciones" value="{{ condicion }}" {% if condicion in lm_condiciones_sel %}checked{% endif %}>
+                                    {{ condicion }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Procesos formativos</label>
+                        <div class="checkbox-grid checkbox-grid--scroll">
+                            {% for p in lm_opciones.procesos %}
+                                <label class="checkbox-line">
+                                    <input type="checkbox" name="procesos_formativos" value="{{ p.proceso_formativo }}" {% if p.proceso_formativo in lm_procesos_sel %}checked{% endif %}>
+                                    {{ p.proceso_formativo }} ({{ p.anio }} · {{ p.condicion }})
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lm_fecha_inicio" class="form-label">Fecha inicio (Implementación Final) — opcional</label>
+                        <input type="date" id="lm_fecha_inicio" name="fecha_inicio" class="form-control" value="{{ lm_fecha_inicio }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="lm_fecha_fin" class="form-label">Fecha fin (Implementación Final) — opcional</label>
+                        <input type="date" id="lm_fecha_fin" name="fecha_fin" class="form-control" value="{{ lm_fecha_fin }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lm_tipo_listado" class="form-label">Tipo de listado</label>
+                        <select id="lm_tipo_listado" name="tipo_listado" class="form-control">
+                            {% for t in lm_tipos_listado %}
+                                <option value="{{ t }}" {% if t == lm_tipo_listado %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" name="action" value="cargar" class="btn btn--primary">Cargar Lista de Matrícula</button>
+                    </div>
+                </form>
+
+                {% if lm_resultado %}
+                    {% if lm_resultado.filas %}
+                        <p class="module-panel__note">
+                            <strong>{{ lm_resultado.total }}</strong> matriculado(s) —
+                            <strong>{{ lm_resultado.total_regiones }}</strong> región(es) —
+                            <strong>{{ lm_resultado.total_igeds }}</strong> IGED(s) —
+                            <strong>{{ lm_resultado.total_procesos }}</strong> proceso(s) formativo(s).
+                        </p>
+
+                        <h3>Descargar todos los Word por región</h3>
+                        <form method="post" class="module-panel__form">
+                            {% csrf_token %}
+                            {% for a in lm_anios_sel %}<input type="hidden" name="anios" value="{{ a }}">{% endfor %}
+                            {% for c in lm_condiciones_sel %}<input type="hidden" name="condiciones" value="{{ c }}">{% endfor %}
+                            {% for p in lm_procesos_sel %}<input type="hidden" name="procesos_formativos" value="{{ p }}">{% endfor %}
+                            <input type="hidden" name="tipo_listado" value="{{ lm_tipo_listado }}">
+                            <input type="hidden" name="fecha_inicio" value="{{ lm_fecha_inicio }}">
+                            <input type="hidden" name="fecha_fin" value="{{ lm_fecha_fin }}">
+                            <button type="submit" name="action" value="descargar_zip" class="btn btn--secondary">Descargar ZIP (todas las regiones)</button>
+                        </form>
+
+                        <h3>Lista por región</h3>
+                        {% for region in lm_resultado.regiones %}
+                            <details class="lm-region-block">
+                                <summary>{{ region }}</summary>
+                                <form method="post" class="module-panel__form">
+                                    {% csrf_token %}
+                                    {% for a in lm_anios_sel %}<input type="hidden" name="anios" value="{{ a }}">{% endfor %}
+                                    {% for c in lm_condiciones_sel %}<input type="hidden" name="condiciones" value="{{ c }}">{% endfor %}
+                                    {% for p in lm_procesos_sel %}<input type="hidden" name="procesos_formativos" value="{{ p }}">{% endfor %}
+                                    <input type="hidden" name="tipo_listado" value="{{ lm_tipo_listado }}">
+                                    <input type="hidden" name="fecha_inicio" value="{{ lm_fecha_inicio }}">
+                                    <input type="hidden" name="fecha_fin" value="{{ lm_fecha_fin }}">
+                                    <input type="hidden" name="region" value="{{ region }}">
+                                    <button type="submit" name="action" value="descargar_docx_region" class="btn btn--secondary">Descargar Word — {{ region }}</button>
+                                </form>
+                                <div class="table-wrapper">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>N°</th><th>Región</th><th>Nombre IGED</th><th>Apellidos</th>
+                                                <th>Nombres</th><th>Nombre de puesto</th>
+                                                {% if lm_resultado.agregar_situacion %}<th>Situación del participante</th>{% endif %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for fila in lm_resultado.filas %}
+                                                {% if fila.REGION == region %}
+                                                    <tr>
+                                                        <td>{{ fila.N }}</td>
+                                                        <td>{{ fila.REGION }}</td>
+                                                        <td>{{ fila.NOMBRE_IGED }}</td>
+                                                        <td>{{ fila.APELLIDOS }}</td>
+                                                        <td>{{ fila.NOMBRES }}</td>
+                                                        <td>{{ fila.NOMBRE_DE_PUESTO }}</td>
+                                                        {% if lm_resultado.agregar_situacion %}<td>{{ fila.SITUACION_DEL_PARTICIPANTE }}</td>{% endif %}
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        {% endfor %}
+
+                        <h3>Resumen por región</h3>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Región</th><th>Total matriculados</th><th>IGEDs participantes</th><th>Procesos formativos</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in lm_resumen %}
+                                        <tr>
+                                            <td>{{ r.region }}</td>
+                                            <td>{{ r.total_matriculados }}</td>
+                                            <td>{{ r.total_igeds }}</td>
+                                            <td>{{ r.total_procesos }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="module-panel__note">No se encontraron matriculados con los filtros seleccionados.</p>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+
         </section>
     </main>
     <script>

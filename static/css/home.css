@@ -3391,6 +3391,30 @@ h1 {
     gap: 0.8rem;
 }
 
+/* Variante con scroll para listas largas de checkboxes (p. ej. procesos formativos). */
+.checkbox-grid--scroll {
+    align-items: flex-start;
+    max-height: 12rem;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid #d8e2ec;
+    border-radius: 0.5rem;
+}
+
+/* Bloque plegable por región en la lista de matrícula. */
+.lm-region-block {
+    margin: 0.6rem 0;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #d8e2ec;
+    border-radius: 0.5rem;
+}
+
+.lm-region-block summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #2f4b64;
+}
+
 /* Checkbox compacto para opciones binarias de la estructura. */
 .checkbox-line input[type="checkbox"] {
     width: 1rem;
