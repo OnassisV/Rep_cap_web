@@ -4105,65 +4105,75 @@
 
             <!-- Lista de Matrícula por Proceso Formativo -->
             {% if adapter_kind == "lista_matricula" %}
-                <form method="post" class="module-panel__form">
+                <form method="post" class="module-panel__form module-panel__form--filters" data-lm-filters-form>
                     {% csrf_token %}
-
-                    <div class="form-group">
-                        <label class="form-label">Años</label>
-                        <div class="checkbox-grid">
-                            {% for anio in lm_opciones.anios %}
-                                <label class="checkbox-line">
-                                    <input type="checkbox" name="anios" value="{{ anio }}" {% if anio in lm_anios_sel %}checked{% endif %}>
-                                    {{ anio }}
-                                </label>
-                            {% endfor %}
-                        </div>
+                    <div class="module-panel__form-header">
+                        <h3>🔍 Filtros</h3>
+                        <p class="module-panel__copy">Los procesos formativos disponibles se acotan automáticamente a los años y condiciones marcados.</p>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Condiciones</label>
-                        <div class="checkbox-grid">
-                            {% for condicion in lm_opciones.condiciones %}
-                                <label class="checkbox-line">
-                                    <input type="checkbox" name="condiciones" value="{{ condicion }}" {% if condicion in lm_condiciones_sel %}checked{% endif %}>
-                                    {{ condicion }}
-                                </label>
-                            {% endfor %}
+                    <div class="lm-filters-row">
+                        <div class="form-group">
+                            <label class="form-label">Años</label>
+                            <div class="checkbox-grid">
+                                {% for anio in lm_opciones.anios %}
+                                    <label class="checkbox-line checkbox-chip">
+                                        <input type="checkbox" name="anios" value="{{ anio }}" {% if anio in lm_anios_sel %}checked{% endif %}>
+                                        {{ anio }}
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Condiciones</label>
+                            <div class="checkbox-grid">
+                                {% for condicion in lm_opciones.condiciones %}
+                                    <label class="checkbox-line checkbox-chip">
+                                        <input type="checkbox" name="condiciones" value="{{ condicion }}" {% if condicion in lm_condiciones_sel %}checked{% endif %}>
+                                        {{ condicion }}
+                                    </label>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Procesos formativos</label>
-                        <div class="checkbox-grid checkbox-grid--scroll">
-                            {% for p in lm_opciones.procesos %}
-                                <label class="checkbox-line">
+                        <div class="checkbox-grid checkbox-grid--scroll checkbox-grid--column">
+                            {% for p in lm_procesos_disponibles %}
+                                <label class="checkbox-line checkbox-chip">
                                     <input type="checkbox" name="procesos_formativos" value="{{ p.proceso_formativo }}" {% if p.proceso_formativo in lm_procesos_sel %}checked{% endif %}>
                                     {{ p.proceso_formativo }} ({{ p.anio }} · {{ p.condicion }})
                                 </label>
+                            {% empty %}
+                                <p class="module-panel__note">No hay procesos formativos para los años/condiciones seleccionados.</p>
                             {% endfor %}
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="lm_fecha_inicio" class="form-label">Fecha inicio (Implementación Final) — opcional</label>
-                        <input type="date" id="lm_fecha_inicio" name="fecha_inicio" class="form-control" value="{{ lm_fecha_inicio }}">
-                    </div>
-                    <div class="form-group">
-                        <label for="lm_fecha_fin" class="form-label">Fecha fin (Implementación Final) — opcional</label>
-                        <input type="date" id="lm_fecha_fin" name="fecha_fin" class="form-control" value="{{ lm_fecha_fin }}">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="lm_tipo_listado" class="form-label">Tipo de listado</label>
-                        <select id="lm_tipo_listado" name="tipo_listado" class="form-control">
-                            {% for t in lm_tipos_listado %}
-                                <option value="{{ t }}" {% if t == lm_tipo_listado %}selected{% endif %}>{{ t }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="lm-filters-row">
+                        <div class="form-group">
+                            <label for="lm_fecha_inicio" class="form-label">Fecha inicio (Implementación Final) — opcional</label>
+                            <input type="date" id="lm_fecha_inicio" name="fecha_inicio" class="form-control" value="{{ lm_fecha_inicio }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="lm_fecha_fin" class="form-label">Fecha fin (Implementación Final) — opcional</label>
+                            <input type="date" id="lm_fecha_fin" name="fecha_fin" class="form-control" value="{{ lm_fecha_fin }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="lm_tipo_listado" class="form-label">Tipo de listado</label>
+                            <select id="lm_tipo_listado" name="tipo_listado" class="form-control">
+                                {% for t in lm_tipos_listado %}
+                                    <option value="{{ t }}" {% if t == lm_tipo_listado %}selected{% endif %}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-actions">
                         <button type="submit" name="action" value="cargar" class="btn btn--primary">Cargar Lista de Matrícula</button>
+                        <button type="submit" name="action" value="actualizar_filtros" class="visually-hidden" data-lm-refresh-btn tabindex="-1" aria-hidden="true">Actualizar filtros</button>
                     </div>
                 </form>
 
@@ -6557,6 +6567,19 @@
                 e.preventDefault();
                 e.returnValue = "Tienes cambios sin guardar en el formulario. ¿Seguro que quieres salir?";
             }
+        });
+    })();
+
+    // ── Lista de matrícula: refresca procesos formativos al cambiar año/condición ──
+    (function () {
+        var refreshBtn = document.querySelector("[data-lm-refresh-btn]");
+        if (!refreshBtn) { return; }
+        var form = document.querySelector("[data-lm-filters-form]");
+        if (!form) { return; }
+        form.querySelectorAll('input[name="anios"], input[name="condiciones"]').forEach(function (cb) {
+            cb.addEventListener("change", function () {
+                refreshBtn.click();
+            });
         });
     })();
     </script>

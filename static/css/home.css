@@ -6257,6 +6257,153 @@ body {
 }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
+/* table-wrapper: scroll horizontal para tablas anchas en submenus de datos */
+.table-wrapper {
+    overflow-x: auto;
+    margin: 0.6rem 0;
+    border: 1px solid var(--line);
+    border-radius: 0.7rem;
+}
+.table-wrapper .data-table {
+    margin: 0;
+}
+
+/* form-group / form-label / form-control / form-actions: clases usadas en
+   submenus de operaciones-plataforma (caracterización, lista de matrícula)
+   sin estilos propios en ningún archivo del proyecto. */
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--brand-blue-deep);
+}
+.form-control {
+    width: 100%;
+    max-width: 24rem;
+    padding: 0.5rem 0.72rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.6rem;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.form-control:focus {
+    outline: none;
+    border-color: var(--brand-blue-mid);
+    box-shadow: 0 0 0 2.5px rgba(13, 95, 184, 0.14);
+}
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1.1rem;
+}
+
+/* btn--secondary: variante de acción secundaria junto a btn--primary */
+.btn--secondary {
+    background: #fff;
+    color: var(--brand-blue-deep);
+    border: 1px solid var(--line-strong);
+    padding: 0.52rem 0.88rem;
+}
+.btn--secondary:hover:not(:disabled),
+.btn--secondary:focus-visible:not(:disabled) {
+    background: linear-gradient(150deg, #f2f8ff 0%, #e6f2ff 100%);
+    border-color: #9fc5e8;
+    transform: translateY(-1px);
+}
+
+/* module-panel__form: variante de .module-panel para formularios de filtro */
+.module-panel__form {
+    margin: 0.9rem 0 1.1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 1rem;
+    padding: 1.1rem 1.2rem;
+    background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+    box-shadow: var(--shadow-soft);
+}
+.module-panel__form-header {
+    margin-bottom: 0.9rem;
+}
+.module-panel__form-header h3 {
+    margin: 0 0 0.3rem;
+    color: #1f4665;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1rem;
+}
+
+/* module-panel__note: mensaje corto de contexto/resultado (usado en ~50
+   vistas de submenu_detail.html) sin estilos propios en ningún archivo. */
+.module-panel__note {
+    margin: 0.6rem 0;
+    padding: 0.5rem 0.8rem;
+    border-left: 3px solid var(--brand-blue-mid);
+    border-radius: 0.4rem;
+    background: #eef6ff;
+    color: #1a3d5c;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* Utilidad para ocultar visualmente sin romper el submit por click/JS. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Lista de matrícula: filas de filtros lado a lado en pantallas anchas. */
+.lm-filters-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.9rem 1.4rem;
+    align-items: start;
+}
+
+/* checkbox-chip: variante tipo "pastilla" para checkboxes de filtro,
+   más legible que un checkbox suelto con texto al lado. */
+.checkbox-chip {
+    padding: 0.32rem 0.7rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: #fff;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.checkbox-chip:has(input:checked) {
+    background: linear-gradient(135deg, var(--brand-blue-mid) 0%, var(--brand-blue-deep) 100%);
+    border-color: var(--brand-blue-deep);
+    color: #fff;
+}
+.checkbox-chip:has(input:checked) input[type="checkbox"] {
+    accent-color: #fff;
+}
+.checkbox-chip:hover {
+    border-color: #9fc5e8;
+}
+
+/* checkbox-grid--column: apila los checkboxes (usado para procesos
+   formativos, cuyo texto es largo y no conviene envolver en fila). */
+.checkbox-grid--column {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+}
+.checkbox-grid--column .checkbox-chip {
+    width: 100%;
+}
+
 /* Editor form: ring de foco para indicar campo activo */
 .editor-form input:not([type="checkbox"]):not([type="radio"]):focus,
 .editor-form select:focus,

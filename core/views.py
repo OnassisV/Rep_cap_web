@@ -4890,6 +4890,17 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 lm_fecha_inicio = lm_fecha_fin = None
                 lm_action = ""
 
+            # Los procesos formativos disponibles se acotan a los años/condiciones
+            # seleccionados (igual que el script legado); se descartan del lado
+            # servidor las selecciones que ya no son visibles con el filtro actual.
+            lm_procesos_disponibles = [
+                p for p in lm_opciones["procesos"]
+                if (not lm_anios_sel or p["anio"] in lm_anios_sel)
+                and (not lm_condiciones_sel or p["condicion"] in lm_condiciones_sel)
+            ]
+            lm_opciones_validas = {p["proceso_formativo"] for p in lm_procesos_disponibles}
+            lm_procesos_sel = [p for p in lm_procesos_sel if p in lm_opciones_validas]
+
             lm_resultado = None
             if request.method == "POST" and lm_action in ("cargar", "descargar_docx_region", "descargar_zip"):
                 if not lm_procesos_sel:
@@ -4936,6 +4947,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             context.update({
                 "lm_opciones": lm_opciones,
+                "lm_procesos_disponibles": lm_procesos_disponibles,
                 "lm_anios_sel": lm_anios_sel,
                 "lm_condiciones_sel": lm_condiciones_sel,
                 "lm_procesos_sel": lm_procesos_sel,
