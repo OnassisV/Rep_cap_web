@@ -836,6 +836,68 @@ def _cap_tiene_formula_y_certificados(cap_obj) -> bool:
     return _cap_tiene_certificados(cap_obj)
 
 
+def _recalcular_estados_pendientes(qs) -> None:
+    """Recalcula en bloque cap_estado de capacitaciones con pasos completos.
+
+    Los certificados se sincronizan externamente en bbdd_difoca, sin pasar
+    por el flujo del formulario, así que _auto_actualizar_estado nunca se
+    dispara para esos casos. Esta función se llama en los listados
+    (gestión y sincrónicas) para detectar y corregir esos registros
+    desactualizados sin depender de que alguien pulse "Recalcular estado".
+    """
+    from core.models import Capacitacion
+
+    candidatos = list(
+        qs.exclude(cap_estado__in=[Capacitacion.Estado.CANCELADA, Capacitacion.Estado.FINALIZADA])
+        .filter(paso_actual__gte=TOTAL_PASOS_FLUJO)
+    )
+    if not candidatos:
+        return
+
+    por_codigo: dict[str, list] = {}
+    for cap in candidatos:
+        codigo_completo = cap.cap_codigo or ""
+        if cap.cap_id_curso:
+            codigo_completo = f"{cap.cap_codigo}-{cap.cap_id_curso}"
+        codigo_completo = codigo_completo.strip()
+        if codigo_completo:
+            por_codigo.setdefault(codigo_completo, []).append(cap)
+
+    if not por_codigo:
+        return
+
+    try:
+        from accounts.db import get_connection
+
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                placeholders = ", ".join(["%s"] * len(por_codigo))
+                cursor.execute(
+                    f"""
+                    SELECT DISTINCT codigo FROM bbdd_difoca
+                    WHERE codigo IN ({placeholders}) AND aprobados_certificados = 1
+                    """,
+                    tuple(por_codigo.keys()),
+                )
+                con_certificados = {r["codigo"] for r in cursor.fetchall()}
+    except Exception:
+        logger.exception("No se pudo recalcular estados en bloque")
+        return
+
+    ids_a_finalizar = [
+        cap.pk
+        for codigo, caps in por_codigo.items()
+        for cap in caps
+        if codigo in con_certificados or int(cap.cap_anio or 0) < 2026
+    ]
+    if ids_a_finalizar:
+        from django.utils import timezone
+
+        Capacitacion.objects.filter(pk__in=ids_a_finalizar).update(
+            cap_estado=Capacitacion.Estado.FINALIZADA, actualizado_en=timezone.now()
+        )
+
+
 def _obtener_resumen_certificados_por_codigo(codigos: list[str]) -> dict[str, int]:
     """Retorna cantidad de certificados emitidos por código de capacitación."""
     from accounts.db import get_connection
@@ -2862,6 +2924,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 if not is_admin:
                     qs = qs.filter(creado_por__in=[username, display_name])
 
+                _recalcular_estados_pendientes(qs)
+
                 # ── Filtro de año ──
                 editar_anios = sorted(
                     set(qs.values_list("cap_anio", flat=True)),
@@ -3969,6 +4033,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     )
                     codigos_usuario = [str(c.get("codigo", "")).strip() for c in sync_caps_user]
                     qs = qs.filter(cap_codigo__in=codigos_usuario)
+
+                _recalcular_estados_pendientes(qs)
 
                 editar_anios = sorted(set(qs.values_list("cap_anio", flat=True)), reverse=True)
                 editar_anios = [a for a in editar_anios if a]
