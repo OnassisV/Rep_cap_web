@@ -199,7 +199,9 @@
                             {% endif %}
                             {% for item in gestion_gantt_items %}
                                 <a class="gestion-gantt__row gestion-gantt__row--link" href="{{ item.url }}">
-                                    <span class="gestion-gantt__label" title="{{ item.nombre }}">{{ item.codigo }}</span>
+                                    <span class="gestion-gantt__label-wrap" data-tooltip="{{ item.nombre }}">
+                                        <span class="gestion-gantt__label">{{ item.codigo }}</span>
+                                    </span>
                                     <span class="gestion-gantt__track">
                                         <span class="gestion-gantt__bar{% if item.atrasada %} gestion-gantt__bar--atrasada{% endif %}"
                                               style="left:{{ item.left_pct_css }}%;width:{{ item.width_pct_css }}%;"

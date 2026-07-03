@@ -6597,13 +6597,50 @@ body {
     padding-left: 0.3rem;
 }
 
+.gestion-gantt__label-wrap {
+    position: relative;
+    display: block;
+    overflow: hidden;
+}
+
 .gestion-gantt__label {
+    display: block;
     font-size: 0.78rem;
     color: var(--ink);
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Tooltip instantáneo con el nombre completo de la capacitación. */
+.gestion-gantt__label-wrap[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 0.4rem);
+    z-index: 20;
+    max-width: 320px;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    background: var(--brand-blue-deep);
+    color: #fff;
+    font-size: 0.74rem;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: normal;
+    box-shadow: 0 10px 22px -12px rgba(10, 47, 87, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    transition: opacity 0.1s ease, transform 0.1s ease;
+    pointer-events: none;
+}
+
+.gestion-gantt__label-wrap[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 .gestion-gantt__track {
