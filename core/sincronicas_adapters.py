@@ -24,11 +24,17 @@ import numpy as np
 import pandas as pd
 
 from accounts.db import get_connection
+from core.models import Capacitacion
 
 logger = logging.getLogger(__name__)
 
 from django.conf import settings
 from core.utils import normalizar_texto_upper as _normalizar_texto_upper_util
+
+_ESTADOS_CERRADO_IMPLEMENTACION = [
+    Capacitacion.Estado.FINALIZADA,
+    Capacitacion.Estado.EN_PROCESO,
+]
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SINCRONICAS_DIR = BASE_DIR / "Actividades_fuera" / "sincronicas"
@@ -241,21 +247,14 @@ def obtener_capacitaciones_sincronicas(
     display_name: str,
     username: str,
 ) -> list[dict[str, Any]]:
-    """Retorna filas de oferta_formativa_difoca donde tipo_proceso contiene 'sincron'."""
-    sql = """
-        SELECT codigo, anio, condicion,
-               tipo_proceso_formativo, denominacion_proceso_formativo,
-               especialista_cargo
-        FROM oferta_formativa_difoca
-        ORDER BY anio DESC, condicion, codigo
-    """
+    """Retorna capacitaciones sincronicas cerradas o en implementacion."""
     try:
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql)
-                rows = cur.fetchall()
+        caps = Capacitacion.objects.filter(
+            cap_estado__in=_ESTADOS_CERRADO_IMPLEMENTACION,
+            cap_tipo__icontains="sincr",
+        ).order_by("-cap_anio", "cap_estado", "cap_codigo")
     except Exception:
-        logger.exception("Error leyendo oferta para sincronicas")
+        logger.exception("Error leyendo capacitaciones sincronicas")
         return []
 
     result = []
@@ -263,24 +262,19 @@ def obtener_capacitaciones_sincronicas(
     norm_display = str(display_name or "").strip().lower()
     norm_user = str(username or "").strip().lower()
 
-    for row in rows:
-        tipo = str(row.get("tipo_proceso_formativo", "")).strip()
-        if "sincr" not in tipo.lower():
-            continue
-        cond = str(row.get("condicion", "")).strip().lower()
-        if cond not in ("cerrado", "implementacion", "en implementacion"):
-            continue
+    for cap in caps:
         if norm_role == "usuario estandar":
-            esp = str(row.get("especialista_cargo", "")).strip().lower()
+            esp = str(cap.especialista_cargo or "").strip().lower()
             if esp != norm_display and esp != norm_user:
                 continue
+        codigo = f"{cap.cap_codigo}-{cap.cap_id_curso}" if cap.cap_id_curso else cap.cap_codigo
         result.append({
-            "codigo": str(row.get("codigo", "")).strip(),
-            "anio": str(row.get("anio", "")).strip(),
-            "condicion": str(row.get("condicion", "")).strip(),
-            "tipo_proceso_formativo": tipo,
-            "denominacion_proceso_formativo": str(row.get("denominacion_proceso_formativo", "")).strip(),
-            "especialista_cargo": str(row.get("especialista_cargo", "")).strip(),
+            "codigo": codigo,
+            "anio": str(cap.cap_anio or "").strip(),
+            "condicion": str(cap.cap_estado or "").strip(),
+            "tipo_proceso_formativo": str(cap.cap_tipo or "").strip(),
+            "denominacion_proceso_formativo": str(cap.cap_nombre or "").strip(),
+            "especialista_cargo": str(cap.especialista_cargo or "").strip(),
         })
     return result
 

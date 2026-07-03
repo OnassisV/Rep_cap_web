@@ -18,8 +18,30 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 from accounts.db import get_connection
 from core.indicadores_adapters import _count_distinct_non_empty, _normalize_iged_name
+from core.models import Capacitacion
 
 ANIO_VIGENTE = datetime.now().year
+
+# Estados de cap_capacitaciones equivalentes a "Cerrado"/"En implementacion"
+# de la extinta oferta_formativa_difoca.
+_ESTADOS_CERRADO_IMPLEMENTACION = [
+    Capacitacion.Estado.FINALIZADA,
+    Capacitacion.Estado.EN_PROCESO,
+]
+
+
+def _codigo_completo(cap: Capacitacion) -> str:
+    """Reconstruye el codigo compuesto 'PREFIJO-IDCURSO' usado por la vista."""
+    if cap.cap_id_curso:
+        return f"{cap.cap_codigo}-{cap.cap_id_curso}"
+    return cap.cap_codigo
+
+
+def _split_codigo(codigo: str) -> tuple[str, str]:
+    parts = str(codigo or "").strip().split("-", 1)
+    cap_codigo = parts[0].strip()
+    cap_id_curso = parts[1].strip() if len(parts) > 1 else ""
+    return cap_codigo, cap_id_curso
 
 # ---------------------------------------------------------------------------
 # Definiciones de capitulos y preguntas (replicadas del modulo Streamlit)
@@ -167,17 +189,14 @@ _EXTRAER_ITEM_RE = re.compile(r"^([ABC]\.\d+)")
 def obtener_anios_disponibles() -> list[int]:
     """Retorna lista de anios con capacitaciones cerradas o en implementacion."""
     try:
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT DISTINCT anio
-                    FROM oferta_formativa_difoca
-                    WHERE anio IS NOT NULL AND condicion IN ('Cerrado', 'En implementacion')
-                    ORDER BY anio DESC
-                    """
-                )
-                return [int(f["anio"]) for f in cur.fetchall() if f.get("anio")]
+        anios = (
+            Capacitacion.objects.filter(cap_estado__in=_ESTADOS_CERRADO_IMPLEMENTACION)
+            .exclude(cap_anio__isnull=True)
+            .order_by("-cap_anio")
+            .values_list("cap_anio", flat=True)
+            .distinct()
+        )
+        return [int(a) for a in anios if a]
     except Exception:
         return [ANIO_VIGENTE]
 
@@ -189,21 +208,26 @@ def obtener_procesos_formativos(
     """Retorna procesos formativos visibles para el especialista."""
     anio_filtro = anio or ANIO_VIGENTE
     try:
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT codigo, tipo_proceso_formativo, denominacion_proceso_formativo,
-                           especialista_cargo, anio, condicion,
-                           publico_objetivo, objetivo_capacitacion,
-                           horas_certificacion, implementacion_inicio, implementacion_final
-                    FROM oferta_formativa_difoca
-                    WHERE anio = %s AND condicion IN ('Cerrado', 'En implementacion')
-                    ORDER BY codigo
-                    """,
-                    (anio_filtro,),
-                )
-                filas = list(cur.fetchall())
+        caps = Capacitacion.objects.filter(
+            cap_anio=anio_filtro,
+            cap_estado__in=_ESTADOS_CERRADO_IMPLEMENTACION,
+        ).order_by("cap_codigo", "cap_id_curso")
+        filas = [
+            {
+                "codigo": _codigo_completo(cap),
+                "tipo_proceso_formativo": cap.cap_tipo,
+                "denominacion_proceso_formativo": cap.cap_nombre,
+                "especialista_cargo": cap.especialista_cargo,
+                "anio": cap.cap_anio,
+                "condicion": cap.cap_estado,
+                "publico_objetivo": cap.publico_objetivo_oferta,
+                "objetivo_capacitacion": cap.mi_objetivo_capacitacion,
+                "horas_certificacion": cap.pt_horas,
+                "implementacion_inicio": cap.pt_implementacion_inicio,
+                "implementacion_final": cap.pt_implementacion_fin,
+            }
+            for cap in caps
+        ]
     except Exception:
         return []
 
@@ -224,21 +248,21 @@ def obtener_procesos_formativos(
 def obtener_datos_proceso(codigo: str) -> dict[str, Any]:
     """Retorna metadatos de un proceso formativo para autollenado."""
     try:
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT tipo_proceso_formativo, denominacion_proceso_formativo,
-                           especialista_cargo, publico_objetivo, objetivo_capacitacion,
-                           horas_certificacion, implementacion_inicio, implementacion_final
-                    FROM oferta_formativa_difoca
-                    WHERE codigo = %s
-                    LIMIT 1
-                    """,
-                    (codigo,),
-                )
-                fila = cur.fetchone()
-        if fila:
+        cap_codigo, cap_id_curso = _split_codigo(codigo)
+        cap = Capacitacion.objects.filter(
+            cap_codigo=cap_codigo, cap_id_curso=cap_id_curso
+        ).first()
+        if cap:
+            fila = {
+                "tipo_proceso_formativo": cap.cap_tipo,
+                "denominacion_proceso_formativo": cap.cap_nombre,
+                "especialista_cargo": cap.especialista_cargo,
+                "publico_objetivo": cap.publico_objetivo_oferta,
+                "objetivo_capacitacion": cap.mi_objetivo_capacitacion,
+                "horas_certificacion": cap.pt_horas,
+                "implementacion_inicio": cap.pt_implementacion_inicio,
+                "implementacion_final": cap.pt_implementacion_fin,
+            }
             fila["proceso_combinado"] = (
                 f"{fila.get('tipo_proceso_formativo', '')} {fila.get('denominacion_proceso_formativo', '')}".strip()
             )
@@ -369,9 +393,11 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
             df_bbdd = pd.read_sql(
                 "SELECT * FROM bbdd_difoca WHERE codigo = %s", conn, params=(codigo,)
             )
-            df_oferta = pd.read_sql(
-                "SELECT * FROM oferta_formativa_difoca WHERE codigo = %s", conn, params=(codigo,)
-            )
+            cap_codigo, cap_id_curso = _split_codigo(codigo)
+            existe_cap = Capacitacion.objects.filter(
+                cap_codigo=cap_codigo, cap_id_curso=cap_id_curso
+            ).exists()
+            df_oferta = pd.DataFrame({"codigo": [codigo]}) if existe_cap else pd.DataFrame()
             try:
                 df_satisf = pd.read_sql(
                     "SELECT * FROM satisfaccion WHERE codigo = %s", conn, params=(codigo,)
@@ -570,24 +596,39 @@ def generar_reporte_analisis(anio: int | None = None) -> bytes | None:
     anio_filtro = anio or ANIO_VIGENTE
 
     try:
+        caps_cerradas = Capacitacion.objects.filter(
+            cap_anio=anio_filtro, cap_estado__in=_ESTADOS_CERRADO_IMPLEMENTACION
+        )
+        info_por_codigo = {
+            _codigo_completo(cap): {
+                "denominacion_proceso_formativo": cap.cap_nombre,
+                "especialista_cargo": cap.especialista_cargo,
+                "capacitacion_presencialidad": cap.capacitacion_presencialidad,
+            }
+            for cap in caps_cerradas
+        }
+        if not info_por_codigo:
+            return None
+
         conn = get_connection()
         try:
             with conn.cursor() as cur:
+                placeholders = ", ".join(["%s"] * len(info_por_codigo))
                 cur.execute(
-                    """
-                    SELECT ec.codigo, ec.pregunta, ec.respuesta, ec.fecha_guardado,
-                           of2.denominacion_proceso_formativo, of2.especialista_cargo,
-                           of2.capacitacion_presencialidad
-                    FROM estandares_calidad ec
-                    LEFT JOIN oferta_formativa_difoca of2 ON ec.codigo = of2.codigo
-                    WHERE of2.anio = %s AND of2.condicion = 'Cerrado'
-                    ORDER BY ec.codigo, ec.pregunta
+                    f"""
+                    SELECT codigo, pregunta, respuesta, fecha_guardado
+                    FROM estandares_calidad
+                    WHERE codigo IN ({placeholders})
+                    ORDER BY codigo, pregunta
                     """,
-                    (anio_filtro,),
+                    tuple(info_por_codigo.keys()),
                 )
                 rows = cur.fetchall()
         finally:
             conn.close()
+
+        for row in rows:
+            row.update(info_por_codigo.get(row["codigo"], {}))
 
         if not rows:
             return None
@@ -834,24 +875,20 @@ def generar_reporte_individual(codigo: str, anio: int | None = None) -> bytes | 
                 (codigo, codigo),
             )
             filas_resp = list(cursor.fetchall())
-
-            cursor.execute(
-                """
-                SELECT tipo_proceso_formativo, denominacion_proceso_formativo
-                FROM oferta_formativa_difoca WHERE codigo = %s LIMIT 1
-                """,
-                (codigo,),
-            )
-            info_proc = cursor.fetchone()
         finally:
             conn.close()
 
         if not filas_resp:
             return None
 
+        cap_codigo, cap_id_curso = _split_codigo(codigo)
+        cap_proc = Capacitacion.objects.filter(
+            cap_codigo=cap_codigo, cap_id_curso=cap_id_curso
+        ).first()
+
         nombre_proc = ""
-        if info_proc:
-            nombre_proc = f"{info_proc.get('tipo_proceso_formativo', '')} {info_proc.get('denominacion_proceso_formativo', '')}".strip()
+        if cap_proc:
+            nombre_proc = f"{cap_proc.cap_tipo} {cap_proc.cap_nombre}".strip()
 
         resp_por_cap: dict[str, dict[str, str]] = {}
         for f in filas_resp:
