@@ -91,6 +91,7 @@ from .caracterizacion_schema import (
 )
 from .indicadores_adapters import (
     build_caracterizacion_export,
+    build_gestion_dashboard_context,
     build_indicadores_dashboard_context,
     build_indicadores_download,
 )
@@ -2161,19 +2162,22 @@ def section_detail_view(request, section_slug: str):
     # Construye contexto de identidad.
     user_context = _build_user_context(request)
 
+    context: dict[str, Any] = {
+        **user_context,
+        "section": section,
+        # Secciones completas para renderizar barra de pestanas de navegacion.
+        "menu_sections": MENU_GEOMETRICO,
+        # Submenus de la seccion activa (si aplica).
+        "section_submenus": section_submenus if len(section_submenus) > 1 else [],
+    }
+
+    # Resumen (tarjetas por estado, distribucion por tipo y Gantt) solo en
+    # la portada de Gestion de la Capacitacion.
+    if section_slug == "gestion-capacitacion":
+        context.update(build_gestion_dashboard_context())
+
     # Renderiza pagina detalle de la seccion seleccionada.
-    return render(
-        request,
-        "core/section_detail.html",
-        {
-            **user_context,
-            "section": section,
-            # Secciones completas para renderizar barra de pestanas de navegacion.
-            "menu_sections": MENU_GEOMETRICO,
-            # Submenus de la seccion activa (si aplica).
-            "section_submenus": section_submenus if len(section_submenus) > 1 else [],
-        },
-    )
+    return render(request, "core/section_detail.html", context)
 
 
 @login_required

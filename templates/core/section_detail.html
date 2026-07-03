@@ -120,6 +120,90 @@
                 </div>
             </section>
         {% endif %}
+
+        <!-- Resumen de Gestion de la Capacitacion: tarjetas por estado, -->
+        <!-- distribucion por tipo y Gantt de capacitaciones en proceso. -->
+        {% if gestion_tarjetas_estado %}
+            <section class="submenu-panel gestion-resumen">
+                <h2 class="gestion-resumen__titulo">
+                    Resumen {{ gestion_anio_vigente }}
+                    <small>Estado de capacitaciones del año vigente y avance de las que están en proceso.</small>
+                </h2>
+
+                <div class="gestion-estado-cards">
+                    {% for tarjeta in gestion_tarjetas_estado %}
+                        <div class="gestion-estado-card gestion-estado-card--{{ tarjeta.slug }}">
+                            <strong>{{ tarjeta.total }}</strong>
+                            <span>{{ tarjeta.estado }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                {% if gestion_distribucion_tipo %}
+                    <div>
+                        <h3 class="gestion-resumen__titulo" style="font-size:0.9rem;">Distribución por tipo</h3>
+                        <div class="gestion-tipo-lista">
+                            {% for fila in gestion_distribucion_tipo %}
+                                <div class="gestion-tipo-fila">
+                                    <span class="gestion-tipo-fila__label">
+                                        <span class="gestion-tipo-fila__dot" style="background:{{ fila.color }};"></span>
+                                        {{ fila.tipo }}
+                                    </span>
+                                    <span class="gestion-tipo-fila__track" title="{{ fila.tipo }}: {{ fila.total }} ({{ fila.pct }}%)">
+                                        <span class="gestion-tipo-fila__fill" style="width:{{ fila.pct_css }}%;background:{{ fila.color }};"></span>
+                                    </span>
+                                    <span class="gestion-tipo-fila__pct">{{ fila.total }} ({{ fila.pct }}%)</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div>
+                    <h3 class="gestion-resumen__titulo" style="font-size:0.9rem;">
+                        Capacitaciones en proceso
+                        <small>Barras según fecha de implementación registrada. La línea naranja marca hoy.</small>
+                    </h3>
+
+                    {% if gestion_gantt_items %}
+                        <div class="gestion-gantt">
+                            {% for item in gestion_gantt_items %}
+                                <div class="gestion-gantt__row">
+                                    <span class="gestion-gantt__label" title="{{ item.nombre }}">{{ item.codigo }}</span>
+                                    <span class="gestion-gantt__track">
+                                        <span class="gestion-gantt__bar"
+                                              style="left:{{ item.left_pct_css }}%;width:{{ item.width_pct_css }}%;"
+                                              title="{{ item.nombre }}: {{ item.inicio }} → {{ item.fin }}"></span>
+                                        {% if gestion_gantt_hoy_pct != None %}
+                                            <span class="gestion-gantt__hoy" style="left:{{ gestion_gantt_hoy_pct }}%;"></span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="gestion-gantt__vacio">
+                            Ninguna capacitación "En proceso" tiene ambas fechas de implementación cargadas todavía.
+                        </p>
+                    {% endif %}
+
+                    {% if gestion_gantt_sin_fechas %}
+                        <details class="gestion-gantt__pendientes">
+                            <summary>{{ gestion_gantt_sin_fechas|length }} capacitación(es) en proceso sin fechas de implementación — no aparecen en el Gantt</summary>
+                            <ul>
+                                {% for item in gestion_gantt_sin_fechas %}
+                                    <li>
+                                        <a href="{% url 'core:submenu_detail' 'gestion-capacitacion' 'editar-capacitacion' %}?id={{ item.id }}">
+                                            {{ item.codigo }} — {{ item.nombre }}
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                    {% endif %}
+                </div>
+            </section>
+        {% endif %}
     </main>
 </body>
 </html>

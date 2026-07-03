@@ -6436,3 +6436,210 @@ body {
     border-left: 3px solid var(--brand-blue-mid);
     padding-left: 0.52rem;
 }
+
+/* ── Resumen de Gestión de la Capacitación (portada de sección) ── */
+.gestion-resumen {
+    margin-top: 1.4rem;
+    display: grid;
+    gap: 1.1rem;
+}
+
+.gestion-resumen__titulo {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.02rem;
+    color: var(--ink);
+}
+
+.gestion-resumen__titulo small {
+    display: block;
+    font-family: "DM Sans", sans-serif;
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+}
+
+/* -- Tarjetas por estado -- */
+.gestion-estado-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.72rem;
+}
+
+.gestion-estado-card {
+    display: grid;
+    gap: 0.28rem;
+    padding: 0.92rem 1rem;
+    border-radius: 0.9rem;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--line-strong);
+    box-shadow: 0 14px 26px -22px rgba(12, 52, 95, 0.22);
+}
+
+.gestion-estado-card strong {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.5rem;
+    color: var(--ink);
+    line-height: 1;
+}
+
+.gestion-estado-card span {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.gestion-estado-card--formulada { border-left-color: #cebff0; }
+.gestion-estado-card--enproceso { border-left-color: #f0c28f; }
+.gestion-estado-card--finalizada { border-left-color: #99d1c0; }
+.gestion-estado-card--cancelada { border-left-color: #dc3545; }
+
+/* -- Distribución por tipo -- */
+.gestion-tipo-lista {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.gestion-tipo-fila {
+    display: grid;
+    grid-template-columns: 168px 1fr 3.6rem;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.gestion-tipo-fila__label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.gestion-tipo-fila__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+}
+
+.gestion-tipo-fila__track {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: #eef3f9;
+    overflow: hidden;
+}
+
+.gestion-tipo-fila__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    height: 100%;
+    border-radius: 999px;
+}
+
+.gestion-tipo-fila__pct {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-align: right;
+}
+
+/* -- Gantt de capacitaciones en proceso -- */
+.gestion-gantt {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.gestion-gantt__row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.gestion-gantt__label {
+    font-size: 0.78rem;
+    color: var(--ink);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gestion-gantt__track {
+    position: relative;
+    height: 22px;
+    border-radius: 6px;
+    background: #eef3f9;
+}
+
+.gestion-gantt__bar {
+    position: absolute;
+    top: 3px;
+    height: 16px;
+    min-width: 6px;
+    border-radius: 4px;
+    background: var(--brand-blue-mid);
+}
+
+.gestion-gantt__hoy {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--orange-strong);
+}
+
+.gestion-gantt__hoy-label {
+    position: absolute;
+    top: -1.15rem;
+    transform: translateX(-50%);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--orange-strong);
+    white-space: nowrap;
+}
+
+.gestion-gantt__vacio {
+    padding: 1rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: 0.8rem;
+    color: var(--muted);
+    font-size: 0.84rem;
+    background: #fbfdff;
+}
+
+.gestion-gantt__pendientes {
+    margin-top: 0.4rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.8rem;
+    background: #fff8ec;
+    border: 1px solid #f0d9a8;
+}
+
+.gestion-gantt__pendientes summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #8a5a10;
+}
+
+.gestion-gantt__pendientes ul {
+    margin: 0.6rem 0 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.3rem;
+}
+
+.gestion-gantt__pendientes a {
+    font-size: 0.8rem;
+    color: var(--brand-blue-mid);
+    text-decoration: none;
+}
+
+.gestion-gantt__pendientes a:hover {
+    text-decoration: underline;
+}

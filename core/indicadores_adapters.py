@@ -1120,3 +1120,137 @@ def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
             "total_participantes": int(len(dataframes.get("dni", pd.DataFrame()).index)),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Resumen de "Gestión de la Capacitación": tarjetas por estado, distribución
+# por tipo y Gantt de capacitaciones en proceso.
+# ---------------------------------------------------------------------------
+
+# Orden fijo de la paleta categórica (validada con scripts/validate_palette.js
+# del skill de dataviz) — nunca se reasigna por ranking, siempre en este orden.
+_TIPO_BUCKET_COLORS = {
+    "Curso": "#2a78d6",
+    "Capacitación sincrónica": "#1baf7a",
+    "Curso Taller": "#eda100",
+    "Programa": "#008300",
+    "Otros": "#4a3aa7",
+}
+
+_ESTADO_ORDEN = ["Formulada", "En proceso", "Finalizada", "Cancelada"]
+
+
+def _bucket_tipo(cap_tipo: str) -> str:
+    """Agrupa cap_tipo en categorías de alto conteo + 'Otros'."""
+    valor = str(cap_tipo or "").strip()
+    if valor == "Curso":
+        return "Curso"
+    if valor == "Capacitación sincrónica":
+        return "Capacitación sincrónica"
+    if valor in ("Curso Taller", "Curso-taller"):
+        return "Curso Taller"
+    if valor.startswith("Programa"):
+        return "Programa"
+    return "Otros"
+
+
+def build_gestion_dashboard_context(anio: int | None = None) -> dict[str, Any]:
+    """Resumen para la portada de 'Gestión de la Capacitación': tarjetas por
+    estado, distribución por tipo y Gantt de capacitaciones en proceso.
+    """
+    from datetime import date as _date
+    from core.models import Capacitacion
+
+    anio_vigente = anio or datetime.now().year
+    qs_anio = Capacitacion.objects.filter(cap_anio=anio_vigente)
+
+    # -- Tarjetas por estado (año vigente) -----------------------------------
+    from django.db.models import Count
+    conteo_estado = {
+        row["cap_estado"]: row["n"]
+        for row in qs_anio.values("cap_estado").annotate(n=Count("id"))
+    }
+    tarjetas_estado = [
+        {"estado": estado, "total": conteo_estado.get(estado, 0), "slug": estado.lower().replace(" ", "")}
+        for estado in _ESTADO_ORDEN
+    ]
+
+    # -- Distribución por tipo (año vigente) ---------------------------------
+    conteo_tipo: dict[str, int] = {}
+    for row in qs_anio.values("cap_tipo").annotate(n=Count("id")):
+        bucket = _bucket_tipo(row["cap_tipo"])
+        conteo_tipo[bucket] = conteo_tipo.get(bucket, 0) + row["n"]
+    total_tipo = sum(conteo_tipo.values()) or 1
+    distribucion_tipo = []
+    for bucket, color in _TIPO_BUCKET_COLORS.items():
+        total_bucket = conteo_tipo.get(bucket, 0)
+        if total_bucket <= 0:
+            continue
+        pct = round(total_bucket / total_tipo * 100, 1)
+        distribucion_tipo.append({
+            "tipo": bucket,
+            "total": total_bucket,
+            "pct": pct,
+            # Formateado con punto explícito: en templates Django localiza
+            # los floats con coma (es-pe) y eso invalida `width: X%` en CSS.
+            "pct_css": f"{pct:.1f}",
+            "color": color,
+        })
+
+    # -- Gantt de capacitaciones "En proceso" (todos los años) --------------
+    en_proceso = Capacitacion.objects.filter(cap_estado=Capacitacion.Estado.EN_PROCESO).order_by(
+        "pt_implementacion_inicio", "cap_codigo"
+    )
+    con_fechas = [
+        c for c in en_proceso
+        if c.pt_implementacion_inicio and c.pt_implementacion_fin
+    ]
+    sin_fechas = [c for c in en_proceso if c not in con_fechas]
+
+    gantt_items: list[dict[str, Any]] = []
+    if con_fechas:
+        inicio_min = min(c.pt_implementacion_inicio for c in con_fechas)
+        fin_max = max(c.pt_implementacion_fin for c in con_fechas)
+        hoy = _date.today()
+        ventana_inicio = min(inicio_min, hoy)
+        ventana_fin = max(fin_max, hoy)
+        rango_dias = max((ventana_fin - ventana_inicio).days, 1)
+
+        for c in con_fechas:
+            offset_dias = (c.pt_implementacion_inicio - ventana_inicio).days
+            duracion_dias = max((c.pt_implementacion_fin - c.pt_implementacion_inicio).days, 1)
+            codigo = f"{c.cap_codigo}-{c.cap_id_curso}" if c.cap_id_curso else c.cap_codigo
+            left_pct = round(offset_dias / rango_dias * 100, 2)
+            width_pct = max(round(duracion_dias / rango_dias * 100, 2), 1.0)
+            gantt_items.append({
+                "codigo": codigo,
+                "id": c.pk,
+                "nombre": c.cap_nombre,
+                "inicio": c.pt_implementacion_inicio.isoformat(),
+                "fin": c.pt_implementacion_fin.isoformat(),
+                # Strings con punto explícito para usar en `style="..."`
+                # (ver nota de pct_css más arriba sobre localización).
+                "left_pct_css": f"{left_pct:.2f}",
+                "width_pct_css": f"{width_pct:.2f}",
+            })
+        hoy_pct_css = f"{round((hoy - ventana_inicio).days / rango_dias * 100, 2):.2f}"
+    else:
+        hoy_pct_css = None
+
+    sin_fechas_items = [
+        {
+            "codigo": f"{c.cap_codigo}-{c.cap_id_curso}" if c.cap_id_curso else c.cap_codigo,
+            "id": c.pk,
+            "nombre": c.cap_nombre,
+        }
+        for c in sin_fechas
+    ]
+
+    return {
+        "gestion_anio_vigente": anio_vigente,
+        "gestion_tarjetas_estado": tarjetas_estado,
+        "gestion_distribucion_tipo": distribucion_tipo,
+        "gestion_gantt_items": gantt_items,
+        "gestion_gantt_hoy_pct": hoy_pct_css,
+        "gestion_gantt_sin_fechas": sin_fechas_items,
+    }
