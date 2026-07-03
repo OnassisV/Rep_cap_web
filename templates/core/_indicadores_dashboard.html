@@ -241,6 +241,11 @@
 {% if indicadores_download_base_url %}
     <div class="indicadores-export-actions indicadores-export-actions--footer">
         <button type="button" class="btn-primary-soft" id="btn-gestionar-descarga">Gestionar descarga</button>
+        <a href="/app/seccion/reporte-indicadores/submenu/dashboard-kpi/?download=caracterizacion&amp;format=xlsx"
+           class="btn-secondary-soft"
+           title="Descarga todas las capacitaciones y todas las columnas con datos de cap_capacitaciones, sin aplicar los filtros de este panel">
+            Exportar caracterización (todas)
+        </a>
     </div>
 
     <dialog class="indicadores-dl-modal" id="dlModal">

@@ -89,7 +89,11 @@ from .caracterizacion_schema import (
     CARACTERIZACION_SECCIONES,
     iterar_campos_caracterizacion,
 )
-from .indicadores_adapters import build_indicadores_dashboard_context, build_indicadores_download
+from .indicadores_adapters import (
+    build_caracterizacion_export,
+    build_indicadores_dashboard_context,
+    build_indicadores_download,
+)
 from .sync_runtime import build_sync_status_context
 from . import estandares_calidad as ec_mod
 from . import gestion_forms as gf_mod
@@ -4331,6 +4335,16 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
     if section_slug == "reporte-indicadores" and submenu_slug == "dashboard-kpi":
         download_kind = str(request.GET.get("download", "")).strip().lower()
         download_format = str(request.GET.get("format", "xlsx")).strip().lower()
+        if download_kind == "caracterizacion":
+            # Exportación sin filtros: siempre trae todas las capacitaciones,
+            # independiente de los filtros aplicados al dashboard de indicadores.
+            download_payload = build_caracterizacion_export(download_format)
+            response = HttpResponse(
+                download_payload.get("content", b""),
+                content_type=str(download_payload.get("content_type", "application/octet-stream")),
+            )
+            response["Content-Disposition"] = f'attachment; filename="{download_payload.get("filename", "caracterizacion_export")}"'
+            return response
         if download_kind:
             download_payload = build_indicadores_download(request.GET, download_kind, download_format)
             if download_payload is not None:

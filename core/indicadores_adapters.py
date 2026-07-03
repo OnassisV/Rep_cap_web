@@ -1001,6 +1001,44 @@ def _excel_bytes(sheets: list[tuple[str, pd.DataFrame]]) -> bytes:
     return buffer.getvalue()
 
 
+def build_caracterizacion_export(export_format: str) -> dict[str, Any]:
+    """Exporta la caracterización completa de cap_capacitaciones, sin filtros.
+
+    A diferencia de build_indicadores_download, no depende de query_data:
+    siempre trae todas las capacitaciones y todas las columnas del modelo
+    que tengan al menos un dato (se descartan columnas 100% vacías).
+    """
+    from core.models import Capacitacion
+
+    export_format = str(export_format or "xlsx").strip().lower()
+    if export_format not in {"xlsx", "csv"}:
+        export_format = "xlsx"
+
+    dataframe = pd.DataFrame(list(Capacitacion.objects.all().order_by("cap_anio", "cap_codigo").values()))
+    if not dataframe.empty:
+        for columna in dataframe.columns:
+            if pd.api.types.is_datetime64tz_dtype(dataframe[columna]):
+                dataframe[columna] = dataframe[columna].dt.tz_localize(None)
+        dataframe = dataframe.dropna(axis=1, how="all")
+        columnas_no_vacias = [
+            c for c in dataframe.columns
+            if not (dataframe[c].astype(str).str.strip().isin(["", "None"])).all()
+        ]
+        dataframe = dataframe[columnas_no_vacias]
+
+    if export_format == "csv":
+        return {
+            "content": dataframe.to_csv(index=False).encode("utf-8-sig"),
+            "content_type": "text/csv; charset=utf-8",
+            "filename": "caracterizacion_capacitaciones.csv",
+        }
+    return {
+        "content": _excel_bytes([("Caracterización", dataframe)]),
+        "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "filename": "caracterizacion_capacitaciones.xlsx",
+    }
+
+
 def build_indicadores_download(query_data: Any, download_kind: str, download_format: str) -> dict[str, Any] | None:
     """Construye un archivo descargable para el dashboard de indicadores."""
     raw_kinds = str(download_kind or "").strip().lower()
