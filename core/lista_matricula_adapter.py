@@ -19,6 +19,7 @@ from datetime import datetime, date
 from typing import Any
 
 from accounts.db import get_connection
+from core.utils import normalizar_texto_upper
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -34,6 +35,18 @@ ANIO_VIGENTE = datetime.now().year
 TIPOS_LISTADO = ("Matriculados", "Participantes", "Certificados")
 
 _COLUMNAS_VACIAS = {"", "-", "NO DISPONIBLE"}
+
+# Variantes de nombre que representan la misma región (además de la
+# normalización de tildes que ya hace normalizar_texto_upper).
+_REGION_ALIASES = {
+    "LIMA PROVINCIA": "LIMA PROVINCIAS",
+}
+
+
+def _normalizar_region(valor: Any) -> str:
+    """Normaliza nombre de región: mayúsculas, sin tildes, alias unificados."""
+    region = normalizar_texto_upper(valor)
+    return _REGION_ALIASES.get(region, region)
 
 
 def _compose_course_code(codigo_base: Any, id_curso: Any) -> str:
@@ -266,7 +279,7 @@ def obtener_lista_matricula(
                 nombre_puesto = "SIN REGISTRAR"
 
             fila = {
-                "REGION": bbdd_row.get("region") or "",
+                "REGION": _normalizar_region(bbdd_row.get("region")),
                 "NOMBRE_IGED": nombre_iged,
                 "APELLIDOS": bbdd_row.get("apellidos") or "",
                 "NOMBRES": bbdd_row.get("nombres") or "",
