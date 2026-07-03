@@ -132,12 +132,29 @@
 
                 <div class="gestion-estado-cards">
                     {% for tarjeta in gestion_tarjetas_estado %}
-                        <div class="gestion-estado-card gestion-estado-card--{{ tarjeta.slug }}">
+                        {{ tarjeta.items|json_script:tarjeta.items_dom_id }}
+                        <button
+                            type="button"
+                            class="gestion-estado-card gestion-estado-card--{{ tarjeta.slug }}"
+                            data-estado="{{ tarjeta.estado }}"
+                            data-items-id="{{ tarjeta.items_dom_id }}"
+                            {% if not tarjeta.total %}disabled{% endif %}
+                        >
                             <strong>{{ tarjeta.total }}</strong>
                             <span>{{ tarjeta.estado }}</span>
-                        </div>
+                        </button>
                     {% endfor %}
                 </div>
+
+                <dialog class="gestion-estado-modal" id="gestionEstadoModal">
+                    <div class="gestion-estado-modal__content">
+                        <header class="gestion-estado-modal__header">
+                            <h3 id="gestionEstadoModalTitulo">Capacitaciones</h3>
+                            <button type="button" class="gestion-estado-modal__close" id="gestionEstadoModalClose">&times;</button>
+                        </header>
+                        <ul class="gestion-estado-modal__lista" id="gestionEstadoModalLista"></ul>
+                    </div>
+                </dialog>
 
                 {% if gestion_distribucion_tipo %}
                     <div>
@@ -203,6 +220,48 @@
                     {% endif %}
                 </div>
             </section>
+
+            <script>
+            (function () {
+                var modal = document.getElementById("gestionEstadoModal");
+                var titulo = document.getElementById("gestionEstadoModalTitulo");
+                var lista = document.getElementById("gestionEstadoModalLista");
+                var closeBtn = document.getElementById("gestionEstadoModalClose");
+                var editarBaseUrl = "{% url 'core:submenu_detail' 'gestion-capacitacion' 'editar-capacitacion' %}";
+                if (!modal) return;
+
+                document.querySelectorAll(".gestion-estado-card").forEach(function (btn) {
+                    btn.addEventListener("click", function () {
+                        var itemsId = btn.getAttribute("data-items-id");
+                        var script = document.getElementById(itemsId);
+                        var items = [];
+                        try { items = script ? JSON.parse(script.textContent) : []; } catch (e) { items = []; }
+
+                        titulo.textContent = btn.getAttribute("data-estado") + " (" + items.length + ")";
+                        lista.innerHTML = "";
+                        if (!items.length) {
+                            var vacio = document.createElement("li");
+                            vacio.className = "gestion-estado-modal__vacio";
+                            vacio.textContent = "No hay capacitaciones en este estado.";
+                            lista.appendChild(vacio);
+                        } else {
+                            items.forEach(function (item) {
+                                var li = document.createElement("li");
+                                var a = document.createElement("a");
+                                a.href = editarBaseUrl + "?id=" + encodeURIComponent(item.id);
+                                a.textContent = item.codigo + " — " + item.nombre;
+                                li.appendChild(a);
+                                lista.appendChild(li);
+                            });
+                        }
+                        modal.showModal();
+                    });
+                });
+
+                closeBtn.addEventListener("click", function () { modal.close(); });
+                modal.addEventListener("click", function (e) { if (e.target === modal) modal.close(); });
+            })();
+            </script>
         {% endif %}
     </main>
 </body>

@@ -6643,3 +6643,95 @@ body {
 .gestion-gantt__pendientes a:hover {
     text-decoration: underline;
 }
+
+/* ── Modal "capacitaciones por estado" (tarjetas de gestion-resumen) ── */
+.gestion-estado-card {
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.gestion-estado-card:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 30px -22px rgba(12, 52, 95, 0.32);
+}
+
+.gestion-estado-card:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.gestion-estado-modal {
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0;
+    max-width: 460px;
+    width: 92vw;
+    max-height: 70vh;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+    background: #fff;
+}
+
+.gestion-estado-modal::backdrop {
+    background: rgba(0, 0, 0, .35);
+}
+
+.gestion-estado-modal__content {
+    display: flex;
+    flex-direction: column;
+    max-height: 70vh;
+}
+
+.gestion-estado-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #dfeaf5;
+}
+
+.gestion-estado-modal__header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #1a2744;
+}
+
+.gestion-estado-modal__close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #6b7b94;
+    line-height: 1;
+    padding: 0;
+}
+
+.gestion-estado-modal__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0.6rem 1.25rem 1.1rem;
+    overflow-y: auto;
+    display: grid;
+    gap: 0.3rem;
+}
+
+.gestion-estado-modal__lista li a {
+    display: block;
+    padding: 0.42rem 0.55rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.gestion-estado-modal__lista li a:hover {
+    background: #f0f6ff;
+    color: var(--brand-blue-mid);
+}
+
+.gestion-estado-modal__vacio {
+    padding: 0.5rem 0.55rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+}

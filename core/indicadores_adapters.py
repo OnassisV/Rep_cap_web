@@ -1170,8 +1170,24 @@ def build_gestion_dashboard_context(anio: int | None = None) -> dict[str, Any]:
         row["cap_estado"]: row["n"]
         for row in qs_anio.values("cap_estado").annotate(n=Count("id"))
     }
+    items_por_estado: dict[str, list[dict[str, Any]]] = {estado: [] for estado in _ESTADO_ORDEN}
+    for c in qs_anio.order_by("cap_codigo", "cap_id_curso"):
+        if c.cap_estado not in items_por_estado:
+            continue
+        codigo = f"{c.cap_codigo}-{c.cap_id_curso}" if c.cap_id_curso else c.cap_codigo
+        items_por_estado[c.cap_estado].append({
+            "id": c.pk,
+            "codigo": codigo or "(sin código)",
+            "nombre": c.cap_nombre,
+        })
     tarjetas_estado = [
-        {"estado": estado, "total": conteo_estado.get(estado, 0), "slug": estado.lower().replace(" ", "")}
+        {
+            "estado": estado,
+            "total": conteo_estado.get(estado, 0),
+            "slug": (slug := estado.lower().replace(" ", "")),
+            "items": items_por_estado.get(estado, []),
+            "items_dom_id": f"gestion-estado-items-{slug}",
+        }
         for estado in _ESTADO_ORDEN
     ]
 
