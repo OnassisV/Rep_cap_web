@@ -1931,6 +1931,11 @@
                         <span class="registro-status registro-status--{{ editar_cap.cap_estado|lower|cut:" " }}" id="badge-estado-cap">
                             {{ editar_cap.cap_estado }}
                         </span>
+                        {% if editar_cap.cap_estado != "Finalizada" and editar_cap.cap_estado != "Cancelada" %}
+                        <button type="button" id="btn-recalcular-estado" class="btn-secondary-soft" data-cap-id="{{ editar_cap.pk }}" title="Vuelve a evaluar el estado según pasos completos y certificados emitidos">
+                            Recalcular estado
+                        </button>
+                        {% endif %}
                     </div>
 
                     {% if editar_cap.cert_pdf_emitido %}
