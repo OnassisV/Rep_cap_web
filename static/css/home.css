@@ -6504,23 +6504,25 @@ body {
 
 .gestion-tipo-fila {
     display: grid;
-    grid-template-columns: 168px 1fr 3.6rem;
+    grid-template-columns: 168px 1fr 5.4rem;
     align-items: center;
     gap: 0.6rem;
 }
 
 .gestion-tipo-fila__label {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.45rem;
     font-size: 0.82rem;
     color: var(--ink);
     font-weight: 600;
+    line-height: 1.25;
 }
 
 .gestion-tipo-fila__dot {
     width: 10px;
     height: 10px;
+    margin-top: 0.3rem;
     border-radius: 999px;
     flex: 0 0 auto;
 }
@@ -6545,6 +6547,7 @@ body {
     color: var(--muted);
     font-weight: 600;
     text-align: right;
+    white-space: nowrap;
 }
 
 /* -- Gantt de capacitaciones en proceso -- */
@@ -6558,6 +6561,40 @@ body {
     grid-template-columns: 200px 1fr;
     align-items: center;
     gap: 0.7rem;
+}
+
+.gestion-gantt__row--link {
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.12s ease;
+}
+
+.gestion-gantt__row--link:hover {
+    background: #f0f6ff;
+}
+
+.gestion-gantt__row--link:hover .gestion-gantt__label {
+    color: var(--brand-blue-mid);
+}
+
+.gestion-gantt__row--axis {
+    margin-bottom: 0.15rem;
+}
+
+.gestion-gantt__axis {
+    position: relative;
+    height: 1.1rem;
+}
+
+.gestion-gantt__axis-tick {
+    position: absolute;
+    top: 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    border-left: 1px solid var(--line-strong);
+    padding-left: 0.3rem;
 }
 
 .gestion-gantt__label {
@@ -6585,6 +6622,10 @@ body {
     background: var(--brand-blue-mid);
 }
 
+.gestion-gantt__bar--atrasada {
+    background: #dc3545;
+}
+
 .gestion-gantt__hoy {
     position: absolute;
     top: -2px;
@@ -6595,7 +6636,7 @@ body {
 
 .gestion-gantt__hoy-label {
     position: absolute;
-    top: -1.15rem;
+    top: 0;
     transform: translateX(-50%);
     font-size: 0.68rem;
     font-weight: 700;

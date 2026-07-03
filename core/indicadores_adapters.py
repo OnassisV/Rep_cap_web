@@ -1214,8 +1214,9 @@ def build_gestion_dashboard_context(anio: int | None = None) -> dict[str, Any]:
         })
 
     # -- Gantt de capacitaciones "En proceso" (todos los años) --------------
+    # Orden por fecha fin: lo que vence primero aparece arriba.
     en_proceso = Capacitacion.objects.filter(cap_estado=Capacitacion.Estado.EN_PROCESO).order_by(
-        "pt_implementacion_inicio", "cap_codigo"
+        "pt_implementacion_fin", "cap_codigo"
     )
     con_fechas = [
         c for c in en_proceso
@@ -1224,6 +1225,7 @@ def build_gestion_dashboard_context(anio: int | None = None) -> dict[str, Any]:
     sin_fechas = [c for c in en_proceso if c not in con_fechas]
 
     gantt_items: list[dict[str, Any]] = []
+    gantt_axis: list[dict[str, Any]] = []
     if con_fechas:
         inicio_min = min(c.pt_implementacion_inicio for c in con_fechas)
         fin_max = max(c.pt_implementacion_fin for c in con_fechas)
@@ -1232,24 +1234,42 @@ def build_gestion_dashboard_context(anio: int | None = None) -> dict[str, Any]:
         ventana_fin = max(fin_max, hoy)
         rango_dias = max((ventana_fin - ventana_inicio).days, 1)
 
+        editar_base_url = "/app/seccion/gestion-capacitacion/submenu/editar-capacitacion/"
         for c in con_fechas:
             offset_dias = (c.pt_implementacion_inicio - ventana_inicio).days
             duracion_dias = max((c.pt_implementacion_fin - c.pt_implementacion_inicio).days, 1)
             codigo = f"{c.cap_codigo}-{c.cap_id_curso}" if c.cap_id_curso else c.cap_codigo
             left_pct = round(offset_dias / rango_dias * 100, 2)
             width_pct = max(round(duracion_dias / rango_dias * 100, 2), 1.0)
+            atrasada = c.pt_implementacion_fin < hoy
             gantt_items.append({
                 "codigo": codigo,
                 "id": c.pk,
                 "nombre": c.cap_nombre,
                 "inicio": c.pt_implementacion_inicio.isoformat(),
                 "fin": c.pt_implementacion_fin.isoformat(),
+                "atrasada": atrasada,
+                "url": f"{editar_base_url}?id={c.pk}",
                 # Strings con punto explícito para usar en `style="..."`
                 # (ver nota de pct_css más arriba sobre localización).
                 "left_pct_css": f"{left_pct:.2f}",
                 "width_pct_css": f"{width_pct:.2f}",
             })
         hoy_pct_css = f"{round((hoy - ventana_inicio).days / rango_dias * 100, 2):.2f}"
+
+        # Eje de meses: una marca por cada mes que toca la ventana visible.
+        cursor_mes = _date(ventana_inicio.year, ventana_inicio.month, 1)
+        meses_es = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+        while cursor_mes <= ventana_fin:
+            offset_pct = (cursor_mes - ventana_inicio).days / rango_dias * 100
+            if 0 <= offset_pct <= 100:
+                gantt_axis.append({
+                    "label": f"{meses_es[cursor_mes.month - 1]} {cursor_mes.year}",
+                    "left_pct_css": f"{round(offset_pct, 2):.2f}",
+                })
+            siguiente_mes = cursor_mes.month % 12 + 1
+            siguiente_anio = cursor_mes.year + (1 if cursor_mes.month == 12 else 0)
+            cursor_mes = _date(siguiente_anio, siguiente_mes, 1)
     else:
         hoy_pct_css = None
 
@@ -1267,6 +1287,7 @@ def build_gestion_dashboard_context(anio: int | None = None) -> dict[str, Any]:
         "gestion_tarjetas_estado": tarjetas_estado,
         "gestion_distribucion_tipo": distribucion_tipo,
         "gestion_gantt_items": gantt_items,
+        "gestion_gantt_axis": gantt_axis,
         "gestion_gantt_hoy_pct": hoy_pct_css,
         "gestion_gantt_sin_fechas": sin_fechas_items,
     }

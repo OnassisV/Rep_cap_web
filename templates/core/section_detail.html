@@ -179,23 +179,36 @@
                 <div>
                     <h3 class="gestion-resumen__titulo" style="font-size:0.9rem;">
                         Capacitaciones en proceso
-                        <small>Barras según fecha de implementación registrada. La línea naranja marca hoy.</small>
+                        <small>Ordenadas por fecha de fin. La línea naranja marca hoy; barras rojas ya pasaron su fecha de fin. Click en una fila para editarla.</small>
                     </h3>
 
                     {% if gestion_gantt_items %}
                         <div class="gestion-gantt">
+                            {% if gestion_gantt_axis %}
+                                <div class="gestion-gantt__row gestion-gantt__row--axis">
+                                    <span></span>
+                                    <span class="gestion-gantt__axis">
+                                        {% for marca in gestion_gantt_axis %}
+                                            <span class="gestion-gantt__axis-tick" style="left:{{ marca.left_pct_css }}%;">{{ marca.label }}</span>
+                                        {% endfor %}
+                                        {% if gestion_gantt_hoy_pct != None %}
+                                            <span class="gestion-gantt__hoy-label" style="left:{{ gestion_gantt_hoy_pct }}%;">HOY</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            {% endif %}
                             {% for item in gestion_gantt_items %}
-                                <div class="gestion-gantt__row">
+                                <a class="gestion-gantt__row gestion-gantt__row--link" href="{{ item.url }}">
                                     <span class="gestion-gantt__label" title="{{ item.nombre }}">{{ item.codigo }}</span>
                                     <span class="gestion-gantt__track">
-                                        <span class="gestion-gantt__bar"
+                                        <span class="gestion-gantt__bar{% if item.atrasada %} gestion-gantt__bar--atrasada{% endif %}"
                                               style="left:{{ item.left_pct_css }}%;width:{{ item.width_pct_css }}%;"
-                                              title="{{ item.nombre }}: {{ item.inicio }} → {{ item.fin }}"></span>
+                                              title="{{ item.nombre }}: {{ item.inicio }} → {{ item.fin }}{% if item.atrasada %} (atrasada){% endif %}"></span>
                                         {% if gestion_gantt_hoy_pct != None %}
                                             <span class="gestion-gantt__hoy" style="left:{{ gestion_gantt_hoy_pct }}%;"></span>
                                         {% endif %}
                                     </span>
-                                </div>
+                                </a>
                             {% endfor %}
                         </div>
                     {% else %}
