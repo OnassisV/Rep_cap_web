@@ -232,9 +232,7 @@ def obtener_procesos_formativos(
         return []
 
     for f in filas:
-        f["proceso_combinado"] = (
-            f"{f.get('tipo_proceso_formativo', '')} {f.get('denominacion_proceso_formativo', '')}".strip()
-        )
+        f["proceso_combinado"] = str(f.get('denominacion_proceso_formativo', '') or '').strip()
 
     if nombre_especialista == "(OS) Chrystian Varillas":
         return filas
@@ -263,9 +261,7 @@ def obtener_datos_proceso(codigo: str) -> dict[str, Any]:
                 "implementacion_inicio": cap.pt_implementacion_inicio,
                 "implementacion_final": cap.pt_implementacion_fin,
             }
-            fila["proceso_combinado"] = (
-                f"{fila.get('tipo_proceso_formativo', '')} {fila.get('denominacion_proceso_formativo', '')}".strip()
-            )
+            fila["proceso_combinado"] = str(fila.get('denominacion_proceso_formativo', '') or '').strip()
             return fila
     except Exception:
         pass
@@ -888,7 +884,7 @@ def generar_reporte_individual(codigo: str, anio: int | None = None) -> bytes | 
 
         nombre_proc = ""
         if cap_proc:
-            nombre_proc = f"{cap_proc.cap_tipo} {cap_proc.cap_nombre}".strip()
+            nombre_proc = str(cap_proc.cap_nombre or "").strip()
 
         resp_por_cap: dict[str, dict[str, str]] = {}
         for f in filas_resp:

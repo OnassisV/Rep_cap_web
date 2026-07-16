@@ -98,7 +98,7 @@ def obtener_opciones_filtro_lista_matricula() -> dict[str, Any]:
     for r in rows:
         anio = r.get("anio")
         condicion = str(r.get("condicion") or "").strip()
-        proceso = f"{r.get('tipo_proceso_formativo', '')} {r.get('denominacion_proceso_formativo', '')}".strip()
+        proceso = str(r.get('denominacion_proceso_formativo', '') or '').strip()
         codigo = _compose_course_code(r.get("cap_codigo"), r.get("cap_id_curso"))
         if not proceso:
             continue
@@ -203,9 +203,7 @@ def obtener_lista_matricula(
         oferta_rows = filtradas
 
     for row in oferta_rows:
-        row["proceso_formativo"] = (
-            f"{row.get('tipo_proceso_formativo', '')} {row.get('denominacion_proceso_formativo', '')}".strip()
-        )
+        row["proceso_formativo"] = str(row.get('denominacion_proceso_formativo', '') or '').strip()
 
     if procesos_formativos:
         procesos_set = set(procesos_formativos)

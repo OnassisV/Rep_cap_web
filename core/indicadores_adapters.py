@@ -175,9 +175,7 @@ def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Da
 
 
 def _build_process_label(df: pd.DataFrame) -> pd.Series:
-    tipo = df.get("tipo_proceso_formativo", pd.Series(index=df.index, dtype=str)).fillna("").astype(str).str.strip()
-    nombre = df.get("denominacion_proceso_formativo", pd.Series(index=df.index, dtype=str)).fillna("").astype(str).str.strip()
-    return (tipo + " " + nombre).str.strip()
+    return df.get("denominacion_proceso_formativo", pd.Series(index=df.index, dtype=str)).fillna("").astype(str).str.strip()
 
 
 def _to_flag(series: pd.Series) -> pd.Series:

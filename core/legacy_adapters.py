@@ -546,7 +546,7 @@ def construir_resumen_estandares_por_capacitacion(
         filas_resultado.append(
             {
                 "codigo": codigo,
-                "proceso": f"{cap.get('tipo_proceso_formativo', '')} {cap.get('denominacion_proceso_formativo', '')}".strip(),
+                "proceso": str(cap.get('denominacion_proceso_formativo', '') or '').strip(),
                 "especialista": cap.get("especialista_cargo", ""),
                 "anio": cap.get("anio_num"),
                 "capitulos_completados": capitulos,
@@ -896,6 +896,125 @@ def _obtener_actividades_aula_por_curso(curso_id: int) -> dict[str, list[dict[st
         return result
 
     return result
+
+
+def obtener_ejercicios_curso(curso_id: int) -> dict[str, Any]:
+    """Lista los ejercicios (c_quiz) de un curso del Aula Virtual con su total de intentos.
+
+    Pensado para cursos que no siguen el patrón cap_codigo-cap_id_curso (ej: el
+    curso "PRE INSCRIPCIÓN", id 276), donde se necesita listar directamente por
+    id de curso de Aula Virtual.
+    """
+    curso_titulo = ""
+    ejercicios: list[dict[str, Any]] = []
+    try:
+        with _get_aula_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT title FROM course WHERE id = %s",
+                    (int(curso_id),),
+                )
+                row = cursor.fetchone()
+                curso_titulo = str((row or {}).get("title", "") or "").strip()
+
+                cursor.execute(
+                    """
+                    SELECT
+                        q.iid AS id,
+                        q.title AS titulo,
+                        q.active AS activo,
+                        COUNT(DISTINCT t.exe_user_id) AS intentos
+                    FROM c_quiz q
+                    LEFT JOIN track_e_exercises t
+                        ON t.c_id = q.c_id AND t.exe_exo_id = q.iid
+                    WHERE q.c_id = %s
+                    GROUP BY q.iid, q.title, q.active
+                    ORDER BY q.iid ASC
+                    """,
+                    (int(curso_id),),
+                )
+                for r in cursor.fetchall():
+                    ejercicios.append(
+                        {
+                            "id": r.get("id"),
+                            "titulo": _limpiar_texto_html_simple(r.get("titulo")),
+                            "activo": bool(r.get("activo")),
+                            "intentos": int(r.get("intentos") or 0),
+                        }
+                    )
+    except Exception:
+        logger.exception("Error consultando ejercicios del curso %s en Aula Virtual", curso_id)
+
+    return {
+        "curso_id": curso_id,
+        "curso_titulo": curso_titulo,
+        "ejercicios": ejercicios,
+        "total": len(ejercicios),
+    }
+
+
+def obtener_participantes_ejercicio(curso_id: int, ejercicio_id: int) -> dict[str, Any]:
+    """Cruza intentos de un ejercicio del Aula Virtual con la caracterización de sysdifoca.
+
+    Retorna por cada participante su nota/fecha de intento (Aula Virtual) junto
+    con sus datos personales (sysdifoca), a partir del DNI (user.official_code).
+    """
+    intentos_por_dni: dict[str, dict[str, Any]] = {}
+    try:
+        with _get_aula_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        u.official_code AS dni,
+                        MAX(t.exe_result) AS nota,
+                        MAX(t.exe_weighting) AS nota_maxima,
+                        MAX(t.exe_date) AS fecha_intento
+                    FROM track_e_exercises t
+                    LEFT JOIN user u ON t.exe_user_id = u.user_id
+                    WHERE t.c_id = %s AND t.exe_exo_id = %s
+                    GROUP BY t.exe_user_id, u.official_code
+                    """,
+                    (int(curso_id), int(ejercicio_id)),
+                )
+                for row in cursor.fetchall():
+                    dni = _normalizar_dni(row.get("dni"))
+                    if not dni:
+                        continue
+                    intentos_por_dni[dni] = {
+                        "nota": row.get("nota"),
+                        "nota_maxima": row.get("nota_maxima"),
+                        "fecha_intento": row.get("fecha_intento"),
+                    }
+    except Exception:
+        logger.exception(
+            "Error consultando participantes del ejercicio %s (curso %s) en Aula Virtual",
+            ejercicio_id, curso_id,
+        )
+        return {"filas": [], "sin_datos_sysdifoca": [], "total": 0}
+
+    dnis = list(intentos_por_dni.keys())
+    caracterizacion = obtener_caracterizacion_por_dnis(", ".join(dnis)) if dnis else {"filas": [], "no_encontrados": []}
+
+    filas: list[dict[str, Any]] = []
+    encontrados_dnis: set[str] = set()
+    for fila in caracterizacion["filas"]:
+        dni = _normalizar_dni(fila.get("dni"))
+        encontrados_dnis.add(dni)
+        info_intento = intentos_por_dni.get(dni, {})
+        filas.append({**fila, **info_intento})
+
+    # Participantes con intento registrado en Aula pero sin match en sysdifoca
+    # (igual se listan con su nota, para no perder el dato).
+    sin_datos_sysdifoca = [d for d in dnis if d not in encontrados_dnis]
+    for dni in sin_datos_sysdifoca:
+        filas.append({"dni": dni, **intentos_por_dni[dni]})
+
+    return {
+        "filas": filas,
+        "sin_datos_sysdifoca": sin_datos_sysdifoca,
+        "total": len(filas),
+    }
 
 
 def obtener_alertas_actividades_plataforma(codigo: str) -> dict[str, Any]:

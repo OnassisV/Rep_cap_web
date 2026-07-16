@@ -289,6 +289,12 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "adapter": "lista_matricula",
                 "legacy_module": "core/lista_matricula_adapter.py",
             },
+            {
+                "slug": "detalle-cuestionarios",
+                "titulo": "Detalle de Cuestionarios",
+                "descripcion": "Lista los ejercicios de un curso del Aula Virtual y descarga participantes y notas por ejercicio, cruzados con sysdifoca.",
+                "adapter": "detalle_cuestionario",
+            },
         ],
     },
     {
@@ -5070,6 +5076,52 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "lm_resumen": lm_resumen,
                 "lm_tipos_listado": ["Matriculados", "Participantes", "Certificados"],
                 "lm_plantilla_nombre": lm_plantilla_nombre,
+            })
+
+        elif submenu_slug == "detalle-cuestionarios":
+            import io
+            import openpyxl
+
+            from core.legacy_adapters import obtener_ejercicios_curso, obtener_participantes_ejercicio
+
+            dc_curso_id_raw = str(
+                request.POST.get("curso_id", "") or request.GET.get("curso_id", "") or "276"
+            ).strip()
+            dc_curso_id = int(dc_curso_id_raw) if dc_curso_id_raw.isdigit() else 276
+
+            if request.method == "POST" and request.POST.get("action") == "descargar_ejercicio":
+                dc_ejercicio_id_raw = str(request.POST.get("ejercicio_id", "")).strip()
+                if dc_ejercicio_id_raw.isdigit():
+                    dc_participantes = obtener_participantes_ejercicio(dc_curso_id, int(dc_ejercicio_id_raw))
+                    wb = openpyxl.Workbook()
+                    ws = wb.active
+                    ws.title = "Participantes"
+                    encabezados_dc = [
+                        "dni", "apellidos", "nombres", "region", "tipo_iged",
+                        "nombre_iged", "nivel_puesto", "nombre_puesto",
+                        "nota", "nota_maxima", "fecha_intento",
+                    ]
+                    ws.append(encabezados_dc)
+                    for fila in dc_participantes["filas"]:
+                        ws.append([str(fila.get(c, "") or "") for c in encabezados_dc])
+                    buf = io.BytesIO()
+                    wb.save(buf)
+                    buf.seek(0)
+                    resp = HttpResponse(
+                        buf.read(),
+                        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+                    resp["Content-Disposition"] = (
+                        f'attachment; filename="ejercicio_{dc_ejercicio_id_raw}_participantes.xlsx"'
+                    )
+                    return resp
+
+            dc_resultado = obtener_ejercicios_curso(dc_curso_id)
+            context.update({
+                "dc_curso_id": dc_curso_id,
+                "dc_curso_titulo": dc_resultado["curso_titulo"],
+                "dc_ejercicios": dc_resultado["ejercicios"],
+                "dc_total": dc_resultado["total"],
             })
 
     # Renderiza vista de submenu con adaptacion correspondiente.

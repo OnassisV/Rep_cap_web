@@ -909,7 +909,7 @@
                                                 data-search="{{ card.codigo|lower }} {{ card.denominacion_proceso_formativo|lower }}"
                                             >
                                                 <span class="cap-card__code">{{ card.codigo }}</span>
-                                                <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
+                                                <span class="cap-card__name">{{ card.denominacion_proceso_formativo }}</span>
                                                 <span class="cap-card__status cap-card__status--cerrado">
                                                     {% if 'cancelada' in condicion_txt %}Cancelada{% else %}Cerrado{% endif %}
                                                 </span>
@@ -920,7 +920,7 @@
                                                 data-search="{{ card.codigo|lower }} {{ card.denominacion_proceso_formativo|lower }}"
                                             >
                                                 <span class="cap-card__code">{{ card.codigo }}</span>
-                                                <span class="cap-card__name">{{ card.tipo_proceso_formativo }} {{ card.denominacion_proceso_formativo }}</span>
+                                                <span class="cap-card__name">{{ card.denominacion_proceso_formativo }}</span>
                                                 <span class="cap-card__status cap-card__status--abierto">
                                                     Abierto
                                                 </span>
@@ -1907,7 +1907,7 @@
                         {% for fila in capacitaciones %}
                             <li>
                                 <strong>{{ fila.codigo }}</strong> -
-                                {{ fila.tipo_proceso_formativo }} {{ fila.denominacion_proceso_formativo }}
+                                {{ fila.denominacion_proceso_formativo }}
                                 <span class="module-list__meta">({{ fila.condicion }})</span>
                             </li>
                         {% endfor %}
@@ -4032,6 +4032,78 @@
                     <p class="module-panel__note">
                         No se encontraron cursos del Aula Virtual{% if anio_seleccionado %} para el año {{ anio_seleccionado }}{% endif %}.
                     </p>
+                {% endif %}
+            {% endif %}
+
+            <!-- Ejercicios de un curso del Aula Virtual, con descarga de participantes/notas por ejercicio. -->
+            {% if adapter_kind == "detalle_cuestionario" %}
+                <form method="get" class="module-panel__form">
+                    <div class="form-group">
+                        <label for="dc_curso_id" class="form-label">ID de curso (Aula Virtual)</label>
+                        <input
+                            type="number"
+                            id="dc_curso_id"
+                            name="curso_id"
+                            class="form-control"
+                            value="{{ dc_curso_id }}"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn--small">Ver ejercicios</button>
+                </form>
+
+                <p class="module-panel__note">
+                    Curso <strong>{{ dc_curso_id }}</strong>
+                    {% if dc_curso_titulo %} — {{ dc_curso_titulo }}{% endif %}
+                    — <strong>{{ dc_total }}</strong> ejercicio(s).
+                </p>
+
+                {% if dc_ejercicios %}
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Título del ejercicio</th>
+                                    <th>Estado</th>
+                                    <th>Intentos</th>
+                                    <th>Descarga</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ejercicio in dc_ejercicios %}
+                                    <tr>
+                                        <td class="font-mono text-right">{{ ejercicio.id }}</td>
+                                        <td>{{ ejercicio.titulo }}</td>
+                                        <td>
+                                            {% if ejercicio.activo %}
+                                                <span class="registro-status registro-status--finalizada">Activo</span>
+                                            {% else %}
+                                                <span class="registro-status registro-status--porfinalizar">Cerrado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-right">{{ ejercicio.intentos }}</td>
+                                        <td>
+                                            <form method="post">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="curso_id" value="{{ dc_curso_id }}">
+                                                <input type="hidden" name="ejercicio_id" value="{{ ejercicio.id }}">
+                                                <input type="hidden" name="action" value="descargar_ejercicio">
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn--small"
+                                                    {% if not ejercicio.intentos %}disabled{% endif %}
+                                                >
+                                                    Descargar
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="module-panel__note">No se encontraron ejercicios para este curso.</p>
                 {% endif %}
             {% endif %}
 
