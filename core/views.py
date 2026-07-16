@@ -5097,7 +5097,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     ws = wb.active
                     ws.title = "Participantes"
                     encabezados_dc = [
-                        "dni", "apellidos", "nombres", "region", "tipo_iged",
+                        "dni", "apellidos", "nombres", "email", "region", "tipo_iged",
                         "nombre_iged", "nivel_puesto", "nombre_puesto",
                         "nota", "nota_maxima", "fecha_intento",
                     ]
