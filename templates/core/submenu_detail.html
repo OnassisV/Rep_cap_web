@@ -4057,6 +4057,12 @@
                     — <strong>{{ dc_total }}</strong> ejercicio(s).
                 </p>
 
+                {% if dc_error_debug %}
+                    <p class="module-panel__note" style="color:#b00020;">
+                        Error de conexión/consulta (temporal, para diagnóstico): {{ dc_error_debug }}
+                    </p>
+                {% endif %}
+
                 {% if dc_ejercicios %}
                     <div class="table-wrapper">
                         <table class="data-table">

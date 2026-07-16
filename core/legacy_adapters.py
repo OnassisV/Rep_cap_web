@@ -907,6 +907,7 @@ def obtener_ejercicios_curso(curso_id: int) -> dict[str, Any]:
     """
     curso_titulo = ""
     ejercicios: list[dict[str, Any]] = []
+    error_debug = ""
     try:
         with _get_aula_connection() as connection:
             with connection.cursor() as cursor:
@@ -942,14 +943,16 @@ def obtener_ejercicios_curso(curso_id: int) -> dict[str, Any]:
                             "intentos": int(r.get("intentos") or 0),
                         }
                     )
-    except Exception:
+    except Exception as exc:
         logger.exception("Error consultando ejercicios del curso %s en Aula Virtual", curso_id)
+        error_debug = f"{type(exc).__name__}: {exc}"
 
     return {
         "curso_id": curso_id,
         "curso_titulo": curso_titulo,
         "ejercicios": ejercicios,
         "total": len(ejercicios),
+        "error_debug": error_debug,
     }
 
 

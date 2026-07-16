@@ -5122,6 +5122,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 "dc_curso_titulo": dc_resultado["curso_titulo"],
                 "dc_ejercicios": dc_resultado["ejercicios"],
                 "dc_total": dc_resultado["total"],
+                "dc_error_debug": dc_resultado.get("error_debug", ""),
             })
 
     # Renderiza vista de submenu con adaptacion correspondiente.
