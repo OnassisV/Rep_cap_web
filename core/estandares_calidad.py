@@ -386,18 +386,19 @@ def calcular_kpis(codigo: str) -> dict[str, Any]:
     try:
         conn = get_connection()
         try:
-            df_bbdd = pd.read_sql(
-                "SELECT * FROM bbdd_difoca WHERE codigo = %s", conn, params=(codigo,)
-            )
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM bbdd_difoca WHERE codigo = %s", (codigo,))
+                df_bbdd = pd.DataFrame(list(cur.fetchall() or []))
+
             cap_codigo, cap_id_curso = _split_codigo(codigo)
             existe_cap = Capacitacion.objects.filter(
                 cap_codigo=cap_codigo, cap_id_curso=cap_id_curso
             ).exists()
             df_oferta = pd.DataFrame({"codigo": [codigo]}) if existe_cap else pd.DataFrame()
             try:
-                df_satisf = pd.read_sql(
-                    "SELECT * FROM satisfaccion WHERE codigo = %s", conn, params=(codigo,)
-                )
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM satisfaccion WHERE codigo = %s", (codigo,))
+                    df_satisf = pd.DataFrame(list(cur.fetchall() or []))
             except Exception:
                 df_satisf = pd.DataFrame()
         finally:
