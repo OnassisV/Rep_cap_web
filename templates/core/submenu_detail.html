@@ -1425,6 +1425,65 @@
                                             {% endfor %}
                                         </div>
                                     {% endif %}
+
+                                    {% if seguimiento_codigo_sel %}
+                                        <!-- Accesos externos: habilita a un correo a descargar
+                                             solo el reporte de cumplimiento de este curso. -->
+                                        <div class="acceso-reporte">
+                                            <h4 class="acceso-reporte__title">Accesos al reporte de cumplimiento</h4>
+                                            <p class="acceso-reporte__hint">
+                                                Los correos habilitados no entran al aplicativo: solo ven la lista de
+                                                sus cursos y descargan el reporte de cumplimiento (sin notas).
+                                            </p>
+
+                                            <form method="post" class="acceso-reporte__form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="agregar_acceso_reporte">
+                                                <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                <input type="hidden" name="tab" value="plantilla">
+                                                <input
+                                                    type="email"
+                                                    name="acceso_email"
+                                                    class="acceso-reporte__input"
+                                                    placeholder="correo@institucion.gob.pe"
+                                                    required
+                                                >
+                                                <input
+                                                    type="text"
+                                                    name="acceso_nombre"
+                                                    class="acceso-reporte__input"
+                                                    placeholder="Nombre (opcional)"
+                                                >
+                                                <button type="submit" class="btn-primary-soft">Habilitar acceso</button>
+                                            </form>
+
+                                            {% if seguimiento_accesos_reporte %}
+                                                <ul class="acceso-reporte__list">
+                                                    {% for acceso in seguimiento_accesos_reporte %}
+                                                        <li class="acceso-reporte__item">
+                                                            <span class="acceso-reporte__email">{{ acceso.email }}</span>
+                                                            <span class="acceso-reporte__meta">
+                                                                Habilitado por {{ acceso.otorgado_nombre }}
+                                                                el {{ acceso.creado_en|date:"d/m/Y" }}
+                                                            </span>
+                                                            <form method="post" class="acceso-reporte__remove">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="action" value="quitar_acceso_reporte">
+                                                                <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                                <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                                <input type="hidden" name="tab" value="plantilla">
+                                                                <input type="hidden" name="acceso_email" value="{{ acceso.email }}">
+                                                                <button type="submit" class="acceso-reporte__remove-btn">Quitar</button>
+                                                            </form>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% else %}
+                                                <p class="acceso-reporte__empty">Aún no hay correos habilitados para este curso.</p>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
                                 </section>
 
                                 <dialog id="plantilla-detalle-modal" class="actividad-modal plantilla-detalle-modal">

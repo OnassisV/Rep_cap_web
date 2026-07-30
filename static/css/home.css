@@ -6813,3 +6813,109 @@ body {
     color: var(--muted);
     font-size: 0.85rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Accesos externos al reporte de cumplimiento (rol Visor)
+   --------------------------------------------------------------------------- */
+.acceso-reporte {
+    width: 100%;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px dashed #bed3e9;
+    color: #2b4861;
+    font-size: 0.78rem;
+}
+
+.acceso-reporte__title {
+    margin: 0 0 0.2rem;
+    font-size: 0.84rem;
+    color: #1d3f5b;
+}
+
+.acceso-reporte__hint {
+    margin: 0 0 0.5rem;
+    opacity: 0.78;
+    line-height: 1.45;
+}
+
+/* Formulario de alta: correo + nombre opcional + boton. */
+.acceso-reporte__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.acceso-reporte__input {
+    flex: 1 1 200px;
+    min-width: 0;
+    padding: 0.42rem 0.6rem;
+    border: 1px solid #bed3e9;
+    border-radius: 0.4rem;
+    font: inherit;
+    color: #1d3f5b;
+    background: #fff;
+}
+
+.acceso-reporte__input:focus {
+    outline: 2px solid #2f5f8a;
+    outline-offset: 1px;
+}
+
+.acceso-reporte__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+}
+
+/* Fila por correo habilitado: datos a la izquierda, accion a la derecha. */
+.acceso-reporte__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.3rem 0.6rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid #d8e5f2;
+    border-radius: 0.4rem;
+    background: #f7fbff;
+}
+
+.acceso-reporte__email {
+    font-weight: 600;
+    color: #1d3f5b;
+    overflow-wrap: anywhere;
+}
+
+.acceso-reporte__meta {
+    grid-column: 1;
+    font-size: 0.72rem;
+    opacity: 0.7;
+}
+
+.acceso-reporte__remove {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+}
+
+.acceso-reporte__remove-btn {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid #e3b7b7;
+    border-radius: 0.4rem;
+    background: #fff;
+    color: #9a3b3b;
+    font: inherit;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+
+.acceso-reporte__remove-btn:hover {
+    background: #fdf0f0;
+}
+
+.acceso-reporte__empty {
+    margin: 0;
+    opacity: 0.7;
+    font-style: italic;
+}

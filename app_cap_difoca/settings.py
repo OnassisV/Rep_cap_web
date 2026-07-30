@@ -346,7 +346,12 @@ ROLE_MAPPING = {
     "encargado": "Administrador",
     "soporte": "Administrador",
     "especialista": "Usuario estandar",
+    # Acceso externo: solo descarga reportes de cursos autorizados.
+    "visor": "Visor",
 }
+
+# Rol sin acceso a los modulos internos; queda confinado al portal de reportes.
+ROL_VISOR = "Visor"
 
 # Configuracion de conexion para tablas operativas sincronizadas en Railway.
 LEGACY_DB = build_mysql_connection("DIFOCA_DB_LOCAL", SHARED_MYSQL)

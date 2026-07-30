@@ -14,6 +14,8 @@ from .views import (
     api_recalcular_estado_view,
     cargar_satisfaccion_view,
     cargar_satisfaccion_aula_virtual_view,
+    portal_reportes_view,
+    portal_reporte_descargar_view,
 )
 
 
@@ -63,4 +65,14 @@ urlpatterns = [
         cargar_satisfaccion_aula_virtual_view,
         name="cargar_satisfaccion_aula_virtual",
     ),  # Carga datos de satisfacción desde Aula Virtual (Chamilo).
+    path(
+        "portal-reportes/",
+        portal_reportes_view,
+        name="portal_reportes",
+    ),  # Portal externo (rol Visor): cursos autorizados y sus reportes.
+    path(
+        "portal-reportes/descargar/<int:cap_id>/",
+        portal_reporte_descargar_view,
+        name="portal_reporte_descargar",
+    ),  # Descarga del reporte de cumplimiento de un curso autorizado.
 ]

@@ -2,9 +2,13 @@
 
 # Logging estandar para registrar errores de conexion/lectura.
 import logging
+# Generacion de claves temporales criptograficamente seguras.
+import secrets
 # Ayuda de tipado para anotaciones explicitas.
 from typing import Any
 
+# Hashing de claves con el mismo esquema que usa el login legacy.
+import bcrypt
 # Cliente MySQL usado para consultas directas a tablas legacy.
 import pymysql
 # Import de settings para leer credenciales LEGACY_DB.
@@ -103,6 +107,83 @@ def fetch_users_with_names(limit: int = 500) -> list[dict[str, str]]:
         if usuario:
             result.append({"usuario": usuario, "nombre": nombre or usuario})
     return result
+
+
+def fetch_user_cargo(username: str) -> str:
+    """Retorna el cargo legacy de un usuario, o cadena vacia si no existe."""
+    username = str(username or "").strip()
+    if not username:
+        return ""
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT cargo FROM usuarios WHERE usuario = %s LIMIT 1",
+                    (username,),
+                )
+                row = cursor.fetchone()
+    except Exception:
+        logger.exception("No se pudo leer el cargo de %s", username)
+        return ""
+    return str((row or {}).get("cargo", "") or "").strip()
+
+
+def generar_clave_temporal(longitud: int = 10) -> str:
+    """Genera una clave temporal legible para entregar al visor."""
+    # Excluye caracteres ambiguos (O/0, l/1) para dictarla sin errores.
+    alfabeto = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+    return "".join(secrets.choice(alfabeto) for _ in range(max(8, longitud)))
+
+
+def crear_usuario_visor(email: str, nombre: str = "") -> dict[str, Any]:
+    """Crea (o reutiliza) una cuenta con cargo 'Visor' en la base legacy.
+
+    Devuelve {"ok": bool, "creado": bool, "password": str|None, "error": str}.
+    `password` solo viene con valor cuando la cuenta se acaba de crear: las
+    claves se guardan como hash bcrypt y no pueden recuperarse despues.
+    """
+    email = str(email or "").strip()
+    if not email:
+        return {"ok": False, "creado": False, "password": None, "error": "El correo es obligatorio."}
+
+    nombre = str(nombre or "").strip() or email.split("@")[0]
+
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT usuario, cargo FROM usuarios WHERE usuario = %s LIMIT 1",
+                    (email,),
+                )
+                existente = cursor.fetchone()
+
+                if existente:
+                    cargo = str(existente.get("cargo", "") or "").strip()
+                    # Nunca degradar una cuenta interna a Visor por error.
+                    if cargo.lower() != "visor":
+                        return {
+                            "ok": False,
+                            "creado": False,
+                            "password": None,
+                            "error": (
+                                f"El correo {email} ya existe como '{cargo}' (cuenta interna). "
+                                "No se puede convertir en visor."
+                            ),
+                        }
+                    return {"ok": True, "creado": False, "password": None, "error": ""}
+
+                password = generar_clave_temporal()
+                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                cursor.execute(
+                    "INSERT INTO usuarios (especialista_cargo, usuario, `contraseña`, cargo, codigo_verif) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (nombre, email, password_hash, "Visor", ""),
+                )
+    except Exception as error:
+        logger.exception("No se pudo crear la cuenta visor %s", email)
+        return {"ok": False, "creado": False, "password": None, "error": str(error)[:200]}
+
+    return {"ok": True, "creado": True, "password": password, "error": ""}
 
 
 def fetch_user_record(username: str) -> dict[str, Any] | None:

@@ -610,3 +610,45 @@ class CapacitacionAuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.timestamp:%Y-%m-%d %H:%M} | {self.usuario} | {self.accion} | cap_id={self.cap_id}"
+
+
+# ---------------------------------------------------------------------------
+# Accesos externos al reporte de cumplimiento
+# ---------------------------------------------------------------------------
+class AccesoReporte(models.Model):
+    """Autoriza a un correo externo (rol Visor) a descargar el reporte de un curso.
+
+    El visor no entra a los modulos del aplicativo: solo ve la lista de cursos
+    que tiene autorizados y descarga el reporte de cumplimiento (sin notas).
+    Un especialista solo puede otorgar acceso sobre capacitaciones propias.
+    """
+
+    capacitacion = models.ForeignKey(
+        Capacitacion,
+        on_delete=models.CASCADE,
+        related_name="accesos_reporte",
+    )
+    # Correo del visor; coincide con `usuarios.usuario` de la base legacy.
+    email = models.CharField(max_length=150, db_index=True)
+    # Username del especialista que otorgo el acceso (trazabilidad).
+    otorgado_por = models.CharField(max_length=150)
+    otorgado_nombre = models.CharField(max_length=200, blank=True, default="")
+    creado_en = models.DateTimeField(auto_now_add=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "cap_acceso_reporte"
+        ordering = ["-creado_en"]
+        # Evita duplicar el mismo acceso para un correo y curso.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["capacitacion", "email"],
+                name="uniq_acceso_reporte_cap_email",
+            )
+        ]
+        indexes = [models.Index(fields=["email", "activo"], name="idx_acceso_email_activo")]
+        verbose_name = "Acceso a reporte"
+        verbose_name_plural = "Accesos a reportes"
+
+    def __str__(self) -> str:
+        return f"{self.email} → cap_id={self.capacitacion_id}"

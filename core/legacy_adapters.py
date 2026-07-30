@@ -2705,11 +2705,13 @@ def obtener_plantilla_generada_info(codigo: str) -> dict[str, Any]:
         "main": "Plantilla generada",
         "nominal": "Reporte nominal",
         "iged": "Cumplimiento por IGED",
+        "cumplimiento": "Reporte de cumplimiento (visores)",
     }
     descargas = {
         "main": "plantilla_generada",
         "nominal": "plantilla_generada_nominal",
         "iged": "plantilla_generada_iged",
+        "cumplimiento": "plantilla_generada_cumplimiento",
     }
 
     if isinstance(files_meta, list):
@@ -4941,6 +4943,187 @@ def _crear_excel_cumplimiento_iged(
             pass
 
 
+def _crear_excel_cumplimiento_nominal(
+    ruta_salida: Path,
+    filas: list[dict[str, Any]],
+    estructura: list[dict[str, Any]],
+    columnas_actividades: list[str],
+    titulo: str = "Reporte de cumplimiento",
+    denominaciones_grupos: dict[str, str] | None = None,
+) -> bool:
+    """Genera el reporte nominal de cumplimiento para usuarios externos (visores).
+
+    A diferencia del reporte nominal operativo, este NO expone notas ni promedios:
+    cada actividad se reporta solo como "Cumple"/"No cumple" (mismo criterio que el
+    reporte por IGED: `_es_actividad_cumplida`). Se comparte con actores externos,
+    donde una nota preliminar podria tomarse como resultado final.
+    """
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
+    except Exception:
+        logger.exception("Error en _crear_excel_cumplimiento_nominal")
+        return False
+
+    # Mismo universo que el reporte por IGED: matriculados con compromiso valido.
+    filas_base = [
+        row
+        for row in filas
+        if _a_int(row.get("estado")) == 2
+        and _a_float_nullable(row.get("compromiso")) in {1.0, 20.0}
+    ]
+    if not filas_base:
+        logger.warning("cumplimiento nominal: sin participantes con estado=2 y compromiso valido")
+        return False
+
+    # Indice actividad -> grupo (para encabezados agrupados).
+    indice_grupo: dict[str, str] = {}
+    for row in estructura:
+        actividad = str(row.get("actividad", "") or "").strip()
+        grupo = str(row.get("grupo", "") or "").strip()
+        if actividad and grupo:
+            indice_grupo[_normalizar_texto(actividad)] = grupo
+
+    actividades: list[str] = []
+    grupo_por_actividad: dict[str, str] = {}
+    for actividad in columnas_actividades:
+        act_txt = str(actividad or "").strip()
+        if not act_txt:
+            continue
+        grupo_por_actividad[act_txt] = indice_grupo.get(_normalizar_texto(act_txt)) or "General"
+        actividades.append(act_txt)
+
+    if not actividades:
+        logger.warning("cumplimiento nominal: sin actividades configuradas")
+        return False
+
+    filas_base = _ordenar_filas_exportacion(filas_base)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cumplimiento"
+
+    columnas_base = ["N°", "REGIÓN", "TIPO IGED", "NOMBRE IGED", "DNI", "APELLIDOS", "NOMBRES"]
+    total_columnas = len(columnas_base) + len(actividades) + 2  # + cumplidas + %
+
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    # Fila 1: titulo general.
+    ws.cell(row=1, column=1, value=str(titulo or "Reporte de cumplimiento").strip())
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_columnas)
+    celda_titulo = ws.cell(row=1, column=1)
+    celda_titulo.font = Font(bold=True, size=12)
+    celda_titulo.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Fila 2: grupos de actividades (merge por grupo). Usa la denominacion
+    # configurada en el reporte nominal; si no hay, cae a "Grupo N".
+    nombres_grupos = denominaciones_grupos or {}
+
+    def _etiqueta_grupo(grupo: Any) -> str:
+        nombre = str(nombres_grupos.get(str(grupo), "") or "").strip()
+        if nombre:
+            return nombre
+        return f"Grupo {grupo}" if str(grupo).isdigit() else str(grupo)
+
+    def _pintar_grupo(grupo: Any, col_inicio: int, col_fin: int) -> None:
+        if col_fin < col_inicio:
+            return
+        if col_fin > col_inicio:
+            ws.merge_cells(start_row=2, start_column=col_inicio, end_row=2, end_column=col_fin)
+        celda = ws.cell(row=2, column=col_inicio, value=_etiqueta_grupo(grupo))
+        celda.font = Font(bold=True, color="FFFFFF")
+        celda.fill = PatternFill("solid", fgColor="244062")
+        celda.alignment = Alignment(horizontal="center", vertical="center")
+
+    col_idx = len(columnas_base) + 1
+    grupo_actual = None
+    inicio_grupo = col_idx
+    for actividad in actividades:
+        grupo = grupo_por_actividad.get(actividad, "General")
+        if grupo_actual is None:
+            grupo_actual = grupo
+        elif grupo != grupo_actual:
+            _pintar_grupo(grupo_actual, inicio_grupo, col_idx - 1)
+            grupo_actual = grupo
+            inicio_grupo = col_idx
+        col_idx += 1
+    if grupo_actual is not None:
+        _pintar_grupo(grupo_actual, inicio_grupo, col_idx - 1)
+
+    # Fila 3: encabezados de columna.
+    encabezados = list(columnas_base) + [str(a) for a in actividades] + ["ACTIVIDADES CUMPLIDAS", "% CUMPLIMIENTO"]
+    for idx, encabezado in enumerate(encabezados, start=1):
+        celda = ws.cell(row=3, column=idx, value=encabezado)
+        celda.font = Font(bold=True)
+        celda.fill = PatternFill("solid", fgColor="B8CCE4")
+        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        celda.border = thin_border
+
+    # Filas de datos.
+    fila_excel = 4
+    for numero, row in enumerate(filas_base, start=1):
+        valores: list[Any] = [
+            numero,
+            str(row.get("region", "") or "").strip(),
+            str(row.get("tipo_iged", "") or "").strip(),
+            str(row.get("nombre_iged", "") or "").strip(),
+            _normalizar_dni(row.get("dni")),
+            str(row.get("apellidos", "") or "").strip(),
+            str(row.get("nombres", "") or "").strip(),
+        ]
+
+        cumplidas = 0
+        for actividad in actividades:
+            cumple = _es_actividad_cumplida(row.get(actividad))
+            if cumple:
+                cumplidas += 1
+            valores.append("Cumple" if cumple else "No cumple")
+
+        valores.append(cumplidas)
+        valores.append(round(cumplidas / len(actividades), 4) if actividades else 0)
+
+        for idx, valor in enumerate(valores, start=1):
+            celda = ws.cell(row=fila_excel, column=idx, value=valor)
+            celda.border = thin_border
+            if idx > len(columnas_base):
+                celda.alignment = Alignment(horizontal="center", vertical="center")
+                if valor == "Cumple":
+                    celda.fill = PatternFill("solid", fgColor="C6EFCE")
+                elif valor == "No cumple":
+                    celda.fill = PatternFill("solid", fgColor="FFC7CE")
+        ws.cell(row=fila_excel, column=len(encabezados)).number_format = "0.0%"
+        fila_excel += 1
+
+    # Anchos de columna legibles.
+    anchos_base = [5, 18, 12, 32, 12, 26, 26]
+    for idx, ancho in enumerate(anchos_base, start=1):
+        ws.column_dimensions[get_column_letter(idx)].width = ancho
+    for idx in range(len(columnas_base) + 1, len(encabezados) + 1):
+        ws.column_dimensions[get_column_letter(idx)].width = 18
+
+    # Congela encabezados para navegar listas largas.
+    ws.freeze_panes = ws.cell(row=4, column=len(columnas_base) + 1)
+
+    try:
+        ruta_salida.parent.mkdir(parents=True, exist_ok=True)
+        wb.save(str(ruta_salida))
+        return True
+    except Exception:
+        logger.exception("Error en _crear_excel_cumplimiento_nominal")
+        return False
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
+
+
 # ---------------------------------------------------------------------------
 # Insercion en bbdd_2026 (alimenta la VIEW bbdd_difoca) - no sincronicas
 # ---------------------------------------------------------------------------
@@ -5127,6 +5310,7 @@ def generar_plantilla_seguimiento(
     ruta_main = dir_salida / f"{nombre_base}.xlsx"
     ruta_nominal = dir_salida / f"{nombre_base}_NOMINAL.xlsx"
     ruta_iged = dir_salida / f"{nombre_base}_IGED.xlsx"
+    ruta_cumplimiento = dir_salida / f"{nombre_base}_CUMPLIMIENTO.xlsx"
 
     ok_main = _crear_excel_plantilla(
         ruta_salida=ruta_main,
@@ -5153,12 +5337,22 @@ def generar_plantilla_seguimiento(
         columnas_actividades=actividades_export,
         denominaciones_grupos=nominal_config.get("nombres_grupo", {}),
     )
+    # Reporte sin notas, apto para compartir con visores externos.
+    ok_cumplimiento = _crear_excel_cumplimiento_nominal(
+        ruta_salida=ruta_cumplimiento,
+        filas=filas_ordenadas,
+        estructura=estructura,
+        columnas_actividades=actividades_export,
+        titulo=titulo_nominal,
+        denominaciones_grupos=nominal_config.get("nombres_grupo", {}),
+    )
 
     files_meta: list[dict[str, Any]] = []
     for kind, label, ruta, ok_file in [
         ("main", "Plantilla generada", ruta_main, ok_main),
         ("nominal", "Reporte nominal", ruta_nominal, ok_nominal),
         ("iged", "Cumplimiento por IGED", ruta_iged, ok_iged),
+        ("cumplimiento", "Reporte de cumplimiento (visores)", ruta_cumplimiento, ok_cumplimiento),
     ]:
         exists_file = bool(ok_file and ruta.exists())
         files_meta.append(

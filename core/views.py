@@ -8,9 +8,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 from datetime import datetime, date as _date_type
+from functools import wraps
 from urllib.parse import urlencode
 from uuid import uuid4
 
+# Acceso a configuracion global (roles, rutas y credenciales).
+from django.conf import settings
 # Error HTTP para retornar 404 cuando una seccion no exista.
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.core.cache import cache
@@ -2131,7 +2134,45 @@ def _build_user_context(request) -> dict[str, Any]:
     }
 
 
+def _capacitacion_por_codigo(codigo: str):
+    """Resuelve la Capacitacion a partir del codigo compuesto 'PREFIJO-IDCURSO'."""
+    from core.models import Capacitacion
+
+    partes = str(codigo or "").strip().split("-", 1)
+    cap_codigo = partes[0].strip()
+    cap_id_curso = partes[1].strip() if len(partes) > 1 else ""
+    if not cap_codigo:
+        return None
+    return Capacitacion.objects.filter(
+        cap_codigo=cap_codigo, cap_id_curso=cap_id_curso
+    ).first()
+
+
+def es_visor(request) -> bool:
+    """Indica si la sesion corresponde a un usuario externo con rol Visor."""
+    rol_visor = _normalizar_texto(getattr(settings, "ROL_VISOR", "Visor"))
+    return _normalizar_texto(request.session.get("difoca_role_base", "")) == rol_visor
+
+
+def bloquear_visor(view_func):
+    """Impide que un Visor entre a los modulos internos del aplicativo.
+
+    El rol Visor solo existe para descargar reportes de cursos autorizados; se
+    le redirige siempre a su portal. Sin esto, cualquier cuenta autenticada
+    alcanzaria todos los modulos (las vistas solo exigian `login_required`).
+    """
+
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if es_visor(request):
+            return redirect("core:portal_reportes")
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
 @login_required
+@bloquear_visor
 def home_view(request):
     """Renderiza la pantalla inicial con GeoMenu de modulos."""
     # Construye contexto de identidad.
@@ -2153,6 +2194,7 @@ def home_view(request):
 
 
 @login_required
+@bloquear_visor
 def section_detail_view(request, section_slug: str):
     """Renderiza vista detalle de una seccion del GeoMenu."""
     # Busca la seccion por slug.
@@ -2187,6 +2229,7 @@ def section_detail_view(request, section_slug: str):
 
 
 @login_required
+@bloquear_visor
 def submenu_detail_view(request, section_slug: str, submenu_slug: str):
     """Renderiza una pantalla de submenu interno dentro de una seccion."""
     # Resuelve seccion y submenu solicitado.
@@ -2568,6 +2611,70 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 messages.success(request, "Formula de promedio guardada correctamente.")
             else:
                 messages.error(request, "No se pudo guardar la formula de promedio.")
+
+        elif action == "agregar_acceso_reporte":
+            # Habilita a un correo externo (rol Visor) a descargar el reporte
+            # de cumplimiento de este curso. Crea la cuenta si aun no existe.
+            from accounts.db import crear_usuario_visor
+            from core.models import AccesoReporte
+
+            email_acceso = str(request.POST.get("acceso_email", "")).strip().lower()
+            nombre_acceso = str(request.POST.get("acceso_nombre", "")).strip()
+            cap_acceso = _capacitacion_por_codigo(post_codigo)
+
+            if not email_acceso or "@" not in email_acceso:
+                messages.error(request, "Ingresa un correo válido.")
+            elif cap_acceso is None:
+                messages.error(request, "No se encontró la capacitación de este código.")
+            else:
+                cuenta = crear_usuario_visor(email_acceso, nombre_acceso)
+                if not cuenta.get("ok"):
+                    messages.error(request, str(cuenta.get("error", "No se pudo crear la cuenta.")))
+                else:
+                    _, creado = AccesoReporte.objects.get_or_create(
+                        capacitacion=cap_acceso,
+                        email=email_acceso,
+                        defaults={
+                            "otorgado_por": str(request.user.username),
+                            "otorgado_nombre": str(user_context.get("display_name", "")),
+                            "activo": True,
+                        },
+                    )
+                    if not creado:
+                        # Reactiva un acceso revocado previamente.
+                        AccesoReporte.objects.filter(
+                            capacitacion=cap_acceso, email=email_acceso
+                        ).update(activo=True)
+
+                    if cuenta.get("creado") and cuenta.get("password"):
+                        messages.success(
+                            request,
+                            f"Acceso habilitado para {email_acceso}. "
+                            f"Clave temporal: {cuenta['password']} "
+                            "(anótala ahora: no se podrá volver a mostrar).",
+                        )
+                    else:
+                        messages.success(
+                            request,
+                            f"Acceso habilitado para {email_acceso}. "
+                            "La cuenta ya existía: conserva su clave actual.",
+                        )
+
+        elif action == "quitar_acceso_reporte":
+            from core.models import AccesoReporte
+
+            email_acceso = str(request.POST.get("acceso_email", "")).strip().lower()
+            cap_acceso = _capacitacion_por_codigo(post_codigo)
+            if cap_acceso is not None and email_acceso:
+                eliminados = AccesoReporte.objects.filter(
+                    capacitacion=cap_acceso, email=email_acceso
+                ).delete()[0]
+                if eliminados:
+                    messages.success(request, f"Se retiró el acceso de {email_acceso}.")
+                else:
+                    messages.error(request, "No se encontró el acceso indicado.")
+            else:
+                messages.error(request, "No se pudo retirar el acceso.")
 
         elif action == "delete_formula":
             formula_id = int(request.POST.get("id_formula", "0") or 0)
@@ -3242,13 +3349,20 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         )
                         return response
 
-                if download_kind in {"plantilla_generada", "plantilla_generada_nominal", "plantilla_generada_iged"}:
+                if download_kind in {
+                    "plantilla_generada",
+                    "plantilla_generada_nominal",
+                    "plantilla_generada_iged",
+                    "plantilla_generada_cumplimiento",
+                }:
                     plantilla_info = obtener_plantilla_generada_info(codigo_sel)
                     target_kind = "main"
                     if download_kind == "plantilla_generada_nominal":
                         target_kind = "nominal"
                     if download_kind == "plantilla_generada_iged":
                         target_kind = "iged"
+                    if download_kind == "plantilla_generada_cumplimiento":
+                        target_kind = "cumplimiento"
 
                     files = list(plantilla_info.get("files", []))
                     target_file = next(
@@ -3497,9 +3611,28 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 card for card in cards if int(card.get("total_actividades", 0)) > 0
             ]
 
+            # Accesos externos (rol Visor) habilitados sobre este curso.
+            accesos_reporte: list[dict[str, Any]] = []
+            if codigo_sel:
+                from core.models import AccesoReporte
+
+                cap_accesos = _capacitacion_por_codigo(codigo_sel)
+                if cap_accesos is not None:
+                    accesos_reporte = [
+                        {
+                            "email": item.email,
+                            "otorgado_nombre": item.otorgado_nombre or item.otorgado_por,
+                            "creado_en": item.creado_en,
+                        }
+                        for item in AccesoReporte.objects.filter(
+                            capacitacion=cap_accesos, activo=True
+                        ).order_by("email")
+                    ]
+
             # Expone todo el contexto de seguimiento portado a la plantilla.
             context.update(
                 {
+                    "seguimiento_accesos_reporte": accesos_reporte,
                     "seguimiento_tabs": seguimiento_tabs,
                     "seguimiento_tab_activo": tab_activo,
                     "seguimiento_codigo_sel": codigo_sel,
@@ -5163,6 +5296,7 @@ def switch_role_view(request):
 # ---------------------------------------------------------------------------
 
 @login_required
+@bloquear_visor
 def cert_descargar_lista_excel_view(request, codigo: str):
     """Descarga un Excel con la lista de participantes certificados del curso `codigo`.
 
@@ -5299,6 +5433,7 @@ def cert_descargar_lista_excel_view(request, codigo: str):
 
 
 @login_required
+@bloquear_visor
 def api_caracterizacion_replica_view(request, cap_id: int):
     """Devuelve los campos de caracterización de una capacitación fuente.
 
@@ -5341,6 +5476,7 @@ def api_caracterizacion_replica_view(request, cap_id: int):
 
 @login_required
 @require_POST
+@bloquear_visor
 def api_recalcular_estado_view(request, cap_id: int):
     """Fuerza el re-cálculo del estado de una capacitación.
 
@@ -5375,6 +5511,7 @@ def api_recalcular_estado_view(request, cap_id: int):
 # ── Carga de Satisfacción ──
 
 @login_required
+@bloquear_visor
 def cargar_satisfaccion_aula_virtual_view(request):
     """Vista para cargar datos de satisfacción desde Aula Virtual (Chamilo)."""
     context = {
@@ -5456,6 +5593,7 @@ def cargar_satisfaccion_aula_virtual_view(request):
 
 
 @login_required
+@bloquear_visor
 def cargar_satisfaccion_view(request):
     """Vista para cargar datos de satisfacción desde Excel."""
     context = {
@@ -5539,3 +5677,117 @@ def cargar_satisfaccion_view(request):
         logger.error(f"Error en cargar_satisfaccion_view: {traceback.format_exc()}")
 
     return render(request, "core/cargar_satisfaccion.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Portal externo: descarga de reportes de cumplimiento para el rol Visor
+# ---------------------------------------------------------------------------
+
+def _codigo_capacitacion(cap) -> str:
+    """Reconstruye el codigo compuesto 'PREFIJO-IDCURSO' de una capacitacion."""
+    codigo = str(cap.cap_codigo or "").strip()
+    curso = str(cap.cap_id_curso or "").strip()
+    if not codigo:
+        return ""
+    if "-" in codigo or not curso:
+        return codigo
+    return f"{codigo}-{curso}"
+
+
+def _accesos_vigentes(email: str):
+    """Devuelve los accesos activos de un correo, con su capacitacion."""
+    from core.models import AccesoReporte
+
+    email = str(email or "").strip()
+    if not email:
+        return AccesoReporte.objects.none()
+    return (
+        AccesoReporte.objects.filter(email=email, activo=True)
+        .select_related("capacitacion")
+        .order_by("-creado_en")
+    )
+
+
+@login_required
+def portal_reportes_view(request):
+    """Lista los cursos autorizados al visor y el estado de su reporte."""
+    email = str(request.user.username or "").strip()
+
+    cursos: list[dict[str, Any]] = []
+    for acceso in _accesos_vigentes(email):
+        cap = acceso.capacitacion
+        codigo = _codigo_capacitacion(cap)
+        info = obtener_plantilla_generada_info(codigo)
+        archivo = next(
+            (
+                item
+                for item in list(info.get("files", []))
+                if str(item.get("kind")) == "cumplimiento" and bool(item.get("exists"))
+            ),
+            None,
+        )
+        cursos.append(
+            {
+                "cap_id": cap.id,
+                "codigo": codigo,
+                "nombre": cap.cap_nombre,
+                "anio": cap.cap_anio,
+                "estado": cap.cap_estado,
+                "disponible": archivo is not None,
+                "generado_en": str(info.get("generated_at", "") or ""),
+            }
+        )
+
+    return render(
+        request,
+        "core/portal_reportes.html",
+        {
+            "display_name": request.session.get("difoca_name") or request.user.first_name or email,
+            "email": email,
+            "cursos": cursos,
+            "total_cursos": len(cursos),
+        },
+    )
+
+
+@login_required
+def portal_reporte_descargar_view(request, cap_id: int):
+    """Entrega el reporte de cumplimiento de un curso autorizado al visor.
+
+    Valida el acceso contra `AccesoReporte` en cada descarga: la autorizacion
+    es por curso, no por sesion, y puede revocarse en cualquier momento.
+    """
+    email = str(request.user.username or "").strip()
+
+    acceso = _accesos_vigentes(email).filter(capacitacion_id=cap_id).first()
+    if acceso is None:
+        raise Http404("No tienes acceso a este reporte.")
+
+    codigo = _codigo_capacitacion(acceso.capacitacion)
+    info = obtener_plantilla_generada_info(codigo)
+    archivo = next(
+        (
+            item
+            for item in list(info.get("files", []))
+            if str(item.get("kind")) == "cumplimiento" and bool(item.get("exists"))
+        ),
+        None,
+    )
+    if archivo is None:
+        messages.error(request, "El reporte de este curso aún no está disponible.")
+        return redirect("core:portal_reportes")
+
+    try:
+        with open(str(archivo.get("path", "")), "rb") as handle:
+            contenido = handle.read()
+    except OSError:
+        messages.error(request, "El reporte ya no está disponible. Solicítalo al especialista.")
+        return redirect("core:portal_reportes")
+
+    respuesta = HttpResponse(
+        contenido,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    nombre = f"Reporte_cumplimiento_{codigo}.xlsx"
+    respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'
+    return respuesta
