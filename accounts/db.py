@@ -186,6 +186,52 @@ def crear_usuario_visor(email: str, nombre: str = "") -> dict[str, Any]:
     return {"ok": True, "creado": True, "password": password, "error": ""}
 
 
+def regenerar_clave_visor(email: str) -> dict[str, Any]:
+    """Asigna una clave temporal nueva a una cuenta con cargo 'Visor'.
+
+    Las claves se guardan hasheadas y no pueden recuperarse; cuando el
+    especialista la pierde, la unica salida es emitir una nueva.
+    Solo opera sobre cuentas Visor: nunca sobre cuentas internas.
+    """
+    email = str(email or "").strip()
+    if not email:
+        return {"ok": False, "password": None, "error": "El correo es obligatorio."}
+
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT cargo FROM usuarios WHERE usuario = %s LIMIT 1",
+                    (email,),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return {"ok": False, "password": None, "error": f"La cuenta {email} no existe."}
+
+                cargo = str(row.get("cargo", "") or "").strip()
+                if cargo.lower() != "visor":
+                    return {
+                        "ok": False,
+                        "password": None,
+                        "error": (
+                            f"{email} es una cuenta interna ('{cargo}'). "
+                            "Su clave no se administra desde aquí."
+                        ),
+                    }
+
+                password = generar_clave_temporal()
+                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                cursor.execute(
+                    "UPDATE usuarios SET `contraseña` = %s WHERE usuario = %s",
+                    (password_hash, email),
+                )
+    except Exception as error:
+        logger.exception("No se pudo regenerar la clave de %s", email)
+        return {"ok": False, "password": None, "error": str(error)[:200]}
+
+    return {"ok": True, "password": password, "error": ""}
+
+
 def fetch_user_record(username: str) -> dict[str, Any] | None:
     """Obtiene un registro de usuario con username, nombre, hash de clave y cargo."""
     # Lee solo las columnas necesarias para el flujo de autenticacion.

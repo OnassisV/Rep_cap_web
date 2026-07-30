@@ -1467,15 +1467,32 @@
                                                                 Habilitado por {{ acceso.otorgado_nombre }}
                                                                 el {{ acceso.creado_en|date:"d/m/Y" }}
                                                             </span>
-                                                            <form method="post" class="acceso-reporte__remove">
-                                                                {% csrf_token %}
-                                                                <input type="hidden" name="action" value="quitar_acceso_reporte">
-                                                                <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
-                                                                <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
-                                                                <input type="hidden" name="tab" value="plantilla">
-                                                                <input type="hidden" name="acceso_email" value="{{ acceso.email }}">
-                                                                <button type="submit" class="acceso-reporte__remove-btn">Quitar</button>
-                                                            </form>
+                                                            <div class="acceso-reporte__actions">
+                                                                <form method="post">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="action" value="regenerar_clave_acceso">
+                                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                                    <input type="hidden" name="tab" value="plantilla">
+                                                                    <input type="hidden" name="acceso_email" value="{{ acceso.email }}">
+                                                                    <button
+                                                                        type="submit"
+                                                                        class="acceso-reporte__key-btn"
+                                                                        title="Emite una clave nueva y anula la anterior."
+                                                                    >
+                                                                        Regenerar clave
+                                                                    </button>
+                                                                </form>
+                                                                <form method="post">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="action" value="quitar_acceso_reporte">
+                                                                    <input type="hidden" name="anio" value="{{ anio_seleccionado }}">
+                                                                    <input type="hidden" name="codigo" value="{{ seguimiento_codigo_sel }}">
+                                                                    <input type="hidden" name="tab" value="plantilla">
+                                                                    <input type="hidden" name="acceso_email" value="{{ acceso.email }}">
+                                                                    <button type="submit" class="acceso-reporte__remove-btn">Quitar</button>
+                                                                </form>
+                                                            </div>
                                                         </li>
                                                     {% endfor %}
                                                 </ul>
@@ -1483,6 +1500,75 @@
                                                 <p class="acceso-reporte__empty">Aún no hay correos habilitados para este curso.</p>
                                             {% endif %}
                                         </div>
+                                    {% endif %}
+
+                                    {% if seguimiento_visor_credencial %}
+                                        <!-- La clave no se puede recuperar despues: se muestra en un
+                                             modal que solo se cierra confirmando que fue anotada. -->
+                                        <dialog id="visor-credencial-modal" class="visor-credencial-modal">
+                                            <div class="visor-credencial-modal__panel">
+                                                <h3 class="visor-credencial-modal__title">
+                                                    Clave {{ seguimiento_visor_credencial.accion }}
+                                                </h3>
+                                                <p class="visor-credencial-modal__warn">
+                                                    Esta clave <strong>no se volverá a mostrar</strong>.
+                                                    Cópiala y entrégasela al visor antes de cerrar.
+                                                </p>
+
+                                                <div class="visor-credencial-modal__field">
+                                                    <span class="visor-credencial-modal__label">Usuario</span>
+                                                    <code id="visor-cred-email">{{ seguimiento_visor_credencial.email }}</code>
+                                                </div>
+                                                <div class="visor-credencial-modal__field">
+                                                    <span class="visor-credencial-modal__label">Clave</span>
+                                                    <code id="visor-cred-pass" class="visor-credencial-modal__pass">{{ seguimiento_visor_credencial.password }}</code>
+                                                </div>
+
+                                                <div class="visor-credencial-modal__actions">
+                                                    <button type="button" class="btn-primary-soft" data-copiar-credencial>
+                                                        Copiar usuario y clave
+                                                    </button>
+                                                    <button type="button" class="acceso-reporte__remove-btn" data-cerrar-credencial>
+                                                        Ya la anoté, cerrar
+                                                    </button>
+                                                </div>
+                                                <p class="visor-credencial-modal__copied" data-credencial-copiado hidden>Copiado.</p>
+                                            </div>
+                                        </dialog>
+
+                                        <script>
+                                            (function () {
+                                                var modal = document.getElementById("visor-credencial-modal");
+                                                if (!modal || typeof modal.showModal !== "function") { return; }
+                                                modal.showModal();
+
+                                                var email = document.getElementById("visor-cred-email").textContent.trim();
+                                                var pass = document.getElementById("visor-cred-pass").textContent.trim();
+                                                var aviso = modal.querySelector("[data-credencial-copiado]");
+
+                                                modal.querySelector("[data-copiar-credencial]").addEventListener("click", function () {
+                                                    var texto = "Usuario: " + email + "\nClave: " + pass;
+                                                    var ok = function () { if (aviso) { aviso.hidden = false; } };
+                                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                        navigator.clipboard.writeText(texto).then(ok, function () {});
+                                                    } else {
+                                                        // Respaldo para navegadores sin API de portapapeles.
+                                                        var tmp = document.createElement("textarea");
+                                                        tmp.value = texto;
+                                                        document.body.appendChild(tmp);
+                                                        tmp.select();
+                                                        try { document.execCommand("copy"); ok(); } catch (e) {}
+                                                        document.body.removeChild(tmp);
+                                                    }
+                                                });
+
+                                                modal.querySelector("[data-cerrar-credencial]").addEventListener("click", function () {
+                                                    modal.close();
+                                                });
+                                                // Evita cerrarlo con Escape sin haber copiado la clave.
+                                                modal.addEventListener("cancel", function (evento) { evento.preventDefault(); });
+                                            })();
+                                        </script>
                                     {% endif %}
                                 </section>
 

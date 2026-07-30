@@ -2647,18 +2647,49 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         ).update(activo=True)
 
                     if cuenta.get("creado") and cuenta.get("password"):
-                        messages.success(
-                            request,
-                            f"Acceso habilitado para {email_acceso}. "
-                            f"Clave temporal: {cuenta['password']} "
-                            "(anótala ahora: no se podrá volver a mostrar).",
-                        )
+                        # La clave no puede recuperarse despues: se entrega en un
+                        # modal que exige confirmacion explicita para cerrarse.
+                        request.session["visor_credencial"] = {
+                            "email": email_acceso,
+                            "password": cuenta["password"],
+                            "accion": "creada",
+                        }
                     else:
                         messages.success(
                             request,
                             f"Acceso habilitado para {email_acceso}. "
-                            "La cuenta ya existía: conserva su clave actual.",
+                            "La cuenta ya existía: conserva su clave actual. "
+                            "Si la perdió, usa \"Regenerar clave\".",
                         )
+
+        elif action == "regenerar_clave_acceso":
+            # Emite una clave nueva cuando la anterior se perdio u olvido.
+            from accounts.db import regenerar_clave_visor
+            from core.models import AccesoReporte
+
+            email_acceso = str(request.POST.get("acceso_email", "")).strip().lower()
+            cap_acceso = _capacitacion_por_codigo(post_codigo)
+
+            # Solo se regenera si el correo tiene acceso vigente a este curso.
+            tiene_acceso = bool(
+                cap_acceso is not None
+                and email_acceso
+                and AccesoReporte.objects.filter(
+                    capacitacion=cap_acceso, email=email_acceso, activo=True
+                ).exists()
+            )
+            if not tiene_acceso:
+                messages.error(request, "Ese correo no tiene acceso vigente a este curso.")
+            else:
+                resultado_clave = regenerar_clave_visor(email_acceso)
+                if resultado_clave.get("ok"):
+                    request.session["visor_credencial"] = {
+                        "email": email_acceso,
+                        "password": resultado_clave["password"],
+                        "accion": "regenerada",
+                    }
+                else:
+                    messages.error(request, str(resultado_clave.get("error", "No se pudo regenerar la clave.")))
 
         elif action == "quitar_acceso_reporte":
             from core.models import AccesoReporte
@@ -3629,9 +3660,14 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                         ).order_by("email")
                     ]
 
+            # Credencial recien emitida: se consume aqui para mostrarla una
+            # sola vez en el modal y no dejarla viva en la sesion.
+            visor_credencial = request.session.pop("visor_credencial", None)
+
             # Expone todo el contexto de seguimiento portado a la plantilla.
             context.update(
                 {
+                    "seguimiento_visor_credencial": visor_credencial,
                     "seguimiento_accesos_reporte": accesos_reporte,
                     "seguimiento_tabs": seguimiento_tabs,
                     "seguimiento_tab_activo": tab_activo,

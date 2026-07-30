@@ -6919,3 +6919,108 @@ body {
     opacity: 0.7;
     font-style: italic;
 }
+
+/* Acciones por correo habilitado: regenerar clave y quitar acceso. */
+.acceso-reporte__actions {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.acceso-reporte__key-btn {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid #bed3e9;
+    border-radius: 0.4rem;
+    background: #fff;
+    color: #1d3f5b;
+    font: inherit;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+
+.acceso-reporte__key-btn:hover {
+    background: #eef5fc;
+}
+
+/* Modal de credencial: la clave solo se muestra en este momento. */
+.visor-credencial-modal {
+    border: none;
+    border-radius: 0.7rem;
+    padding: 0;
+    max-width: 27rem;
+    width: calc(100% - 2rem);
+    box-shadow: 0 18px 45px rgba(15, 39, 61, 0.28);
+}
+
+.visor-credencial-modal::backdrop {
+    background: rgba(12, 28, 44, 0.55);
+}
+
+.visor-credencial-modal__panel {
+    padding: 1.15rem 1.3rem 1.3rem;
+    color: #23405c;
+    font-size: 0.82rem;
+}
+
+.visor-credencial-modal__title {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+    color: #14314b;
+    text-transform: capitalize;
+}
+
+.visor-credencial-modal__warn {
+    margin: 0 0 0.9rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.4rem;
+    background: #fdf3e2;
+    color: #7a4b10;
+    line-height: 1.45;
+}
+
+.visor-credencial-modal__field {
+    display: grid;
+    gap: 0.15rem;
+    margin-bottom: 0.6rem;
+}
+
+.visor-credencial-modal__label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.65;
+}
+
+.visor-credencial-modal__field code {
+    display: block;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #d8e5f2;
+    border-radius: 0.4rem;
+    background: #f7fbff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    overflow-wrap: anywhere;
+}
+
+/* La clave se resalta: es el dato que no se puede recuperar. */
+.visor-credencial-modal__pass {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #14314b;
+}
+
+.visor-credencial-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.9rem;
+}
+
+.visor-credencial-modal__copied {
+    margin: 0.5rem 0 0;
+    color: #1f6b3b;
+    font-size: 0.76rem;
+}
