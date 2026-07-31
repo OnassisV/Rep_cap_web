@@ -2794,7 +2794,19 @@
                                             </span>
                                         </td>
                                         <td>{{ item.paso_actual }}/2</td>
-                                        <td>{{ item.especialista_cargo|default:"-" }}</td>
+                                        <td>
+                                            {{ item.especialista_cargo|default:"-" }}
+                                            {% if editar_es_admin %}
+                                                <button
+                                                    type="button"
+                                                    class="btn-reasignar"
+                                                    data-open-reasignar="{{ item.id }}"
+                                                    data-reasignar-nombre="{{ item.cap_nombre }}"
+                                                    data-reasignar-actual="{{ item.especialista_cargo }}"
+                                                    title="Reasignar a otro especialista"
+                                                >Reasignar</button>
+                                            {% endif %}
+                                        </td>
                                         <td>{{ item.creado_en|date:"d/m/Y H:i" }}</td>
                                         <td>
                                             <button type="button" class="btn btn--small btn--outline" data-open-id-plataforma="{{ item.id }}" data-plat-codigo="{{ item.cap_codigo }}" data-plat-id-curso="{{ item.cap_id_curso }}">ID plataforma</button>
@@ -2861,6 +2873,68 @@
                                 </form>
                             </div>
                         </dialog>
+
+                        {# ---- Modal: reasignar especialista a cargo (solo admin) ---- #}
+                        {% if editar_es_admin %}
+                        <dialog id="reasignar-modal" class="id-plataforma-modal">
+                            <div class="id-plataforma-modal__panel">
+                                <header class="id-plataforma-modal__header">
+                                    <h3>Reasignar especialista a cargo</h3>
+                                    <button type="button" class="id-plataforma-modal__close" data-close-reasignar>&times;</button>
+                                </header>
+                                <form method="post" class="id-plataforma-modal__form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="reasignar_especialista">
+                                    <input type="hidden" name="cap_id" value="" data-reasignar-modal-cap-id>
+
+                                    <p class="reasignar-modal__cap" data-reasignar-modal-nombre></p>
+                                    <p class="reasignar-modal__hint">
+                                        La capacitación pasará a los módulos del nuevo responsable.
+                                        Se conserva el registro de quién la creó.
+                                    </p>
+
+                                    <div class="id-plataforma-modal__field">
+                                        <label for="reasignar-especialista">Nuevo especialista</label>
+                                        <select id="reasignar-especialista" name="especialista_cargo" required data-reasignar-modal-select>
+                                            <option value="">Selecciona…</option>
+                                            {% for nombre in editar_especialistas %}
+                                                <option value="{{ nombre }}">{{ nombre }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="id-plataforma-modal__actions">
+                                        <button type="button" class="btn btn--outline" data-close-reasignar>Cancelar</button>
+                                        <button type="submit" class="btn btn--primary">Reasignar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </dialog>
+
+                        <script>
+                            (function () {
+                                var modal = document.getElementById("reasignar-modal");
+                                if (!modal || typeof modal.showModal !== "function") { return; }
+                                var campoId = modal.querySelector("[data-reasignar-modal-cap-id]");
+                                var etiqueta = modal.querySelector("[data-reasignar-modal-nombre]");
+                                var selector = modal.querySelector("[data-reasignar-modal-select]");
+
+                                document.querySelectorAll("[data-open-reasignar]").forEach(function (boton) {
+                                    boton.addEventListener("click", function () {
+                                        campoId.value = boton.getAttribute("data-open-reasignar") || "";
+                                        etiqueta.textContent = boton.getAttribute("data-reasignar-nombre") || "";
+                                        // Preselecciona al responsable actual para que el cambio sea explicito.
+                                        selector.value = boton.getAttribute("data-reasignar-actual") || "";
+                                        modal.showModal();
+                                    });
+                                });
+
+                                modal.querySelectorAll("[data-close-reasignar]").forEach(function (boton) {
+                                    boton.addEventListener("click", function () { modal.close(); });
+                                });
+                            })();
+                        </script>
+                        {% endif %}
 
                         {# ---- Modal: cancelar o eliminar capacitación ---- #}
                         <dialog id="cancelar-cap-modal" class="id-plataforma-modal cancelar-modal">

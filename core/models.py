@@ -89,7 +89,16 @@ class Capacitacion(models.Model):
     asesorias_personalizadas_colectivas = models.CharField(max_length=4, blank=True, default="")
     # Clasificación institucional.
     organo_formulador = models.CharField(max_length=255, blank=True, default="")
+    # Nombre visible del especialista responsable (se muestra en pantalla).
     especialista_cargo = models.CharField(max_length=200, blank=True, default="")
+    # Correo del responsable: llave estable de propiedad. `especialista_cargo`
+    # es solo para mostrar y puede cambiar (tildes, prefijo "(OS)"), por lo que
+    # los filtros de "mis capacitaciones" se apoyan en este campo.
+    # No confundir con creado_por/creado_nombre, que son auditoria de quien
+    # registro la capacitacion y nunca cambian al reasignarla.
+    especialista_usuario = models.CharField(
+        max_length=150, blank=True, default="", db_index=True
+    )
     publico_objetivo_oferta = models.TextField(blank=True, default="")
     tipo_proceso_fortalecido = models.CharField(max_length=80, blank=True, default="")
     proceso_principal_fortalecido = models.CharField(max_length=10, blank=True, default="")

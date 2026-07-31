@@ -118,7 +118,9 @@ def _load_base_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Da
     oferta_sql = (
         "SELECT cap_codigo AS codigo_base, cap_id_curso AS id_curso, cap_anio AS anio, cap_estado AS condicion,"
         " cap_tipo AS tipo_proceso_formativo, cap_nombre AS denominacion_proceso_formativo,"
-        " creado_nombre AS especialista_cargo, mi_objetivo_capacitacion AS objetivo_capacitacion,"
+        # Reporta al especialista a cargo, no a quien registro la capacitacion.
+        " COALESCE(NULLIF(TRIM(especialista_cargo), ''), creado_nombre) AS especialista_cargo,"
+        " mi_objetivo_capacitacion AS objetivo_capacitacion,"
         " pt_implementacion_fin AS implementacion_final"
         " FROM cap_capacitaciones"
     )

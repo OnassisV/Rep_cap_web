@@ -187,6 +187,18 @@ def crear_registro_capacitacion(
                 return "No"
             return ""
 
+        # Responsable: lo elige el formulario. Se resuelve su correo porque el
+        # nombre es solo para mostrar y no sirve como llave estable.
+        _esp_nombre = str(payload.get("especialista_cargo") or "").strip() or str(creado_nombre or "").strip()
+        try:
+            from accounts.db import resolver_correo_especialista
+
+            _esp_correo = resolver_correo_especialista(_esp_nombre)
+        except Exception:
+            logger.exception("No se pudo resolver el correo del especialista a cargo")
+            _esp_correo = ""
+        _especialista = (_esp_nombre, _esp_correo)
+
         cap = Capacitacion.objects.create(
             # Solicitud (Paso 1)
             sol_origen_institucional=_str("sol_origen_institucional", 60),
@@ -210,11 +222,14 @@ def crear_registro_capacitacion(
             capacitacion_diagnostico_previo=_si_no("capacitacion_diagnostico_previo"),
             publico_objetivo_oferta=str(payload.get("publico_objetivo_oferta") or "").strip(),
             mi_objetivo_capacitacion=str(payload.get("mi_objetivo_capacitacion") or "").strip(),
-            especialista_cargo=str(creado_nombre or "").strip(),
+            # Responsable declarado en el formulario; si no vino, queda a cargo
+            # de quien la registra. Determina en los modulos de quien aparece.
+            especialista_cargo=_especialista[0],
+            especialista_usuario=_especialista[1],
             # Estado
             cap_estado=Capacitacion.Estado.FORMULADA,
             paso_actual=1,
-            # Metadata
+            # Metadata: auditoria de quien la registro. No cambia al reasignar.
             creado_por=str(creado_por or "").strip() or "sistema",
             creado_nombre=str(creado_nombre or "").strip(),
         )
@@ -236,7 +251,10 @@ def obtener_filas_oferta_formativa() -> list[dict[str, Any]]:
     """Obtiene filas de capacitaciones desde cap_capacitaciones con aliases compatibles."""
     query = (
         "SELECT cap_codigo AS codigo, cap_id_curso, cap_anio AS anio, cap_estado AS condicion,"
-        " creado_nombre AS especialista_cargo, cap_tipo AS tipo_proceso_formativo,"
+        # El responsable es el especialista a cargo, no quien la registro.
+        " COALESCE(NULLIF(TRIM(especialista_cargo), ''), creado_nombre) AS especialista_cargo,"
+        " especialista_usuario,"
+        " cap_tipo AS tipo_proceso_formativo,"
         " cap_nombre AS denominacion_proceso_formativo"
         " FROM cap_capacitaciones"
     )
@@ -428,10 +446,18 @@ def filtrar_capacitaciones_para_usuario(
         if condicion not in condiciones_permitidas:
             continue
 
-        # Si el rol es usuario estandar, solo ve sus propias capacitaciones.
+        # Si el rol es usuario estandar, solo ve las capacitaciones a su cargo.
+        # Cruza por correo (llave estable) y deja respaldo por nombre para los
+        # registros historicos sin correo resuelto.
         if rol_normalizado == "usuario estandar":
+            correo_fila = _normalizar_texto(fila.get("especialista_usuario", ""))
             especialista = _normalizar_texto(fila.get("especialista_cargo", ""))
-            if especialista not in propietarios_validos:
+            es_suya = (
+                correo_fila == _normalizar_texto(username)
+                if correo_fila
+                else especialista in propietarios_validos
+            )
+            if not es_suya:
                 continue
 
         # Conserva anio parseado para filtros de interfaz.

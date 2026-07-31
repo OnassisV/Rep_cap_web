@@ -2134,6 +2134,45 @@ def _build_user_context(request) -> dict[str, Any]:
     }
 
 
+def _sincronizar_especialista_usuario(cap_obj) -> None:
+    """Alinea `especialista_usuario` con el nombre del responsable declarado.
+
+    Se llama al guardar: si el nombre no resuelve a un correo (personal que ya
+    no figura en `usuarios`), se deja vacio y el filtro cae al respaldo por
+    nombre en vez de dejar la capacitacion sin dueño.
+    """
+    from accounts.db import resolver_correo_especialista
+
+    nombre = str(getattr(cap_obj, "especialista_cargo", "") or "").strip()
+    try:
+        cap_obj.especialista_usuario = resolver_correo_especialista(nombre) if nombre else ""
+    except Exception:
+        logger.exception("No se pudo sincronizar el correo del especialista a cargo")
+
+
+def filtro_mis_capacitaciones(username: str, display_name: str):
+    """Q() que selecciona las capacitaciones a cargo de un especialista.
+
+    La propiedad la define el especialista a cargo, no quien la registro:
+    un administrador puede registrar una capacitacion para otra persona y esa
+    persona debe verla en sus modulos.
+
+    Cruza por correo (llave estable) y deja un respaldo por nombre para los
+    registros historicos que no tienen correo resuelto.
+    """
+    from django.db.models import Q
+
+    username = str(username or "").strip()
+    display_name = str(display_name or "").strip()
+
+    criterio = Q(pk__in=[])  # Vacio por defecto: sin identidad no hay cursos.
+    if username:
+        criterio |= Q(especialista_usuario=username)
+    if display_name:
+        criterio |= Q(especialista_usuario="", especialista_cargo=display_name)
+    return criterio
+
+
 def _capacitacion_por_codigo(codigo: str):
     """Resuelve la Capacitacion a partir del codigo compuesto 'PREFIJO-IDCURSO'."""
     from core.models import Capacitacion
@@ -2354,6 +2393,48 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         if cap_id:
             redirect_params["id"] = cap_id
 
+        if action == "reasignar_especialista" and cap_id:
+            # Reasignar cambia quien ve la capacitacion en sus modulos, por eso
+            # queda restringido a administradores. La auditoria (creado_por /
+            # creado_nombre) no se toca: sigue constando quien la registro.
+            role_eff = str(user_context.get("role_effective", ""))
+            if _normalizar_texto(role_eff) not in {"administrador", "admin", "superusuario"}:
+                messages.error(request, "Solo un administrador puede reasignar capacitaciones.")
+                return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
+
+            nuevo_nombre = str(request.POST.get("especialista_cargo", "")).strip()
+            if not nuevo_nombre:
+                messages.error(request, "Selecciona un especialista.")
+                return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
+
+            try:
+                cap_obj = Capacitacion.objects.get(pk=int(cap_id))
+                anterior = str(cap_obj.especialista_cargo or "").strip() or "(sin asignar)"
+                cap_obj.especialista_cargo = nuevo_nombre
+                _sincronizar_especialista_usuario(cap_obj)
+                cap_obj.save(
+                    update_fields=["especialista_cargo", "especialista_usuario", "actualizado_en"]
+                )
+                _log_auditoria(
+                    cap_obj,
+                    str(request.user.username),
+                    "modificada",
+                    f"Reasignada de '{anterior}' a '{nuevo_nombre}'.",
+                )
+                if not cap_obj.especialista_usuario:
+                    messages.warning(
+                        request,
+                        f"Reasignada a {nuevo_nombre}, pero ese nombre no coincide con "
+                        "ninguna cuenta de usuario. Verifica que exista para que pueda verla.",
+                    )
+                else:
+                    messages.success(request, f"Capacitación reasignada a {nuevo_nombre}.")
+            except Capacitacion.DoesNotExist:
+                messages.error(request, "No se encontró la capacitación indicada.")
+            except Exception as exc:
+                messages.error(request, f"No se pudo reasignar: {_safe_err(exc)}")
+            return redirect(_build_submenu_url(section_slug, submenu_slug, redirect_params))
+
         if action == "save_id_plataforma" and cap_id:
             username = str(request.user.username)
             display_name = str(user_context.get("display_name", ""))
@@ -2364,7 +2445,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 qs = Capacitacion.objects.all()
                 if not is_admin:
-                    qs = qs.filter(creado_por__in=[username, display_name])
+                    qs = qs.filter(filtro_mis_capacitaciones(username, display_name))
                 cap_obj = qs.get(pk=int(cap_id))
                 cap_obj.cap_codigo = str(request.POST.get("cap_codigo", "")).strip()
                 cap_obj.cap_id_curso = str(request.POST.get("cap_id_curso", "")).strip()
@@ -2390,7 +2471,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 qs = Capacitacion.objects.all()
                 if not is_admin:
-                    qs = qs.filter(creado_por__in=[username, display_name])
+                    qs = qs.filter(filtro_mis_capacitaciones(username, display_name))
                 cap_obj = qs.get(pk=int(cap_id))
 
                 # Bloquear edición si ya se emitieron certificados — requiere contraseña admin.
@@ -2428,6 +2509,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
                 # Aplica los campos del catalogo oficial de caracterizacion.
                 _aplicar_caracterizacion_post(request, cap_obj)
+
+                # Mantiene el correo del responsable alineado con su nombre: es
+                # la llave con la que la capacitacion aparece en sus modulos.
+                _sincronizar_especialista_usuario(cap_obj)
 
                 # Recalcula el avance real desde la completitud de bloques.
                 cap_obj.paso_actual = _recalcular_paso_actual(cap_obj)
@@ -3074,7 +3159,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
             try:
                 qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica").order_by("-creado_en")
                 if not is_admin:
-                    qs = qs.filter(creado_por__in=[username, display_name])
+                    qs = qs.filter(filtro_mis_capacitaciones(username, display_name))
 
                 _recalcular_estados_pendientes(qs)
 
@@ -3231,6 +3316,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 })
 
             context["editar_lista"] = editar_lista
+            # Reasignar responsable: solo administradores.
+            context["editar_es_admin"] = _normalizar_texto(
+                str(user_context.get("role_effective", ""))
+            ) in {"administrador", "admin", "superusuario"}
+            context["editar_especialistas"] = _obtener_usuarios_especialista()
             context["editar_page_obj"] = editar_page_obj
             _ed_qd = request.GET.copy()
             _ed_qd.pop("page", None)
@@ -3249,7 +3339,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             seg_qs_base = CapModel.objects.filter(cap_codigo__gt="").exclude(cap_tipo="Capacitación sincrónica").order_by("-cap_anio", "cap_estado", "cap_codigo")
             if not seg_is_admin:
-                seg_qs_base = seg_qs_base.filter(creado_por__in=[seg_username, seg_display])
+                seg_qs_base = seg_qs_base.filter(filtro_mis_capacitaciones(seg_username, seg_display))
 
             # Calcula años disponibles desde ORM y sobreescribe contexto global.
             seg_anios = sorted(
@@ -3278,7 +3368,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
             # Construye lista compatible con el formato que espera el template.
             seg_filas: list[dict[str, Any]] = []
-            _seg_fields = ("id", "cap_codigo", "cap_id_curso", "cap_anio", "cap_estado", "cap_tipo", "cap_nombre", "creado_nombre", "creado_por")
+            _seg_fields = ("id", "cap_codigo", "cap_id_curso", "cap_anio", "cap_estado", "cap_tipo", "cap_nombre", "especialista_cargo", "creado_nombre", "creado_por")
             for cap in seg_qs.values(*_seg_fields):
                 codigo_completo = cap["cap_codigo"] or ""
                 if cap["cap_id_curso"]:
@@ -3291,7 +3381,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "condicion": cap["cap_estado"],
                     "tipo_proceso_formativo": cap["cap_tipo"],
                     "denominacion_proceso_formativo": cap["cap_nombre"],
-                    "especialista_cargo": cap["creado_nombre"] or cap["creado_por"],
+                    # Responsable a cargo, no quien la registro.
+                    "especialista_cargo": cap["especialista_cargo"] or cap["creado_nombre"] or cap["creado_por"],
                     "cap_id": cap["id"],
                 })
 
@@ -4357,6 +4448,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                 })
 
             context["editar_lista"] = editar_lista
+            # Reasignar responsable: solo administradores.
+            context["editar_es_admin"] = _normalizar_texto(
+                str(user_context.get("role_effective", ""))
+            ) in {"administrador", "admin", "superusuario"}
+            context["editar_especialistas"] = _obtener_usuarios_especialista()
             context["editar_page_obj"] = editar_page_obj
             _ed_qd = request.GET.copy()
             _ed_qd.pop("page", None)
@@ -4396,7 +4492,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "condicion": str(c.cap_estado or "").strip(),
                     "tipo_proceso_formativo": str(c.cap_tipo or "").strip(),
                     "denominacion_proceso_formativo": str(c.cap_nombre or "").strip(),
-                    "especialista_cargo": str(c.creado_nombre or "").strip(),
+                    # Responsable a cargo, no quien la registro.
+                    "especialista_cargo": str(c.especialista_cargo or c.creado_nombre or "").strip(),
                 }
                 for c in _proc_qs
             ]
@@ -4867,7 +4964,7 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         else:
             cert_qs = Capacitacion.objects.exclude(cap_tipo="Capacitación sincrónica")
         if not cert_is_admin:
-            cert_qs = cert_qs.filter(creado_por__in=[cert_username, cert_display])
+            cert_qs = cert_qs.filter(filtro_mis_capacitaciones(cert_username, cert_display))
 
         cert_anios = sorted(
             set(cert_qs.values_list("cap_anio", flat=True)),
@@ -5486,7 +5583,7 @@ def api_caracterizacion_replica_view(request, cap_id: int):
         is_admin = _normalizar_texto(str(role_eff)) in {"administrador", "admin", "superusuario"}
         qs = _Cap.objects.filter(pk=int(cap_id))
         if not is_admin:
-            qs = qs.filter(creado_por__in=[username, display_name])
+            qs = qs.filter(filtro_mis_capacitaciones(username, display_name))
         cap = qs.first()
     except Exception:
         cap = None

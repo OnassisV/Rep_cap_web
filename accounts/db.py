@@ -109,6 +109,39 @@ def fetch_users_with_names(limit: int = 500) -> list[dict[str, str]]:
     return result
 
 
+def _clave_nombre(nombre: Any) -> str:
+    """Normaliza un nombre para cruzarlo tolerando el prefijo '(OS) ' y espacios."""
+    texto = " ".join(str(nombre or "").split()).strip()
+    if texto.upper().startswith("(OS)"):
+        texto = texto[4:].strip()
+    return texto.casefold()
+
+
+def resolver_correo_especialista(nombre: str) -> str:
+    """Traduce el nombre visible de un especialista a su correo de usuario.
+
+    El correo es la llave estable de propiedad de una capacitacion; el nombre
+    puede variar (tildes, prefijo "(OS)"). Retorna "" si no hay coincidencia,
+    en cuyo caso el filtro cae al respaldo por nombre.
+    """
+    clave = _clave_nombre(nombre)
+    if not clave:
+        return ""
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT usuario, especialista_cargo FROM usuarios")
+                filas = cursor.fetchall()
+    except Exception:
+        logger.exception("No se pudo resolver el correo de %s", nombre)
+        return ""
+
+    for fila in filas or []:
+        if _clave_nombre(fila.get("especialista_cargo")) == clave:
+            return str(fila.get("usuario", "") or "").strip()
+    return ""
+
+
 def fetch_user_cargo(username: str) -> str:
     """Retorna el cargo legacy de un usuario, o cadena vacia si no existe."""
     username = str(username or "").strip()
