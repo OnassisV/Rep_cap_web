@@ -4989,6 +4989,10 @@ def _crear_excel_cumplimiento_nominal(
 ) -> bool:
     """Genera el reporte nominal de cumplimiento para usuarios externos (visores).
 
+    Lista a todos los matriculados del curso (estado=2), incluidos los que aun
+    no firmaron compromiso: el destinatario es la IGED que debe hacerles
+    seguimiento.
+
     A diferencia del reporte nominal operativo, este NO expone notas ni promedios:
     cada actividad se reporta solo como "Cumple"/"No cumple" (mismo criterio que el
     reporte por IGED: `_es_actividad_cumplida`). Se comparte con actores externos,
@@ -5007,15 +5011,13 @@ def _crear_excel_cumplimiento_nominal(
         logger.exception("Error en _crear_excel_cumplimiento_nominal")
         return False
 
-    # Mismo universo que el reporte por IGED: matriculados con compromiso valido.
-    filas_base = [
-        row
-        for row in filas
-        if _a_int(row.get("estado")) == 2
-        and _a_float_nullable(row.get("compromiso")) in {1.0, 20.0}
-    ]
+    # Universo: todos los matriculados, no solo quienes firmaron compromiso.
+    # A diferencia del reporte por IGED (que mide participacion), este se envia
+    # a la DRE/UGEL para que haga seguimiento, y quien no arranco es
+    # precisamente a quien necesita ubicar: aparece con "No cumple" en todo.
+    filas_base = [row for row in filas if _a_int(row.get("estado")) == 2]
     if not filas_base:
-        logger.warning("cumplimiento nominal: sin participantes con estado=2 y compromiso valido")
+        logger.warning("cumplimiento nominal: sin matriculados (estado=2)")
         return False
 
     # Indice actividad -> grupo (para encabezados agrupados) y set de informativas.
