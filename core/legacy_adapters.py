@@ -3734,7 +3734,10 @@ def _aplicar_actividades_a_filas(
 
         for dni, fila in filas_por_dni.items():
             valor = mapa_valores.get(dni)
-            if cumplimiento == "nota":
+            # "Informativo" clasifica al participante (ej. GRUPO: Inicial /
+            # Primaria / Secundaria). Conserva el texto tal cual: no es
+            # cumplimiento ni calificacion.
+            if cumplimiento in {"nota", "informativo"}:
                 fila[nombre_col] = valor if not _valor_vacio(valor) else None
                 continue
 
@@ -4749,11 +4752,18 @@ def _crear_excel_cumplimiento_iged(
         return False
 
     # Construye indice normalizado de actividad -> grupo desde estructura.
+    # Las informativas clasifican al participante y no se evaluan: quedan fuera.
     indice_grupo: dict[str, str] = {}
+    informativas_norm: set[str] = set()
     for row in estructura:
         actividad = str(row.get("actividad", "") or "").strip()
+        if not actividad:
+            continue
+        if _normalizar_texto(row.get("cumplimiento_nota", "")) == "informativo":
+            informativas_norm.add(_normalizar_texto(actividad))
+            continue
         grupo = str(row.get("grupo", "") or "").strip()
-        if not actividad or not grupo:
+        if not grupo:
             continue
         indice_grupo[_normalizar_texto(actividad)] = grupo
 
@@ -4762,7 +4772,7 @@ def _crear_excel_cumplimiento_iged(
     actividades: list[str] = []
     for actividad in columnas_actividades:
         act_txt = str(actividad or "").strip()
-        if not act_txt:
+        if not act_txt or _normalizar_texto(act_txt) in informativas_norm:
             continue
         grupo = indice_grupo.get(_normalizar_texto(act_txt))
         if not grupo:
@@ -4774,7 +4784,7 @@ def _crear_excel_cumplimiento_iged(
     if not actividades:
         for actividad in columnas_actividades:
             act_txt = str(actividad or "").strip()
-            if not act_txt:
+            if not act_txt or _normalizar_texto(act_txt) in informativas_norm:
                 continue
             grupo_por_actividad[act_txt] = "General"
             actividades.append(act_txt)
@@ -4983,6 +4993,11 @@ def _crear_excel_cumplimiento_nominal(
     cada actividad se reporta solo como "Cumple"/"No cumple" (mismo criterio que el
     reporte por IGED: `_es_actividad_cumplida`). Se comparte con actores externos,
     donde una nota preliminar podria tomarse como resultado final.
+
+    Las actividades marcadas como "Informativo" son la excepcion: clasifican al
+    participante (ej. GRUPO: Inicial / Primaria / Secundaria), por lo que se
+    muestran con su contenido junto a los datos de la persona y quedan fuera
+    del calculo de cumplimiento.
     """
     try:
         from openpyxl import Workbook
@@ -5003,34 +5018,56 @@ def _crear_excel_cumplimiento_nominal(
         logger.warning("cumplimiento nominal: sin participantes con estado=2 y compromiso valido")
         return False
 
-    # Indice actividad -> grupo (para encabezados agrupados).
+    # Indice actividad -> grupo (para encabezados agrupados) y set de informativas.
     indice_grupo: dict[str, str] = {}
+    informativas_norm: set[str] = set()
     for row in estructura:
         actividad = str(row.get("actividad", "") or "").strip()
+        if not actividad:
+            continue
+        clave = _normalizar_texto(actividad)
         grupo = str(row.get("grupo", "") or "").strip()
-        if actividad and grupo:
-            indice_grupo[_normalizar_texto(actividad)] = grupo
+        if grupo:
+            indice_grupo[clave] = grupo
+        if _normalizar_texto(row.get("cumplimiento_nota", "")) == "informativo":
+            informativas_norm.add(clave)
 
+    # Separa las informativas: acompañan al participante, no se evaluan.
     actividades: list[str] = []
+    informativas: list[str] = []
     grupo_por_actividad: dict[str, str] = {}
     for actividad in columnas_actividades:
         act_txt = str(actividad or "").strip()
         if not act_txt:
             continue
+        if _normalizar_texto(act_txt) in informativas_norm:
+            informativas.append(act_txt)
+            continue
         grupo_por_actividad[act_txt] = indice_grupo.get(_normalizar_texto(act_txt)) or "General"
         actividades.append(act_txt)
 
-    if not actividades:
+    if not actividades and not informativas:
         logger.warning("cumplimiento nominal: sin actividades configuradas")
         return False
 
     filas_base = _ordenar_filas_exportacion(filas_base)
+    if informativas:
+        # Agrupa visualmente por la clasificacion (ej. todos los de Inicial juntos),
+        # conservando el orden interno ya aplicado.
+        filas_base.sort(
+            key=lambda row: tuple(
+                str(row.get(col) or "").strip().upper() or "ZZZ" for col in informativas
+            )
+        )
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Cumplimiento"
 
+    # Las informativas van junto a los datos de la persona: describen quien es,
+    # no que hizo.
     columnas_base = ["N°", "REGIÓN", "TIPO IGED", "NOMBRE IGED", "DNI", "APELLIDOS", "NOMBRES"]
+    columnas_base += [str(col).upper() for col in informativas]
     total_columnas = len(columnas_base) + len(actividades) + 2  # + cumplidas + %
 
     thin_border = Border(
@@ -5104,6 +5141,11 @@ def _crear_excel_cumplimiento_nominal(
             str(row.get("nombres", "") or "").strip(),
         ]
 
+        # Clasificaciones del participante: se muestran tal cual se cargaron.
+        for col in informativas:
+            valor_info = row.get(col)
+            valores.append("" if _valor_vacio(valor_info) else str(valor_info).strip())
+
         cumplidas = 0
         for actividad in actividades:
             cumple = _es_actividad_cumplida(row.get(actividad))
@@ -5126,8 +5168,8 @@ def _crear_excel_cumplimiento_nominal(
         ws.cell(row=fila_excel, column=len(encabezados)).number_format = "0.0%"
         fila_excel += 1
 
-    # Anchos de columna legibles.
-    anchos_base = [5, 18, 12, 32, 12, 26, 26]
+    # Anchos de columna legibles (datos del participante + informativas).
+    anchos_base = [5, 18, 12, 32, 12, 26, 26] + [16] * len(informativas)
     for idx, ancho in enumerate(anchos_base, start=1):
         ws.column_dimensions[get_column_letter(idx)].width = ancho
     for idx in range(len(columnas_base) + 1, len(encabezados) + 1):

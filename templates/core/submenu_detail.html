@@ -1105,6 +1105,9 @@
                                             <select id="act-cumplimiento-nota" name="cumplimiento_nota">
                                                 <option value="Cumplimiento" {% if seguimiento_estructura_form.cumplimiento_nota == "Cumplimiento" %}selected{% endif %}>Cumplimiento</option>
                                                 <option value="Nota" {% if seguimiento_estructura_form.cumplimiento_nota == "Nota" %}selected{% endif %}>Nota</option>
+                                                {# Informativo: clasifica al participante (ej. GRUPO: Inicial/Primaria/Secundaria).
+                                                   Muestra su contenido en el reporte del visor y no cuenta como cumplimiento. #}
+                                                <option value="Informativo" {% if seguimiento_estructura_form.cumplimiento_nota == "Informativo" %}selected{% endif %}>Informativo (muestra el dato)</option>
                                             </select>
 
                                             <label for="act-origen">Origen</label>
