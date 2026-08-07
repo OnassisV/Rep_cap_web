@@ -23,8 +23,9 @@ jobs:
 
       - name: Instalar Dependencias
         run: |
+          sudo apt-get update && sudo apt-get install -y rclone
           python -m pip install --upgrade pip
-          pip install mysql-connector-python rclone
+          pip install mysql-connector-python
 
       - name: Descargar Backups Recientes de Google Drive
         env:
@@ -33,23 +34,20 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_NUBE" > ~/.config/rclone/rclone.conf
           mkdir -p backups_temp
-          # Descarga los archivos DB_ y aula_ desde Google Drive
-          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "DB_*" --include "aula_*" --include "DB_*.sql" --include "aula_*.sql"
-          echo "--- Archivos descargados en backups_temp ---"
+          # Descarga los archivos de respaldo desde la carpeta de Google Drive
+          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "DB_*" --include "aula_*"
+          echo "--- Archivos descargados ---"
           ls -la backups_temp/
 
       - name: Ejecutar Script de Sincronización
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
         run: |
-          # Búsqueda segura de los archivos más recientes
           AULA_FILE=$(find backups_temp -type f \( -name "aula_*" -o -name "*aula*" \) | head -n 1)
           SIDI_FILE=$(find backups_temp -type f \( -name "DB_*" -o -name "*sidi*" -o -name "*SIDI*" \) | head -n 1)
 
           if [ -z "$AULA_FILE" ] || [ -z "$SIDI_FILE" ]; then
             echo "[ERROR] No se encontraron archivos de respaldo en backups_temp."
-            echo "Contenido del directorio:"
-            ls -la backups_temp/
             exit 1
           fi
 
