@@ -27,15 +27,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install mysql-connector-python rclone
 
-      - name: Descargar Backups Recientes de OneDrive / Drive con Rclone
+      - name: Descargar Backups Recientes de Google Drive
         env:
           RCLONE_CONFIG_NUBE: ${{ secrets.RCLONE_CONFIG_NUBE }}
         run: |
-          mkdir -p config
-          echo "$RCLONE_CONFIG_NUBE" > config/rclone.conf
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_NUBE" > ~/.config/rclone/rclone.conf
           mkdir -p backups_temp
-          # Descarga los archivos DB_ y aula_ más recientes desde tu carpeta remota
-          rclone copy --config=config/rclone.conf "nube:Ruta/A/Tu/Carpeta" ./backups_temp --include "DB_*" --include "aula_*"
+          # Descarga los archivos DB_ y aula_ desde tu carpeta real en Google Drive
+          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "DB_*" --include "aula_*"
 
       - name: Ejecutar Script de Sincronización
         env:
