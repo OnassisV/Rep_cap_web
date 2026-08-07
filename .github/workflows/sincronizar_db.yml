@@ -35,31 +35,28 @@ jobs:
           echo "--- Archivos descargados ---"
           ls -la backups_temp/
 
-      - name: Preparar Archivos para el Script Python Original
-        run: |
-          AULA_FILE=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
-          SIDI_FILE=$(find backups_temp -type f \( -name "*sidi*" -o -name "*DB_*" -o -name "*db_*" \) | head -n 1)
-
-          if [ -z "$AULA_FILE" ] || [ -z "$SIDI_FILE" ]; then
-            echo "[ERROR] No se encontraron los respaldos requeridos en backups_temp."
-            exit 1
-          fi
-
-          # Crear la ruta esperada por defecto por tu script original
-          TARGET_DIR="../../descargar tablas aula y sysdifo/operacion_backup_sql"
-          mkdir -p "$TARGET_DIR"
-
-          cp "$AULA_FILE" "$TARGET_DIR/edutalentos_aulavirtual.sql"
-          cp "$SIDI_FILE" "$TARGET_DIR/db_sidifoca.sql"
-
-          echo "[OK] Archivos mapeados en $TARGET_DIR"
-
-      - name: Ejecutar Script de Sincronización Original
+      - name: Ejecutar Script de Sincronización
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
           RAILWAY_DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
           SYNC_CONNECT_ATTEMPTS: "10"
           SYNC_CONNECT_DELAY_SECONDS: "5"
         run: |
-          # Se ejecuta tu script original de 1000+ líneas tal como está
+          # 1. Detectar las rutas reales de los archivos SQL descargados
+          AULA_PATH=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
+          SIDI_PATH=$(find backups_temp -type f \( -name "*sidi*" -o -name "*DB_*" -o -name "*db_*" \) | head -n 1)
+
+          if [ -z "$AULA_PATH" ] || [ -z "$SIDI_PATH" ]; then
+            echo "[ERROR] No se encontraron los respaldos requeridos en backups_temp."
+            exit 1
+          fi
+
+          # 2. Asignar las variables de entorno que lee tu script de Python
+          export AULA_SQL_PATH="$AULA_PATH"
+          export SIDI_SQL_PATH="$SIDI_PATH"
+
+          echo "AULA_SQL_PATH: $AULA_SQL_PATH"
+          echo "SIDI_SQL_PATH: $SIDI_SQL_PATH"
+
+          # 3. Ejecutar tu script original intacto
           python sincronizar_mysql_a_railway.py
