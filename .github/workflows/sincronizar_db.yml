@@ -1,0 +1,48 @@
+name: Sincronización Automática DIFOCA -> Railway
+
+on:
+  schedule:
+    # Se ejecuta al minuto 15 de cada hora desde las 12:15 UTC hasta las 00:15 UTC
+    # (Equivale a las 07:15 AM hasta las 07:15 PM hora de Perú UTC-5)
+    - cron: '15 12-23,0 * * *'
+
+  # Mantiene habilitada la opción de ejecutarlo manualmente si lo deseas
+  workflow_dispatch:
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install mysql-connector-python rclone
+
+      - name: Descargar Backups Recientes de OneDrive / Drive con Rclone
+        env:
+          RCLONE_CONFIG_NUBE: ${{ secrets.RCLONE_CONFIG_NUBE }}
+        run: |
+          mkdir -p config
+          echo "$RCLONE_CONFIG_NUBE" > config/rclone.conf
+          mkdir -p backups_temp
+          # Descarga los archivos DB_ y aula_ más recientes desde tu carpeta remota
+          rclone copy --config=config/rclone.conf "nube:Ruta/A/Tu/Carpeta" ./backups_temp --include "DB_*" --include "aula_*"
+
+      - name: Ejecutar Script de Sincronización
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        run: |
+          # Detecta automáticamente el archivo DB_ y aula_ más reciente descargado
+          AULA_FILE=$(ls -t backups_temp/aula_* | head -n 1)
+          SIDI_FILE=$(ls -t backups_temp/DB_* | head -n 1)
+          
+          python sincronizar_mysql_a_railway.py --aula-sql "$AULA_FILE" --sidi-sql "$SIDI_FILE"
