@@ -6,7 +6,6 @@ on:
     # (Equivale a las 07:15 AM hasta las 07:15 PM hora de Perú UTC-5)
     - cron: '15 12-23,0 * * *'
 
-  # Mantiene habilitada la opción de ejecutarlo manualmente si lo deseas
   workflow_dispatch:
 
 jobs:
@@ -34,15 +33,27 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_NUBE" > ~/.config/rclone/rclone.conf
           mkdir -p backups_temp
-          # Descarga los archivos DB_ y aula_ desde tu carpeta real en Google Drive
-          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "DB_*" --include "aula_*"
+          # Descarga los archivos DB_ y aula_ desde Google Drive
+          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "DB_*" --include "aula_*" --include "DB_*.sql" --include "aula_*.sql"
+          echo "--- Archivos descargados en backups_temp ---"
+          ls -la backups_temp/
 
       - name: Ejecutar Script de Sincronización
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
         run: |
-          # Detecta automáticamente el archivo DB_ y aula_ más reciente descargado
-          AULA_FILE=$(ls -t backups_temp/aula_* | head -n 1)
-          SIDI_FILE=$(ls -t backups_temp/DB_* | head -n 1)
-          
+          # Búsqueda segura de los archivos más recientes
+          AULA_FILE=$(find backups_temp -type f \( -name "aula_*" -o -name "*aula*" \) | head -n 1)
+          SIDI_FILE=$(find backups_temp -type f \( -name "DB_*" -o -name "*sidi*" -o -name "*SIDI*" \) | head -n 1)
+
+          if [ -z "$AULA_FILE" ] || [ -z "$SIDI_FILE" ]; then
+            echo "[ERROR] No se encontraron archivos de respaldo en backups_temp."
+            echo "Contenido del directorio:"
+            ls -la backups_temp/
+            exit 1
+          fi
+
+          echo "Utilizando AULA_FILE: $AULA_FILE"
+          echo "Utilizando SIDI_FILE: $SIDI_FILE"
+
           python sincronizar_mysql_a_railway.py --aula-sql "$AULA_FILE" --sidi-sql "$SIDI_FILE"
