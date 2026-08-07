@@ -2,10 +2,7 @@ name: Sincronización Automática DIFOCA -> Railway
 
 on:
   schedule:
-    # Se ejecuta al minuto 15 de cada hora entre las 12:15 UTC y las 00:15 UTC
-    # (07:15 AM a 07:15 PM Hora de Perú UTC-5)
     - cron: '15 12-23,0 * * *'
-
   workflow_dispatch:
 
 jobs:
@@ -35,12 +32,11 @@ jobs:
           echo "$RCLONE_CONFIG_NUBE" > ~/.config/rclone/rclone.conf
           mkdir -p backups_temp
           rclone copy nube:"WORK/BackUp EduReg" ./backups_temp --include "*.sql" --include "*edutalentos*" --include "*sidifoca*"
-          echo "--- Archivos descargados en backups_temp ---"
+          echo "--- Archivos descargados ---"
           ls -la backups_temp/
 
-      - name: Preparar Archivos para el Script Python
+      - name: Preparar Archivos para el Script Python Original
         run: |
-          # 1. Detectar el archivo de Aula y de SIDI
           AULA_FILE=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
           SIDI_FILE=$(find backups_temp -type f \( -name "*sidi*" -o -name "*DB_*" -o -name "*db_*" \) | head -n 1)
 
@@ -49,21 +45,21 @@ jobs:
             exit 1
           fi
 
-          # 2. Crear la estructura de carpetas que el script busca por defecto
+          # Crear la ruta esperada por defecto por tu script original
           TARGET_DIR="../../descargar tablas aula y sysdifo/operacion_backup_sql"
           mkdir -p "$TARGET_DIR"
 
-          # 3. Copiar los archivos con el nombre exacto que espera DEFAULT_AULA_SQL y DEFAULT_SIDI_SQL
           cp "$AULA_FILE" "$TARGET_DIR/edutalentos_aulavirtual.sql"
           cp "$SIDI_FILE" "$TARGET_DIR/db_sidifoca.sql"
 
-          echo "[OK] Archivos mapeados exitosamente en $TARGET_DIR"
+          echo "[OK] Archivos mapeados en $TARGET_DIR"
 
-      - name: Ejecutar Script de Sincronización
+      - name: Ejecutar Script de Sincronización Original
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
           RAILWAY_DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
           SYNC_CONNECT_ATTEMPTS: "10"
           SYNC_CONNECT_DELAY_SECONDS: "5"
         run: |
+          # Se ejecuta tu script original de 1000+ líneas tal como está
           python sincronizar_mysql_a_railway.py
