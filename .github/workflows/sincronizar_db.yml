@@ -2,7 +2,7 @@ name: Sincronización Automática DIFOCA -> Railway
 
 on:
   schedule:
-    # Se ejecuta al minuto 15 de cada hora entre las 12:15 UTC y las 00:15 UTC
+    # Se ejecuta al minuto 15 de cada hora desde las 12:15 UTC hasta las 00:15 UTC
     # (07:15 AM a 07:15 PM Hora de Perú UTC-5)
     - cron: '15 12-23,0 * * *'
 
@@ -25,7 +25,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y rclone
           python -m pip install --upgrade pip
-          pip install mysql-connector-python
+          pip install mysql-connector-python python-dotenv
 
       - name: Descargar Backups Recientes de Google Drive
         env:
@@ -34,26 +34,31 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_NUBE" > ~/.config/rclone/rclone.conf
           mkdir -p backups_temp
-          # Descarga los archivos de respaldo desde la carpeta de Google Drive
-          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "DB_*" --include "aula_*"
-          echo "--- Archivos descargados ---"
+          # Bajamos todos los archivos .sql o que coincidan con edutalentos, aula, db, sidifoca
+          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "*.sql" --include "*edutalentos*" --include "*sidifoca*"
+          echo "--- Archivos descargados en backups_temp ---"
           ls -la backups_temp/
 
       - name: Ejecutar Script de Sincronización
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+          RAILWAY_DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
           SYNC_CONNECT_ATTEMPTS: "10"
           SYNC_CONNECT_DELAY_SECONDS: "5"
         run: |
-          AULA_FILE=$(find backups_temp -type f \( -name "aula_*" -o -name "*aula*" \) | head -n 1)
-          SIDI_FILE=$(find backups_temp -type f \( -name "DB_*" -o -name "*sidi*" -o -name "*SIDI*" \) | head -n 1)
+          # Detecta el archivo de Aula Virtual (edutalentos_aulavirtual)
+          AULA_FILE=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
+          # Detecta el archivo de SIDI/DIFOCA (db_sidifoca)
+          SIDI_FILE=$(find backups_temp -type f \( -name "*sidi*" -o -name "*DB_*" -o -name "*db_*" \) | head -n 1)
 
           if [ -z "$AULA_FILE" ] || [ -z "$SIDI_FILE" ]; then
-            echo "[ERROR] No se encontraron archivos de respaldo válidos en backups_temp."
+            echo "[ERROR] No se encontraron los respaldos requeridos (edutalentos / db_sidifoca)."
+            echo "Contenido de backups_temp:"
+            ls -la backups_temp/
             exit 1
           fi
 
-          echo "Utilizando AULA_FILE: $AULA_FILE"
-          echo "Utilizando SIDI_FILE: $SIDI_FILE"
+          echo "AULA_FILE encontrado: $AULA_FILE"
+          echo "SIDI_FILE encontrado: $SIDI_FILE"
 
           python sincronizar_mysql_a_railway.py --aula-sql "$AULA_FILE" --sidi-sql "$SIDI_FILE"
