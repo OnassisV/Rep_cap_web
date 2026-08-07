@@ -2,8 +2,8 @@ name: Sincronización Automática DIFOCA -> Railway
 
 on:
   schedule:
-    # Se ejecuta al minuto 15 de cada hora desde las 12:15 UTC hasta las 00:15 UTC
-    # (Equivale a las 07:15 AM hasta las 07:15 PM hora de Perú UTC-5)
+    # Se ejecuta al minuto 15 de cada hora entre las 12:15 UTC y las 00:15 UTC
+    # (07:15 AM a 07:15 PM Hora de Perú UTC-5)
     - cron: '15 12-23,0 * * *'
 
   workflow_dispatch:
@@ -42,12 +42,14 @@ jobs:
       - name: Ejecutar Script de Sincronización
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+          SYNC_CONNECT_ATTEMPTS: "10"
+          SYNC_CONNECT_DELAY_SECONDS: "5"
         run: |
           AULA_FILE=$(find backups_temp -type f \( -name "aula_*" -o -name "*aula*" \) | head -n 1)
           SIDI_FILE=$(find backups_temp -type f \( -name "DB_*" -o -name "*sidi*" -o -name "*SIDI*" \) | head -n 1)
 
           if [ -z "$AULA_FILE" ] || [ -z "$SIDI_FILE" ]; then
-            echo "[ERROR] No se encontraron archivos de respaldo en backups_temp."
+            echo "[ERROR] No se encontraron archivos de respaldo válidos en backups_temp."
             exit 1
           fi
 
