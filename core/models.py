@@ -591,6 +591,73 @@ class DniExcluido(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Archivos generados/cargados por capacitacion (persistencia en BD)
+# ---------------------------------------------------------------------------
+class ArchivoGenerado(models.Model):
+    """Archivo binario asociado a una capacitacion, persistido en BD.
+
+    El filesystem del contenedor es efimero (Railway): cualquier archivo
+    escrito a disco desaparece en el siguiente deploy. Esta tabla guarda las
+    salidas de la generacion de plantillas (main/nominal/iged/cumplimiento)
+    y el Excel de postulantes cargado, de modo que descargas y el portal de
+    visores sigan funcionando tras un reinicio.
+    """
+
+    class Kind(models.TextChoices):
+        MAIN = "main", "Plantilla generada"
+        NOMINAL = "nominal", "Reporte nominal"
+        IGED = "iged", "Cumplimiento por IGED"
+        CUMPLIMIENTO = "cumplimiento", "Reporte de cumplimiento (visores)"
+        POSTULANTES = "postulantes", "Excel de postulantes"
+
+    # Identificador simple de la capacitacion (extraer_id_capacitacion).
+    codigo = models.CharField(max_length=120, db_index=True)
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    file_name = models.CharField(max_length=255)
+    contenido = models.BinaryField()
+    size_bytes = models.PositiveIntegerField(default=0)
+    anio = models.IntegerField(null=True, blank=True)
+    generado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "cap_archivos_generados"
+        ordering = ["codigo", "kind"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["codigo", "kind"], name="uniq_archivo_generado_cod_kind"
+            ),
+        ]
+        verbose_name = "Archivo generado"
+        verbose_name_plural = "Archivos generados"
+
+    def __str__(self) -> str:
+        return f"{self.codigo} · {self.kind} · {self.file_name}"
+
+
+# ---------------------------------------------------------------------------
+# Configuraciones JSON persistentes (antes archivos en core/config/)
+# ---------------------------------------------------------------------------
+class ConfigJson(models.Model):
+    """Documento JSON de configuracion identificado por clave.
+
+    Reemplaza los JSON escritos al disco del contenedor (efimero), como la
+    configuracion de columnas del reporte nominal.
+    """
+
+    clave = models.CharField(max_length=100, unique=True)
+    valor = models.TextField(default="{}")
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "cap_config_json"
+        verbose_name = "Configuración JSON"
+        verbose_name_plural = "Configuraciones JSON"
+
+    def __str__(self) -> str:
+        return self.clave
+
+
+# ---------------------------------------------------------------------------
 # Audit trail de capacitaciones
 # ---------------------------------------------------------------------------
 class CapacitacionAuditLog(models.Model):

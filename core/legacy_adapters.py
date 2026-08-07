@@ -1426,8 +1426,26 @@ def _ruta_columnas_nominal_config() -> Path:
     return _core_config_dir(crear=True) / "columnas_nominal_config.json"
 
 
+_CONFIG_NOMINAL_CLAVE = "columnas_nominal_config"
+
+
 def _leer_config_nominal() -> dict[str, Any]:
-    """Lee configuracion nominal desde JSON local con tolerancia a errores."""
+    """Lee configuracion nominal desde BD, con respaldo en el JSON del repo.
+
+    El disco del contenedor es efimero: la BD es la fuente de verdad. El JSON
+    versionado en core/config/ solo sirve como semilla inicial cuando la BD
+    aun no tiene configuracion guardada.
+    """
+    try:
+        from core.models import ConfigJson
+
+        fila = ConfigJson.objects.filter(clave=_CONFIG_NOMINAL_CLAVE).first()
+        if fila is not None:
+            data = json.loads(fila.valor or "{}")
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        logger.exception("Error leyendo config nominal desde BD")
+
     ruta = _ruta_columnas_nominal_config()
     if not ruta.exists():
         return {}
@@ -1440,12 +1458,13 @@ def _leer_config_nominal() -> dict[str, Any]:
 
 
 def _guardar_config_nominal(config: dict[str, Any]) -> bool:
-    """Guarda configuracion nominal en disco."""
-    ruta = _ruta_columnas_nominal_config()
+    """Guarda configuracion nominal en BD (persistente entre deploys)."""
     try:
-        ruta.write_text(
-            json.dumps(config, ensure_ascii=False, indent=2),
-            encoding="utf-8",
+        from core.models import ConfigJson
+
+        ConfigJson.objects.update_or_create(
+            clave=_CONFIG_NOMINAL_CLAVE,
+            defaults={"valor": json.dumps(config, ensure_ascii=False)},
         )
         return True
     except Exception:
@@ -2064,26 +2083,84 @@ def _ruta_postulantes_excel(codigo: str) -> Path:
 
 
 def obtener_postulantes_excel_info(codigo: str) -> dict[str, Any]:
-    """Devuelve metadata de archivo de postulantes en Actividades_fuera."""
+    """Devuelve metadata del Excel de postulantes (BD primero, disco como legacy)."""
+    id_simple = extraer_id_capacitacion(codigo)
+    if id_simple:
+        try:
+            from core.models import ArchivoGenerado
+
+            fila = (
+                ArchivoGenerado.objects.filter(
+                    codigo=id_simple, kind=ArchivoGenerado.Kind.POSTULANTES
+                )
+                .only("file_name", "size_bytes")
+                .first()
+            )
+            if fila is not None:
+                return {
+                    "path": "",
+                    "file_name": fila.file_name,
+                    "exists": True,
+                    "size_bytes": int(fila.size_bytes or 0),
+                }
+        except Exception:
+            logger.exception("Error leyendo postulantes desde BD")
+
+    # Respaldo legacy: archivo en disco de un deploy anterior a la migracion.
     ruta = _ruta_postulantes_excel(codigo)
     existe = ruta.exists()
     return {
-        "path": str(ruta),
+        "path": str(ruta) if existe else "",
         "file_name": ruta.name,
         "exists": existe,
         "size_bytes": int(ruta.stat().st_size) if existe else 0,
     }
 
 
-def guardar_postulantes_excel(codigo: str, contenido_bytes: bytes) -> bool:
-    """Guarda el excel de postulantes en la carpeta local compartida."""
-    codigo = str(codigo or "").strip()
-    if not codigo or not contenido_bytes:
-        return False
+def obtener_postulantes_excel_bytes(codigo: str) -> bytes:
+    """Retorna el contenido del Excel de postulantes (BD primero, disco legacy)."""
+    id_simple = extraer_id_capacitacion(codigo)
+    if id_simple:
+        try:
+            from core.models import ArchivoGenerado
+
+            fila = ArchivoGenerado.objects.filter(
+                codigo=id_simple, kind=ArchivoGenerado.Kind.POSTULANTES
+            ).first()
+            if fila is not None and fila.contenido:
+                return bytes(fila.contenido)
+        except Exception:
+            logger.exception("Error leyendo contenido de postulantes desde BD")
 
     ruta = _ruta_postulantes_excel(codigo)
     try:
-        ruta.write_bytes(contenido_bytes)
+        if ruta.exists():
+            return ruta.read_bytes()
+    except Exception:
+        logger.exception("Error leyendo Excel de postulantes desde disco")
+    return b""
+
+
+def guardar_postulantes_excel(codigo: str, contenido_bytes: bytes) -> bool:
+    """Guarda el Excel de postulantes en BD (persistente entre deploys)."""
+    codigo = str(codigo or "").strip()
+    id_simple = extraer_id_capacitacion(codigo)
+    if not codigo or not id_simple or not contenido_bytes:
+        return False
+
+    try:
+        from core.models import ArchivoGenerado
+
+        ArchivoGenerado.objects.update_or_create(
+            codigo=id_simple,
+            kind=ArchivoGenerado.Kind.POSTULANTES,
+            defaults={
+                "file_name": f"postulantes_{id_simple}.xlsx",
+                "contenido": contenido_bytes,
+                "size_bytes": len(contenido_bytes),
+                "anio": _anio_desde_codigo(codigo),
+            },
+        )
         return True
     except Exception:
         logger.exception("Error en guardar_postulantes_excel")
@@ -2091,19 +2168,32 @@ def guardar_postulantes_excel(codigo: str, contenido_bytes: bytes) -> bool:
 
 
 def eliminar_postulantes_excel(codigo: str) -> bool:
-    """Elimina archivo de postulantes local, si existe."""
+    """Elimina el Excel de postulantes de BD (y el residuo local, si existe)."""
     codigo = str(codigo or "").strip()
+    id_simple = extraer_id_capacitacion(codigo)
     if not codigo:
         return False
+
+    ok = True
+    if id_simple:
+        try:
+            from core.models import ArchivoGenerado
+
+            ArchivoGenerado.objects.filter(
+                codigo=id_simple, kind=ArchivoGenerado.Kind.POSTULANTES
+            ).delete()
+        except Exception:
+            logger.exception("Error eliminando postulantes de BD")
+            ok = False
 
     ruta = _ruta_postulantes_excel(codigo)
     try:
         if ruta.exists():
             ruta.unlink()
-        return True
     except Exception:
         logger.exception("Error en eliminar_postulantes_excel")
-        return False
+        ok = False
+    return ok
 
 
 def _mean(values: list[float]) -> float:
@@ -2695,6 +2785,154 @@ def _guardar_metadata_plantilla_generada(codigo: str, payload: dict[str, Any]) -
         return False
 
 
+_PLANTILLA_KINDS = ("main", "nominal", "iged", "cumplimiento")
+
+_PLANTILLA_ETIQUETAS = {
+    "main": "Plantilla generada",
+    "nominal": "Reporte nominal",
+    "iged": "Cumplimiento por IGED",
+    "cumplimiento": "Reporte de cumplimiento (visores)",
+}
+
+_PLANTILLA_DESCARGAS = {
+    "main": "plantilla_generada",
+    "nominal": "plantilla_generada_nominal",
+    "iged": "plantilla_generada_iged",
+    "cumplimiento": "plantilla_generada_cumplimiento",
+}
+
+
+def _persistir_plantillas_en_bd(codigo: str, anio: int, files_meta: list[dict[str, Any]]) -> None:
+    """Guarda en BD el contenido de los archivos generados de la plantilla."""
+    id_simple = extraer_id_capacitacion(codigo)
+    if not id_simple:
+        return
+    try:
+        from core.models import ArchivoGenerado
+    except Exception:
+        logger.exception("No se pudo importar ArchivoGenerado")
+        return
+
+    for meta in files_meta:
+        kind = str(meta.get("kind", "") or "").strip().lower()
+        if kind not in _PLANTILLA_KINDS or not meta.get("exists"):
+            continue
+        path_text = str(meta.get("path", "") or "").strip()
+        try:
+            contenido = Path(path_text).read_bytes()
+        except Exception:
+            logger.exception("No se pudo leer '%s' para persistirlo en BD", path_text)
+            continue
+        try:
+            ArchivoGenerado.objects.update_or_create(
+                codigo=id_simple,
+                kind=kind,
+                defaults={
+                    "file_name": str(meta.get("file_name", "") or Path(path_text).name),
+                    "contenido": contenido,
+                    "size_bytes": len(contenido),
+                    "anio": int(anio) if anio else None,
+                },
+            )
+        except Exception:
+            logger.exception("No se pudo persistir en BD el archivo '%s'", kind)
+
+
+def _plantilla_info_desde_bd(codigo: str) -> dict[str, Any] | None:
+    """Construye la metadata de plantilla generada desde BD; None si no hay filas."""
+    id_simple = extraer_id_capacitacion(codigo)
+    if not id_simple:
+        return None
+    try:
+        from django.utils import timezone as _tz
+
+        from core.models import ArchivoGenerado
+
+        filas = list(
+            ArchivoGenerado.objects.filter(
+                codigo=id_simple, kind__in=_PLANTILLA_KINDS
+            ).only("kind", "file_name", "size_bytes", "generado_en")
+        )
+    except Exception:
+        logger.exception("Error leyendo plantilla generada desde BD")
+        return None
+
+    if not filas:
+        return None
+
+    orden = {kind: idx for idx, kind in enumerate(_PLANTILLA_KINDS)}
+    filas.sort(key=lambda fila: orden.get(fila.kind, 99))
+    files = [
+        {
+            "kind": fila.kind,
+            "label": _PLANTILLA_ETIQUETAS.get(fila.kind, "Archivo generado"),
+            "path": "",
+            "file_name": fila.file_name,
+            "size_bytes": int(fila.size_bytes or 0),
+            "exists": True,
+            "download_kind": _PLANTILLA_DESCARGAS.get(fila.kind, "plantilla_generada"),
+        }
+        for fila in filas
+    ]
+    generado_en = max(fila.generado_en for fila in filas if fila.generado_en)
+    principal = next((f for f in files if f["kind"] == "main"), files[0])
+    return {
+        "exists": True,
+        "path": "",
+        "file_name": principal["file_name"],
+        "size_bytes": principal["size_bytes"],
+        "generated_at": _tz.localtime(generado_en).strftime("%Y-%m-%d %H:%M:%S"),
+        "files": files,
+    }
+
+
+def obtener_plantilla_generada_bytes(codigo: str, kind: str) -> dict[str, Any]:
+    """Retorna nombre y contenido de un archivo generado (BD primero, disco legacy).
+
+    Devuelve {"exists": bool, "file_name": str, "contenido": bytes}.
+    """
+    _empty = {"exists": False, "file_name": "", "contenido": b""}
+    kind = str(kind or "").strip().lower()
+    id_simple = extraer_id_capacitacion(codigo)
+    if not id_simple or kind not in _PLANTILLA_KINDS:
+        return _empty
+
+    try:
+        from core.models import ArchivoGenerado
+
+        fila = ArchivoGenerado.objects.filter(codigo=id_simple, kind=kind).first()
+        if fila is not None and fila.contenido:
+            return {
+                "exists": True,
+                "file_name": fila.file_name,
+                "contenido": bytes(fila.contenido),
+            }
+    except Exception:
+        logger.exception("Error leyendo archivo generado '%s' desde BD", kind)
+
+    # Respaldo legacy: archivo en disco generado antes de la migracion a BD.
+    info = obtener_plantilla_generada_info(codigo)
+    target = next(
+        (
+            item
+            for item in list(info.get("files", []))
+            if str(item.get("kind")) == kind and bool(item.get("exists")) and item.get("path")
+        ),
+        None,
+    )
+    if target is None:
+        return _empty
+    try:
+        contenido = Path(str(target.get("path", ""))).read_bytes()
+    except Exception:
+        return _empty
+    return {
+        "exists": True,
+        "file_name": str(target.get("file_name", "") or "archivo_generado.xlsx"),
+        "contenido": contenido,
+    }
+
+
 def obtener_plantilla_generada_info(codigo: str) -> dict[str, Any]:
     """Retorna metadata y estado del archivo generado para la capacitacion."""
     codigo = str(codigo or "").strip()
@@ -2707,6 +2945,11 @@ def obtener_plantilla_generada_info(codigo: str) -> dict[str, Any]:
             "generated_at": "",
             "files": [],
         }
+
+    # BD primero: es la unica fuente que sobrevive a los deploys.
+    info_bd = _plantilla_info_desde_bd(codigo)
+    if info_bd is not None:
+        return info_bd
 
     ruta_meta = _ruta_metadata_plantilla_generada(codigo)
     if not ruta_meta.exists():
@@ -2824,10 +3067,9 @@ def _normalizar_header_excel(valor: Any) -> str:
     return _normalizar_texto(texto)
 
 
-def _leer_excel_postulantes_dni(path_excel: str) -> list[str]:
-    """Lee DNI de un archivo de postulantes y retorna lista normalizada sin duplicados."""
-    path_excel = str(path_excel or "").strip()
-    if not path_excel or not os.path.exists(path_excel):
+def _leer_excel_postulantes_dni(contenido: bytes) -> list[str]:
+    """Lee DNI del Excel de postulantes (bytes) y retorna lista normalizada sin duplicados."""
+    if not contenido:
         return []
 
     try:
@@ -2838,7 +3080,7 @@ def _leer_excel_postulantes_dni(path_excel: str) -> list[str]:
         return []
 
     try:
-        wb = load_workbook(path_excel, read_only=True, data_only=True)
+        wb = load_workbook(io.BytesIO(contenido), read_only=True, data_only=True)
         ws = wb.active
         filas = ws.iter_rows(min_row=1, max_row=1, values_only=True)
         headers = next(filas, ())
@@ -5311,7 +5553,7 @@ def generar_plantilla_seguimiento(
     # y las matrículas actuales de Chamilo, para que retirados solo cambien de estado y no se pierdan.
     dnis_objetivo: list[str] = []
     if postulantes_info.get("exists"):
-        dnis_objetivo = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
+        dnis_objetivo = _leer_excel_postulantes_dni(obtener_postulantes_excel_bytes(codigo))
 
     dnis_bbdd = _obtener_todos_dnis_por_codigo(codigo)
     dnis_aula = _obtener_dnis_matriculados_aula(codigo)
@@ -5455,6 +5697,9 @@ def generar_plantilla_seguimiento(
         "files": files_meta,
     }
     _guardar_metadata_plantilla_generada(codigo, payload)
+    # Persiste los archivos en BD: el disco del contenedor es efimero y las
+    # descargas (incluido el portal de visores) deben sobrevivir a un deploy.
+    _persistir_plantillas_en_bd(codigo, anio_salida, files_meta)
 
     # Insertar datos procesados en bbdd_2026 (alimenta la VIEW bbdd_difoca)
     _insertar_plantilla_en_bbdd_2026(filas_ordenadas, codigo)

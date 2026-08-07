@@ -68,7 +68,9 @@ from .legacy_adapters import (
     obtener_metricas_seguimiento,
     obtener_alertas_actividades_plataforma,
     obtener_config_nominal_reporte,
+    obtener_postulantes_excel_bytes,
     obtener_postulantes_excel_info,
+    obtener_plantilla_generada_bytes,
     obtener_plantilla_generada_info,
     obtener_excel_actividad_fuera_info,
     obtener_certificados_detalle,
@@ -3455,10 +3457,8 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     return response
 
                 if download_kind == "postulantes_excel":
-                    post_info = obtener_postulantes_excel_info(codigo_sel)
-                    if post_info.get("exists"):
-                        with open(str(post_info.get("path", "")), "rb") as file_post:
-                            content = file_post.read()
+                    content = obtener_postulantes_excel_bytes(codigo_sel)
+                    if content:
                         id_simple = extraer_id_capacitacion(codigo_sel)
                         response = HttpResponse(
                             content,
@@ -3477,7 +3477,6 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     "plantilla_generada_iged",
                     "plantilla_generada_cumplimiento",
                 }:
-                    plantilla_info = obtener_plantilla_generada_info(codigo_sel)
                     target_kind = "main"
                     if download_kind == "plantilla_generada_nominal":
                         target_kind = "nominal"
@@ -3486,45 +3485,29 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
                     if download_kind == "plantilla_generada_cumplimiento":
                         target_kind = "cumplimiento"
 
-                    files = list(plantilla_info.get("files", []))
-                    target_file = next(
-                        (item for item in files if str(item.get("kind")) == target_kind and bool(item.get("exists"))),
-                        None,
-                    )
-                    if target_file is None and target_kind == "main" and plantilla_info.get("exists"):
-                        # Compatibilidad con metadata legacy de un solo archivo.
-                        target_file = {
-                            "path": plantilla_info.get("path", ""),
-                            "file_name": plantilla_info.get("file_name", ""),
-                            "exists": True,
-                        }
-
-                    if target_file and target_file.get("exists"):
-                        try:
-                            with open(str(target_file.get("path", "")), "rb") as file_gen:
-                                content = file_gen.read()
-                        except OSError:
-                            messages.error(
-                                request,
-                                "El archivo generado ya no está disponible en disco. "
-                                "Vuelve a generar la plantilla.",
-                            )
-                            return redirect(
-                                _build_submenu_url(
-                                    section_slug,
-                                    submenu_slug,
-                                    {"anio": seg_anio_sel, "codigo": codigo_sel, "tab": "plantilla"},
-                                )
-                            )
-                        file_name = str(target_file.get("file_name", "")).strip() or "plantilla_generada.xlsx"
-                        response = HttpResponse(
-                            content,
-                            content_type=(
-                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            ),
+                    archivo_gen = obtener_plantilla_generada_bytes(codigo_sel, target_kind)
+                    if not archivo_gen.get("exists"):
+                        messages.error(
+                            request,
+                            "El archivo generado ya no está disponible. "
+                            "Vuelve a generar la plantilla.",
                         )
-                        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
-                        return response
+                        return redirect(
+                            _build_submenu_url(
+                                section_slug,
+                                submenu_slug,
+                                {"anio": seg_anio_sel, "codigo": codigo_sel, "tab": "plantilla"},
+                            )
+                        )
+                    file_name = str(archivo_gen.get("file_name", "")).strip() or "plantilla_generada.xlsx"
+                    response = HttpResponse(
+                        archivo_gen.get("contenido", b""),
+                        content_type=(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        ),
+                    )
+                    response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+                    return response
 
             # Busca detalle de la capacitacion actualmente seleccionada.
             cap_sel = next(
@@ -5897,28 +5880,13 @@ def portal_reporte_descargar_view(request, cap_id: int):
         raise Http404("No tienes acceso a este reporte.")
 
     codigo = _codigo_capacitacion(acceso.capacitacion)
-    info = obtener_plantilla_generada_info(codigo)
-    archivo = next(
-        (
-            item
-            for item in list(info.get("files", []))
-            if str(item.get("kind")) == "cumplimiento" and bool(item.get("exists"))
-        ),
-        None,
-    )
-    if archivo is None:
+    archivo = obtener_plantilla_generada_bytes(codigo, "cumplimiento")
+    if not archivo.get("exists"):
         messages.error(request, "El reporte de este curso aún no está disponible.")
         return redirect("core:portal_reportes")
 
-    try:
-        with open(str(archivo.get("path", "")), "rb") as handle:
-            contenido = handle.read()
-    except OSError:
-        messages.error(request, "El reporte ya no está disponible. Solicítalo al especialista.")
-        return redirect("core:portal_reportes")
-
     respuesta = HttpResponse(
-        contenido,
+        archivo.get("contenido", b""),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     nombre = f"Reporte_cumplimiento_{codigo}.xlsx"

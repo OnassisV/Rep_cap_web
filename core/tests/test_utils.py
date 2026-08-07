@@ -45,7 +45,7 @@ class NormalizarTextoUpperTests(SimpleTestCase):
         self.assertEqual(normalizar_texto_upper("región"), "REGION")
 
     def test_preserva_enie(self):
-        self.assertEqual(normalizar_texto_upper("señor"), "SENOR")
+        self.assertEqual(normalizar_texto_upper("señor"), "SEÑOR")
 
     def test_none_devuelve_cadena_vacia(self):
         self.assertEqual(normalizar_texto_upper(None), "")
