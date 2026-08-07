@@ -2,7 +2,7 @@ name: Sincronización Automática DIFOCA -> Railway
 
 on:
   schedule:
-    # Se ejecuta al minuto 15 de cada hora desde las 12:15 UTC hasta las 00:15 UTC
+    # Se ejecuta al minuto 15 de cada hora entre las 12:15 UTC y las 00:15 UTC
     # (07:15 AM a 07:15 PM Hora de Perú UTC-5)
     - cron: '15 12-23,0 * * *'
 
@@ -34,8 +34,8 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_NUBE" > ~/.config/rclone/rclone.conf
           mkdir -p backups_temp
-          # Bajamos todos los archivos .sql o que coincidan con edutalentos, aula, db, sidifoca
-          rclone copy nube:"WORK/2026/Minedu" ./backups_temp --include "*.sql" --include "*edutalentos*" --include "*sidifoca*"
+          # Ruta corregida a la carpeta real de backups:
+          rclone copy nube:"WORK/BackUp EduReg" ./backups_temp --include "*.sql" --include "*edutalentos*" --include "*sidifoca*"
           echo "--- Archivos descargados en backups_temp ---"
           ls -la backups_temp/
 
@@ -46,14 +46,14 @@ jobs:
           SYNC_CONNECT_ATTEMPTS: "10"
           SYNC_CONNECT_DELAY_SECONDS: "5"
         run: |
-          # Detecta el archivo de Aula Virtual (edutalentos_aulavirtual)
+          # Detecta el archivo de Aula Virtual
           AULA_FILE=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
-          # Detecta el archivo de SIDI/DIFOCA (db_sidifoca)
+          # Detecta el archivo de SIDI/DIFOCA
           SIDI_FILE=$(find backups_temp -type f \( -name "*sidi*" -o -name "*DB_*" -o -name "*db_*" \) | head -n 1)
 
           if [ -z "$AULA_FILE" ] || [ -z "$SIDI_FILE" ]; then
-            echo "[ERROR] No se encontraron los respaldos requeridos (edutalentos / db_sidifoca)."
-            echo "Contenido de backups_temp:"
+            echo "[ERROR] No se encontraron los respaldos requeridos en backups_temp."
+            echo "Contenido del directorio:"
             ls -la backups_temp/
             exit 1
           fi
