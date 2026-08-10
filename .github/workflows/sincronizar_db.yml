@@ -2,8 +2,16 @@ name: Sincronización Automática DIFOCA -> Railway
 
 on:
   schedule:
-    - cron: '15 12-23,0 * * *'
+    # 1. Corre desde las 07:15 hasta las 18:15 hora Perú (12:15 a 23:15 UTC)
+    - cron: '15 12-23 * * *'
+    
+    # 2. Corre a las 19:15 hora Perú (00:15 UTC del día siguiente)
+    - cron: '15 0 * * *'
   workflow_dispatch:
+
+# Define la zona horaria de Perú para todo el workflow
+env:
+  TZ: 'America/Lima'
 
 jobs:
   sincronizar:
@@ -39,6 +47,11 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
           RAILWAY_DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+          MYSQLHOST: ${{ secrets.MYSQLHOST }}
+          MYSQLPORT: ${{ secrets.MYSQLPORT }}
+          MYSQLUSER: ${{ secrets.MYSQLUSER }}
+          MYSQLPASSWORD: ${{ secrets.MYSQLPASSWORD }}
+          MYSQLDATABASE: ${{ secrets.MYSQLDATABASE }}
           SYNC_CONNECT_ATTEMPTS: "10"
           SYNC_CONNECT_DELAY_SECONDS: "5"
         run: |
