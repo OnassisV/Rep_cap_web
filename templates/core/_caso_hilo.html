@@ -1,7 +1,9 @@
-{# Hilo de conversacion de una Casuistica. Incluido por caso_detalle.html
-   (interno) y portal_caso_detalle.html (Visor). Espera en el contexto:
-   caso, hilo, es_visor_actual, es_admin_actual, autor_tipo_actual,
-   puede_responder, acciones_plataforma. #}
+{% comment %}
+Hilo de conversacion de una Casuistica. Incluido por caso_detalle.html
+(interno) y portal_caso_detalle.html (Visor). Espera en el contexto:
+caso, hilo, es_visor_actual, es_admin_actual, autor_tipo_actual,
+puede_responder, acciones_plataforma.
+{% endcomment %}
 <style>
     .hilo-cabecera { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center;
         margin-bottom: 18px; }
@@ -52,6 +54,9 @@
 {% if caso.accion_a_realizar %}
     <p class="hilo-meta"><strong>Acción a realizar:</strong> {{ caso.accion_a_realizar.nombre }}
         (definida {{ caso.accion_definida_en|date:"d/m/Y H:i" }} por {{ caso.accion_definida_por }})</p>
+    {% if caso.accion_detalle %}
+        <p class="hilo-meta"><strong>Detalle:</strong> {{ caso.accion_detalle|linebreaksbr }}</p>
+    {% endif %}
 {% endif %}
 
 <div class="hilo-thread">
@@ -109,17 +114,25 @@
 {% if es_admin_actual and caso.estado != "cerrado" %}
     <div class="hilo-panel">
         <h3>Pasar a "En plataforma"</h3>
-        <form method="post" class="hilo-panel-row" id="form-pasar-plataforma">
+        <form method="post" id="form-pasar-plataforma">
             {% csrf_token %}
             <input type="hidden" name="action" value="pasar_plataforma">
-            <select name="accion_id" id="select-accion-plataforma" required>
-                <option value="">— Elegir acción —</option>
-                {% for accion in acciones_plataforma %}
-                    <option value="{{ accion.id }}">{{ accion.nombre }}</option>
-                {% endfor %}
-            </select>
-            <button type="button" class="hilo-btn hilo-btn--secondary" onclick="document.getElementById('dlg-nueva-accion').showModal()">+ Nueva acción</button>
-            <button type="submit" class="hilo-btn">Pasar a plataforma</button>
+            <div class="hilo-panel-row">
+                <select name="accion_id" id="select-accion-plataforma" required>
+                    <option value="">— Elegir acción —</option>
+                    {% for accion in acciones_plataforma %}
+                        <option value="{{ accion.id }}">{{ accion.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="hilo-btn hilo-btn--secondary" onclick="document.getElementById('dlg-nueva-accion').showModal()">+ Nueva acción</button>
+            </div>
+            <label for="input-detalle-accion" style="display:block; margin-top:10px; font-size:.82rem;">
+                Detalle específico de la acción (opcional) — ej. el correo nuevo si la acción es "Cambiar correo"
+            </label>
+            <textarea id="input-detalle-accion" name="detalle" placeholder="Ej. Nuevo correo: nombre@dominio.com" style="width:100%; min-height:60px; margin-top:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(36,64,98,.25); font-family:inherit; font-size:.88rem; box-sizing:border-box;"></textarea>
+            <div class="hilo-form-actions">
+                <button type="submit" class="hilo-btn">Pasar a plataforma</button>
+            </div>
         </form>
     </div>
 

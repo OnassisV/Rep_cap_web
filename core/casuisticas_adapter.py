@@ -173,24 +173,30 @@ def reabrir_caso(caso: Casuistica, *, autor_tipo: str, autor_nombre: str, autor_
 
 
 def pasar_a_plataforma(
-    caso: Casuistica, *, accion: AccionPlataforma, admin_nombre: str, admin_email: str, nota: str = "",
+    caso: Casuistica, *, accion: AccionPlataforma, admin_nombre: str, admin_email: str, detalle: str = "",
 ) -> None:
-    """Solo el administrador: pausa el caso y deja la acción a ejecutar en Plataforma."""
+    """Solo el administrador: pausa el caso y deja la acción a ejecutar en Plataforma.
+
+    `detalle` es el dato puntual que esa acción necesita (ej. el correo nuevo
+    si la acción es "Cambiar correo"): se guarda aparte para poder exportarlo
+    como columna propia en el Excel, no solo mezclado en el texto del hilo.
+    """
     if caso.estado == Casuistica.Estado.CERRADO:
         raise CasuisticaError("El caso está cerrado; reábrelo antes de definir una acción.")
     with transaction.atomic():
         caso.estado = Casuistica.Estado.EN_PLATAFORMA
         caso.turno = ""
         caso.accion_a_realizar = accion
+        caso.accion_detalle = detalle.strip()
         caso.accion_definida_en = timezone.now()
         caso.accion_definida_por = admin_email or admin_nombre
         caso.save(update_fields=[
-            "estado", "turno", "accion_a_realizar", "accion_definida_en",
-            "accion_definida_por", "actualizado_en",
+            "estado", "turno", "accion_a_realizar", "accion_detalle",
+            "accion_definida_en", "accion_definida_por", "actualizado_en",
         ])
         texto = f"Estado: En plataforma. Acción a realizar: {accion.nombre}."
-        if nota.strip():
-            texto += f" Nota: {nota.strip()}"
+        if detalle.strip():
+            texto += f" Detalle: {detalle.strip()}"
         CasuisticaMensaje.objects.create(
             casuistica=caso, tipo=CasuisticaMensaje.Tipo.CAMBIO_ESTADO,
             autor_tipo=CasuisticaMensaje.AutorTipo.ADMIN, autor_nombre=admin_nombre,
@@ -240,7 +246,7 @@ def exportar_excel_plataforma(casos: Iterable[Casuistica], *, marcar_exportado: 
 
     columnas = [
         "DNI", "Nombre participante", "Curso", "Código curso", "Acción a realizar",
-        "Definida por", "Definida el", "Asunto del caso", "Visor",
+        "Detalle de la acción", "Definida por", "Definida el", "Asunto del caso", "Visor",
     ]
 
     wb = Workbook()
@@ -268,6 +274,7 @@ def exportar_excel_plataforma(casos: Iterable[Casuistica], *, marcar_exportado: 
             cap.cap_nombre,
             curso_codigo,
             caso.accion_a_realizar.nombre if caso.accion_a_realizar else "",
+            caso.accion_detalle,
             caso.accion_definida_por,
             timezone.localtime(caso.accion_definida_en).strftime("%d/%m/%Y %H:%M") if caso.accion_definida_en else "",
             caso.asunto,
@@ -277,7 +284,7 @@ def exportar_excel_plataforma(casos: Iterable[Casuistica], *, marcar_exportado: 
             ws.cell(row=row_idx, column=col_idx, value=valor)
         casos_exportados.append(caso)
 
-    anchos = {1: 12, 2: 28, 3: 36, 4: 16, 5: 30, 6: 22, 7: 18, 8: 34, 9: 24}
+    anchos = {1: 12, 2: 28, 3: 36, 4: 16, 5: 30, 6: 34, 7: 22, 8: 18, 9: 34, 10: 24}
     for col_idx, ancho in anchos.items():
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = ancho
     ws.freeze_panes = "A2"

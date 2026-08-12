@@ -729,6 +729,10 @@ class Casuistica(models.Model):
         blank=True,
         related_name="casuisticas",
     )
+    # Dato puntual que la accion elegida necesita para ejecutarse (ej. el
+    # correo nuevo si la accion es "Cambiar correo"). Va aparte del nombre
+    # de la accion para poder exportarlo como columna propia en el Excel.
+    accion_detalle = models.TextField(blank=True, default="")
     accion_definida_en = models.DateTimeField(null=True, blank=True)
     accion_definida_por = models.CharField(max_length=150, blank=True, default="")
 

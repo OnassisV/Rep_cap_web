@@ -6074,7 +6074,7 @@ def caso_detalle_view(request, caso_id: int):
                 else:
                     pasar_a_plataforma(
                         caso, accion=accion, admin_nombre=nombre, admin_email=email,
-                        nota=str(request.POST.get("nota", "")),
+                        detalle=str(request.POST.get("detalle", "")),
                     )
                     messages.success(request, "Caso pasado a 'En plataforma'.")
             else:
