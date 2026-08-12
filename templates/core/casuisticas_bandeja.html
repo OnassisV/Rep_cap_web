@@ -22,6 +22,7 @@
         .cs-export { margin-left: auto; display: flex; gap: 8px; align-items: end; }
         .cs-export a { padding: 9px 14px; border-radius: 8px; border: 1px solid #244062; color: #244062; text-decoration: none; font-size: .85rem; font-weight: 600; white-space: nowrap; }
         .cs-export a:hover { background: rgba(36,64,98,.08); }
+        .cs-export__todos { border-color: transparent !important; color: #63707f !important; font-weight: 500 !important; font-size: .78rem !important; }
         .cs-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
         .cs-table th, .cs-table td { padding: 10px 12px; border-bottom: 1px solid rgba(36,64,98,.12); text-align: left; vertical-align: top; }
         .cs-table th { font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; opacity: .65; }
@@ -144,8 +145,15 @@
 
             {% if es_admin_casuisticas %}
                 <div class="cs-export">
-                    <a href="{% url 'core:casuisticas_exportar_excel' %}?pendientes=1">Exportar pendientes (Excel)</a>
-                    <a href="{% url 'core:casuisticas_exportar_excel' %}">Exportar todos "En plataforma"</a>
+                    <a href="{% url 'core:casuisticas_exportar_excel' %}?pendientes=1">
+                        Exportar para Plataforma ({{ total_pendientes_exportar }})
+                    </a>
+                    {% if total_en_plataforma > total_pendientes_exportar %}
+                        <a href="{% url 'core:casuisticas_exportar_excel' %}" class="cs-export__todos"
+                           title="Vuelve a incluir los que ya exportaste antes. Úsalo solo si el archivo anterior se perdió.">
+                            Reexportar todos ({{ total_en_plataforma }})
+                        </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </form>

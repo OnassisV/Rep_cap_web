@@ -6219,5 +6219,8 @@ def casuisticas_bandeja_view(request, context: dict[str, Any]):
         "total_abiertos": Casuistica.objects.filter(estado=Casuistica.Estado.ABIERTO).count(),
         "total_en_plataforma": Casuistica.objects.filter(estado=Casuistica.Estado.EN_PLATAFORMA).count(),
         "total_cerrados": Casuistica.objects.filter(estado=Casuistica.Estado.CERRADO).count(),
+        "total_pendientes_exportar": Casuistica.objects.filter(
+            estado=Casuistica.Estado.EN_PLATAFORMA, exportado_en__isnull=True
+        ).count(),
     })
     return render(request, "core/casuisticas_bandeja.html", context)
