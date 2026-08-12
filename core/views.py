@@ -25,7 +25,7 @@ from django.contrib import messages
 # Decorador para limitar endpoint de cambio de rol a metodo POST.
 from django.views.decorators.http import require_POST
 # Atajos para renderizar y redirigir.
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 # Resolucion dinamica de URLs para evitar rutas hardcodeadas.
 from django.urls import reverse
 # Utilidad para validar redireccion segura.
@@ -351,6 +351,17 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         "imagen": "images/menu/administracion_seguridad.svg",
         "modulos": [
             "gestion_usuarios.py",
+        ],
+        "submenus": [
+            {
+                "slug": "casuisticas",
+                "titulo": "Casuísticas",
+                "descripcion": (
+                    "Casos por DNI reportados por Visores en inscripción/matrícula:"
+                    " conversación, acción a realizar y cierre."
+                ),
+                "adapter": "casuisticas_bandeja",
+            },
         ],
     },
 ]
@@ -2193,6 +2204,17 @@ def es_visor(request) -> bool:
     return _normalizar_texto(request.session.get("difoca_role_base", "")) == rol_visor
 
 
+def es_administrador(request) -> bool:
+    """Indica si el rol base de la sesion es Administrador.
+
+    Se usa para las acciones exclusivas de casuisticas (cerrar, pasar a
+    'En plataforma', reabrir, mantener el catalogo de acciones): el resto
+    del personal interno puede ver la bandeja y responder, pero no decide
+    el desenlace del caso.
+    """
+    return _normalizar_texto(request.session.get("difoca_role_base", "")) == _normalizar_texto("Administrador")
+
+
 def bloquear_visor(view_func):
     """Impide que un Visor entre a los modulos internos del aplicativo.
 
@@ -2294,6 +2316,10 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         "anio_seleccionado": None,
         "capacitaciones": [],
     }
+
+    # Bandeja de Casuisticas: vista propia, fuera del flujo generico de abajo.
+    if section_slug == "administracion-seguridad" and submenu_slug == "casuisticas":
+        return casuisticas_bandeja_view(request, context)
 
     # Procesa creacion de "Registrar nueva capacitacion" en MySQL Railway.
     if (
@@ -5924,3 +5950,266 @@ def portal_reporte_descargar_view(request, cap_id: int):
     nombre = f"Reporte_cumplimiento_{codigo}.xlsx"
     respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'
     return respuesta
+
+
+# ---------------------------------------------------------------------------
+# Casuisticas: conversacion por turnos Visor <-> administrador sobre un DNI
+# con problemas de inscripcion/matricula. Ver core/casuisticas_adapter.py
+# para las reglas del ciclo de vida (estados, turnos, purga de evidencias).
+# ---------------------------------------------------------------------------
+
+def _identidad_actual(request) -> tuple[str, str]:
+    """Devuelve (email, nombre_a_mostrar) de la sesion actual."""
+    email = str(request.user.username or "").strip()
+    nombre = request.session.get("difoca_name") or request.user.first_name or email
+    return email, nombre
+
+
+@login_required
+def portal_casos_view(request, cap_id: int):
+    """Portal externo (Visor): lista sus casos de un curso y permite reportar uno nuevo."""
+    from core.models import Casuistica
+    from core.casuisticas_adapter import CasuisticaError, crear_caso
+
+    email, nombre = _identidad_actual(request)
+
+    acceso = _accesos_vigentes(email).filter(capacitacion_id=cap_id).first()
+    if acceso is None:
+        raise Http404("No tienes acceso a este curso.")
+    cap = acceso.capacitacion
+
+    form_data: dict[str, str] = {}
+    if request.method == "POST":
+        form_data = {k: request.POST.get(k, "") for k in ("dni", "nombre_participante", "asunto", "texto")}
+        try:
+            crear_caso(
+                capacitacion=cap,
+                email_visor=email,
+                nombre_visor=nombre,
+                dni=request.POST.get("dni", ""),
+                nombre_participante=request.POST.get("nombre_participante", ""),
+                asunto=request.POST.get("asunto", ""),
+                texto=request.POST.get("texto", ""),
+                archivos=request.FILES.getlist("evidencias"),
+            )
+            messages.success(request, "Caso reportado. Te avisaremos aquí cuando haya respuesta.")
+            return redirect("core:portal_casos", cap_id)
+        except CasuisticaError as exc:
+            messages.error(request, str(exc))
+        except Exception:
+            logger.exception("Error creando casuistica para cap_id=%s", cap_id)
+            messages.error(request, "No se pudo registrar el caso. Intenta de nuevo.")
+
+    casos = Casuistica.objects.filter(capacitacion=cap, email_visor__iexact=email)
+
+    return render(
+        request,
+        "core/portal_casos.html",
+        {
+            "display_name": nombre,
+            "curso": cap,
+            "codigo": _codigo_capacitacion(cap),
+            "casos": casos,
+            "form_data": form_data,
+        },
+    )
+
+
+@login_required
+def caso_detalle_view(request, caso_id: int):
+    """Hilo de conversacion de un caso. Compartido por Visor (dueño del caso)
+    y personal interno (bandeja de casuisticas); las acciones disponibles
+    cambian segun quien mira."""
+    from core.models import AccionPlataforma, Casuistica, CasuisticaMensaje
+    from core.casuisticas_adapter import (
+        CasuisticaError, cerrar_caso, pasar_a_plataforma, reabrir_caso, responder_caso,
+    )
+
+    caso = get_object_or_404(
+        Casuistica.objects.select_related("capacitacion", "accion_a_realizar"), id=caso_id
+    )
+
+    visor = es_visor(request)
+    email, nombre = _identidad_actual(request)
+
+    if visor and _normalizar_texto(caso.email_visor) != _normalizar_texto(email):
+        raise Http404("Caso no encontrado.")
+
+    admin_ok = (not visor) and es_administrador(request)
+    autor_tipo = CasuisticaMensaje.AutorTipo.VISOR if visor else CasuisticaMensaje.AutorTipo.ADMIN
+
+    if request.method == "POST":
+        action = str(request.POST.get("action", "")).strip()
+        archivos = request.FILES.getlist("evidencias")
+        try:
+            if action == "responder":
+                responder_caso(
+                    caso, autor_tipo=autor_tipo, autor_nombre=nombre, autor_email=email,
+                    texto=request.POST.get("texto", ""), archivos=archivos,
+                )
+                messages.success(request, "Mensaje agregado.")
+            elif action == "reabrir":
+                reabrir_caso(
+                    caso, autor_tipo=autor_tipo, autor_nombre=nombre, autor_email=email,
+                    motivo=str(request.POST.get("motivo", "")),
+                )
+                messages.success(request, "Caso reabierto.")
+            elif action == "cerrar" and admin_ok:
+                cerrar_caso(caso, admin_nombre=nombre, admin_email=email, nota=str(request.POST.get("nota", "")))
+                messages.success(request, "Caso cerrado.")
+            elif action == "pasar_plataforma" and admin_ok:
+                accion = AccionPlataforma.objects.filter(
+                    id=request.POST.get("accion_id", ""), activo=True
+                ).first()
+                if accion is None:
+                    messages.error(request, "Selecciona una acción válida del listado.")
+                else:
+                    pasar_a_plataforma(
+                        caso, accion=accion, admin_nombre=nombre, admin_email=email,
+                        nota=str(request.POST.get("nota", "")),
+                    )
+                    messages.success(request, "Caso pasado a 'En plataforma'.")
+            else:
+                messages.error(request, "Esa acción no está disponible para tu perfil.")
+        except CasuisticaError as exc:
+            messages.error(request, str(exc))
+        except Exception:
+            logger.exception("Error al procesar accion de casuistica %s", caso_id)
+            messages.error(request, "Ocurrió un error inesperado. Intenta de nuevo.")
+        return redirect("core:caso_detalle", caso_id)
+
+    # El caso puede responderse si es el turno de quien mira, o si esta "En
+    # plataforma" (una observacion nueva lo regresa a Abierto). Si esta
+    # Cerrado no se usa este formulario: se reabre con el panel dedicado.
+    puede_responder = caso.estado != Casuistica.Estado.CERRADO and (
+        caso.turno == autor_tipo or caso.estado == Casuistica.Estado.EN_PLATAFORMA
+    )
+
+    contexto: dict[str, Any] = {
+        "caso": caso,
+        "hilo": caso.mensajes.prefetch_related("evidencias"),
+        "display_name": nombre,
+        "es_visor_actual": visor,
+        "es_admin_actual": admin_ok,
+        "autor_tipo_actual": autor_tipo,
+        "puede_responder": puede_responder,
+        "acciones_plataforma": AccionPlataforma.objects.filter(activo=True) if admin_ok else [],
+    }
+
+    if visor:
+        return render(request, "core/portal_caso_detalle.html", contexto)
+
+    contexto.update(_build_user_context(request))
+    contexto["menu_sections"] = MENU_GEOMETRICO
+    return render(request, "core/caso_detalle.html", contexto)
+
+
+@login_required
+def casuistica_evidencia_ver_view(request, evidencia_id: int):
+    """Sirve una evidencia (foto/PDF) proxied desde Drive: nunca es publica."""
+    from core.models import CasuisticaEvidencia
+    from core import drive_storage
+
+    evidencia = get_object_or_404(
+        CasuisticaEvidencia.objects.select_related("mensaje__casuistica"), id=evidencia_id
+    )
+    caso = evidencia.mensaje.casuistica
+
+    if es_visor(request):
+        email, _ = _identidad_actual(request)
+        if _normalizar_texto(caso.email_visor) != _normalizar_texto(email):
+            raise Http404("Evidencia no encontrada.")
+
+    if evidencia.purgada_en is not None:
+        raise Http404("Esta evidencia ya fue eliminada (venció el plazo de conservación).")
+
+    try:
+        contenido, mime_type = drive_storage.descargar_evidencia(evidencia.drive_file_id)
+    except drive_storage.DriveNoConfigurado:
+        raise Http404("El almacenamiento de evidencias no está configurado.")
+    except Exception:
+        logger.exception("No se pudo descargar la evidencia %s desde Drive.", evidencia_id)
+        raise Http404("No se pudo obtener la evidencia.")
+
+    return HttpResponse(contenido, content_type=mime_type or evidencia.mime_type or "application/octet-stream")
+
+
+@login_required
+@bloquear_visor
+def casuisticas_exportar_excel_view(request):
+    """Excel 'para Plataforma': casos En plataforma con su acción a realizar. Solo Administrador."""
+    from core.models import Casuistica
+    from core.casuisticas_adapter import exportar_excel_plataforma
+
+    if not es_administrador(request):
+        raise Http404()
+
+    email, _ = _identidad_actual(request)
+    casos = Casuistica.objects.filter(estado=Casuistica.Estado.EN_PLATAFORMA).select_related(
+        "capacitacion", "accion_a_realizar"
+    )
+    if request.GET.get("pendientes") == "1":
+        casos = casos.filter(exportado_en__isnull=True)
+
+    contenido = exportar_excel_plataforma(casos, marcar_exportado=True, admin_email=email)
+    respuesta = HttpResponse(
+        contenido, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    respuesta["Content-Disposition"] = 'attachment; filename="casos_para_plataforma.xlsx"'
+    return respuesta
+
+
+@login_required
+@bloquear_visor
+def casuisticas_accion_crear_view(request):
+    """Endpoint AJAX del popup 'agregar nueva acción' del desplegable. Solo Administrador."""
+    from core.casuisticas_adapter import CasuisticaError, crear_accion_plataforma
+
+    if request.method != "POST" or not es_administrador(request):
+        return JsonResponse({"ok": False, "error": "No autorizado."}, status=403)
+
+    email, _ = _identidad_actual(request)
+    try:
+        accion = crear_accion_plataforma(request.POST.get("nombre", ""), creado_por=email)
+    except CasuisticaError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    return JsonResponse({"ok": True, "id": accion.id, "nombre": accion.nombre})
+
+
+def casuisticas_bandeja_view(request, context: dict[str, Any]):
+    """Bandeja interna de casuisticas: listado filtrable + entrada a cada hilo."""
+    from core.models import AccionPlataforma, Casuistica
+
+    filtro_estado = str(request.GET.get("estado", "")).strip()
+    filtro_curso = str(request.GET.get("curso", "")).strip()
+    filtro_turno = str(request.GET.get("turno", "")).strip()
+
+    casos_qs = Casuistica.objects.select_related("capacitacion", "accion_a_realizar")
+    if filtro_estado:
+        casos_qs = casos_qs.filter(estado=filtro_estado)
+    if filtro_curso.isdigit():
+        casos_qs = casos_qs.filter(capacitacion_id=int(filtro_curso))
+    if filtro_turno:
+        casos_qs = casos_qs.filter(turno=filtro_turno)
+
+    cursos_con_casos = (
+        Casuistica.objects.select_related("capacitacion")
+        .order_by("capacitacion__cap_nombre")
+        .values_list("capacitacion_id", "capacitacion__cap_nombre")
+        .distinct()
+    )
+
+    context.update({
+        "casos": casos_qs[:300],
+        "acciones_plataforma": AccionPlataforma.objects.filter(activo=True),
+        "filtro_estado": filtro_estado,
+        "filtro_curso": filtro_curso,
+        "filtro_turno": filtro_turno,
+        "cursos_con_casos": cursos_con_casos,
+        "estados": Casuistica.Estado.choices,
+        "es_admin_casuisticas": es_administrador(request),
+        "total_abiertos": Casuistica.objects.filter(estado=Casuistica.Estado.ABIERTO).count(),
+        "total_en_plataforma": Casuistica.objects.filter(estado=Casuistica.Estado.EN_PLATAFORMA).count(),
+        "total_cerrados": Casuistica.objects.filter(estado=Casuistica.Estado.CERRADO).count(),
+    })
+    return render(request, "core/casuisticas_bandeja.html", context)

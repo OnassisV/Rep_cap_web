@@ -1,0 +1,60 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Caso DNI {{ caso.dni_participante }} | Casuísticas | CAP DIFOCA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <style>
+        .caso-shell { max-width: 860px; margin: 0 auto; padding: 28px 20px 64px; }
+        .caso-topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+            justify-content: space-between; margin-bottom: 20px; }
+        .caso-back { color: #244062; font-weight: 600; text-decoration: none; font-size: .9rem; }
+        .caso-back:hover { text-decoration: underline; }
+        .caso-panel { border: 1px solid rgba(36,64,98,.15); border-radius: 14px; padding: 22px 24px;
+            background: rgba(255,255,255,.75); }
+    </style>
+</head>
+<body>
+<div class="scene-grid"></div>
+
+<main class="caso-shell">
+    <div class="caso-topbar">
+        <a class="caso-back" href="{% url 'core:submenu_detail' 'administracion-seguridad' 'casuisticas' %}">← Volver a la bandeja</a>
+        <div style="display:flex; gap:12px; align-items:center;">
+            <span class="role-pill">{{ display_name }}</span>
+            <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="logout-link">Cerrar sesión</button>
+            </form>
+        </div>
+    </div>
+
+    {% include "core/_sync_status_bar.html" %}
+
+    {% if messages %}
+        <div class="flash-stack" data-flash-toast>
+            {% for message in messages %}
+                <p class="flash-item flash-item--{{ message.tags }}">{{ message }}</p>
+            {% endfor %}
+        </div>
+        <script>
+            (function() {
+                var toast = document.querySelector("[data-flash-toast]");
+                if (!toast) return;
+                setTimeout(function() { toast.classList.add("is-dismissing"); }, 6000);
+                toast.addEventListener("click", function() { toast.classList.add("is-dismissing"); });
+            })();
+        </script>
+    {% endif %}
+
+    <section class="caso-panel">
+        {% include "core/_caso_hilo.html" %}
+    </section>
+</main>
+</body>
+</html>

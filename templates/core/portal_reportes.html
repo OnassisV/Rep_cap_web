@@ -29,6 +29,9 @@
             padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: .9rem; white-space: nowrap; }
         .portal-btn:hover { background: #1a2f49; }
         .portal-btn--off { background: #d8dde4; color: #63707f; cursor: not-allowed; }
+        .portal-btn--secondary { background: #fff; color: #244062; border: 1px solid #244062; }
+        .portal-btn--secondary:hover { background: rgba(36,64,98,.08); }
+        .portal-card__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
         .portal-vacio { border: 1px dashed rgba(36,64,98,.3); border-radius: 12px;
             padding: 40px 24px; text-align: center; opacity: .8; }
         .portal-msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .9rem; }
@@ -76,17 +79,22 @@
                                 {% if curso.generado_en %} &middot; Actualizado: {{ curso.generado_en }}{% endif %}
                             </p>
                         </div>
-                        {% if curso.disponible %}
-                            <a class="portal-btn"
-                               href="{% url 'core:portal_reporte_descargar' curso.cap_id %}">
-                                Descargar reporte
+                        <div class="portal-card__acciones">
+                            {% if curso.disponible %}
+                                <a class="portal-btn"
+                                   href="{% url 'core:portal_reporte_descargar' curso.cap_id %}">
+                                    Descargar reporte
+                                </a>
+                            {% else %}
+                                <span class="portal-btn portal-btn--off"
+                                      title="El especialista aun no ha generado este reporte.">
+                                    Aun no disponible
+                                </span>
+                            {% endif %}
+                            <a class="portal-btn portal-btn--secondary" href="{% url 'core:portal_casos' curso.cap_id %}">
+                                Casos
                             </a>
-                        {% else %}
-                            <span class="portal-btn portal-btn--off"
-                                  title="El especialista aun no ha generado este reporte.">
-                                Aun no disponible
-                            </span>
-                        {% endif %}
+                        </div>
                     </article>
                 {% endfor %}
             </section>

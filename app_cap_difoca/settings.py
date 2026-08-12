@@ -358,3 +358,15 @@ LEGACY_DB = build_mysql_connection("DIFOCA_DB_LOCAL", SHARED_MYSQL)
 
 # Configuracion de Aula Virtual. Puede compartir el mismo MySQL o usar otro si se requiere.
 AULA_DB = build_mysql_connection("DIFOCA_DB_AULA", SHARED_MYSQL)
+
+# Google Drive: aloja las evidencias (fotos) de las casuisticas fuera de la BD
+# y del filesystem efimero de Railway. GOOGLE_SERVICE_ACCOUNT_JSON es el JSON
+# completo de la cuenta de servicio; GOOGLE_DRIVE_FOLDER_ID es la carpeta del
+# Drive personal del administrador, compartida con esa cuenta de servicio.
+GOOGLE_SERVICE_ACCOUNT_JSON = env_str("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+GOOGLE_DRIVE_FOLDER_ID = env_str("GOOGLE_DRIVE_FOLDER_ID", "")
+
+# Dias que se conserva el binario de una evidencia despues de que su caso se
+# cierra. Pasado ese plazo, `purgar_evidencias_casuisticas` la borra de Drive
+# (el mensaje y su metadata quedan igual como historial).
+CASUISTICA_EVIDENCIA_RETENCION_DIAS = env_int("CASUISTICA_EVIDENCIA_RETENCION_DIAS", 30)
