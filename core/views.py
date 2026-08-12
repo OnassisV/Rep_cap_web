@@ -5977,7 +5977,7 @@ def _identidad_actual(request) -> tuple[str, str]:
 def portal_casos_view(request, cap_id: int):
     """Portal externo (Visor): lista sus casos de un curso y permite reportar uno nuevo."""
     from core.models import Casuistica
-    from core.casuisticas_adapter import CasuisticaError, crear_caso
+    from core.casuisticas_adapter import CasuisticaDuplicada, CasuisticaError, crear_caso
 
     email, nombre = _identidad_actual(request)
 
@@ -6002,6 +6002,15 @@ def portal_casos_view(request, cap_id: int):
             )
             messages.success(request, "Caso reportado. Te avisaremos aquí cuando haya respuesta.")
             return redirect("core:portal_casos", cap_id)
+        except CasuisticaDuplicada as exc:
+            caso_previo = exc.caso_existente
+            messages.warning(
+                request,
+                f"Ya tienes un caso para el DNI {caso_previo.dni_participante} en este curso "
+                f"(estado: {caso_previo.get_estado_display()}). Te llevamos a esa conversación — "
+                "agrega tu observación ahí; si está cerrado, se reabre solo al escribir.",
+            )
+            return redirect("core:caso_detalle", caso_previo.id)
         except CasuisticaError as exc:
             messages.error(request, str(exc))
         except Exception:

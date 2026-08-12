@@ -38,6 +38,18 @@ class CasuisticaError(ValueError):
     """Error de validacion o de regla de negocio, mostrable al usuario."""
 
 
+class CasuisticaDuplicada(CasuisticaError):
+    """Ya existe un caso de este Visor para el mismo DNI en el mismo curso.
+
+    Se evita abrir un hilo nuevo por error: `caso_existente` permite a la
+    vista redirigir directo a la conversacion ya registrada.
+    """
+
+    def __init__(self, caso_existente: Casuistica):
+        self.caso_existente = caso_existente
+        super().__init__("Ya tienes un caso registrado para este DNI en este curso.")
+
+
 def _validar_archivo(archivo) -> None:
     if archivo.size > MAX_EVIDENCIA_BYTES:
         raise CasuisticaError(f"'{archivo.name}' supera el tamaño máximo permitido (8 MB).")
@@ -76,6 +88,17 @@ def crear_caso(
     dni = str(dni or "").strip()
     if not dni.isdigit() or not (8 <= len(dni) <= 12):
         raise CasuisticaError("El documento debe tener solo números (8 a 12 dígitos).")
+
+    caso_existente = (
+        Casuistica.objects.filter(
+            capacitacion=capacitacion, dni_participante=dni, email_visor__iexact=email_visor,
+        )
+        .order_by("-creado_en")
+        .first()
+    )
+    if caso_existente is not None:
+        raise CasuisticaDuplicada(caso_existente)
+
     asunto = str(asunto or "").strip()
     if not asunto:
         raise CasuisticaError("Escribe un asunto breve para el caso.")
