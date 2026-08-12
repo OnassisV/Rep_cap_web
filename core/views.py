@@ -354,6 +354,14 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
         ],
         "submenus": [
             {
+                "slug": "gestion-usuarios",
+                "titulo": "Gestión de usuarios",
+                "descripcion": (
+                    "Cuentas, contraseñas y accesos del personal interno. (Próximamente)"
+                ),
+                "adapter": "placeholder",
+            },
+            {
                 "slug": "casuisticas",
                 "titulo": "Casuísticas",
                 "descripcion": (
