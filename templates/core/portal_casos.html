@@ -1,0 +1,126 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Casos {{ codigo }} | CAP DIFOCA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=20260624b">
+    <style>
+        .portal-shell { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+        .portal-hero { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
+            justify-content: space-between; margin-bottom: 10px; }
+        .portal-hero h1 { margin: 0 0 6px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; }
+        .portal-hero p { margin: 0; opacity: .75; font-size: .9rem; }
+        .portal-back { color: #244062; font-weight: 600; text-decoration: none; font-size: .85rem; display: inline-block; margin-bottom: 18px; }
+        .portal-back:hover { text-decoration: underline; }
+        .portal-msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .9rem; }
+        .portal-msg--error { background: #fdecea; color: #8a1c13; }
+        .portal-msg--info { background: #eaf1fb; color: #1a3a63; }
+        .cs-form { border: 1px solid rgba(36,64,98,.18); border-radius: 12px; padding: 20px 22px; margin: 20px 0 32px; }
+        .cs-form h2 { margin: 0 0 14px; font-size: 1.05rem; }
+        .cs-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .cs-form-grid label { display: block; font-size: .82rem; opacity: .75; margin-bottom: 4px; }
+        .cs-form-grid input, .cs-form-grid textarea { width: 100%; padding: 9px 11px; border-radius: 8px;
+            border: 1px solid rgba(36,64,98,.25); font-family: inherit; font-size: .9rem; box-sizing: border-box; }
+        .cs-form-full { grid-column: 1 / -1; }
+        .cs-form textarea { min-height: 90px; resize: vertical; }
+        .cs-form-actions { margin-top: 16px; }
+        .portal-btn { display: inline-block; background: #244062; color: #fff; border: none; text-decoration: none;
+            padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: .9rem; cursor: pointer; white-space: nowrap; }
+        .portal-btn:hover { background: #1a2f49; }
+        .cs-list { display: grid; gap: 12px; }
+        .cs-card { border: 1px solid rgba(36,64,98,.18); border-radius: 12px; padding: 16px 18px;
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+            background: rgba(255,255,255,.75); }
+        .cs-card__dni { font-weight: 700; }
+        .cs-card__meta { font-size: .82rem; opacity: .7; margin-top: 2px; }
+        .cs-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+        .cs-badge--abierto { background: #eaf1fb; color: #1a3a63; }
+        .cs-badge--en_plataforma { background: #fff4e0; color: #8a5a00; }
+        .cs-badge--cerrado { background: #e8f5e9; color: #1b5e20; }
+        .cs-link { color: #244062; font-weight: 600; text-decoration: none; }
+        .portal-vacio { border: 1px dashed rgba(36,64,98,.3); border-radius: 12px; padding: 30px 24px; text-align: center; opacity: .8; }
+    </style>
+</head>
+<body>
+    <div class="scene-grid"></div>
+
+    <main class="portal-shell">
+        <a class="portal-back" href="{% url 'core:portal_reportes' %}">← Volver a mis cursos</a>
+
+        <header class="portal-hero">
+            <div>
+                <h1>Casos · {{ curso.cap_nombre }}</h1>
+                <p>Código {{ codigo }}. Reporta aquí un problema puntual de inscripción/matrícula (DNI, foto o descripción) y da seguimiento a su respuesta.</p>
+            </div>
+        </header>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="portal-msg portal-msg--{% if message.tags == 'error' %}error{% else %}info{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="cs-form">
+            {% csrf_token %}
+            <h2>Reportar un caso nuevo</h2>
+            <div class="cs-form-grid">
+                <div>
+                    <label for="cs-dni">DNI del participante</label>
+                    <input type="text" id="cs-dni" name="dni" inputmode="numeric" maxlength="12"
+                           value="{{ form_data.dni }}" required>
+                </div>
+                <div>
+                    <label for="cs-nombre">Nombre del participante (opcional)</label>
+                    <input type="text" id="cs-nombre" name="nombre_participante" value="{{ form_data.nombre_participante }}">
+                </div>
+                <div class="cs-form-full">
+                    <label for="cs-asunto">Asunto</label>
+                    <input type="text" id="cs-asunto" name="asunto" maxlength="200"
+                           placeholder="Ej. No aparece matriculado en la plataforma" value="{{ form_data.asunto }}" required>
+                </div>
+                <div class="cs-form-full">
+                    <label for="cs-texto">Describe el problema</label>
+                    <textarea id="cs-texto" name="texto" required>{{ form_data.texto }}</textarea>
+                </div>
+                <div class="cs-form-full">
+                    <label for="cs-evidencias">Evidencias (fotos o PDF, opcional)</label>
+                    <input type="file" id="cs-evidencias" name="evidencias" multiple accept="image/*,.pdf">
+                </div>
+            </div>
+            <div class="cs-form-actions">
+                <button type="submit" class="portal-btn">Reportar caso</button>
+            </div>
+        </form>
+
+        <h2 style="font-size:1.05rem;">Mis casos reportados</h2>
+        {% if casos %}
+            <div class="cs-list">
+                {% for caso in casos %}
+                    <article class="cs-card">
+                        <div>
+                            <p class="cs-card__dni">DNI {{ caso.dni_participante }} — {{ caso.asunto }}</p>
+                            <p class="cs-card__meta">
+                                <span class="cs-badge cs-badge--{{ caso.estado }}">{{ caso.get_estado_display }}</span>
+                                &middot; Actualizado {{ caso.actualizado_en|date:"d/m/Y H:i" }}
+                                {% if caso.estado != "cerrado" %}
+                                    &middot; {% if caso.turno == "visor" %}Te toca responder{% else %}Esperando respuesta del administrador{% endif %}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <a class="cs-link" href="{% url 'core:caso_detalle' caso.id %}">Ver conversación →</a>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="portal-vacio">Todavía no has reportado casos para este curso.</div>
+        {% endif %}
+    </main>
+</body>
+</html>

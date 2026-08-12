@@ -1,0 +1,181 @@
+{# Hilo de conversacion de una Casuistica. Incluido por caso_detalle.html
+   (interno) y portal_caso_detalle.html (Visor). Espera en el contexto:
+   caso, hilo, es_visor_actual, es_admin_actual, autor_tipo_actual,
+   puede_responder, acciones_plataforma. #}
+<style>
+    .hilo-cabecera { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center;
+        margin-bottom: 18px; }
+    .hilo-cabecera h2 { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; }
+    .hilo-meta { font-size: .85rem; opacity: .7; }
+    .hilo-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .hilo-badge--abierto { background: #eaf1fb; color: #1a3a63; }
+    .hilo-badge--en_plataforma { background: #fff4e0; color: #8a5a00; }
+    .hilo-badge--cerrado { background: #e8f5e9; color: #1b5e20; }
+    .hilo-thread { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 22px; }
+    .hilo-msg { max-width: 78%; padding: 12px 16px; border-radius: 14px; font-size: .9rem; line-height: 1.5; }
+    .hilo-msg--visor { align-self: flex-start; background: rgba(36,64,98,.08); border-bottom-left-radius: 4px; }
+    .hilo-msg--admin { align-self: flex-end; background: #244062; color: #fff; border-bottom-right-radius: 4px; }
+    .hilo-msg--sistema { align-self: center; max-width: 90%; background: transparent; color: inherit;
+        opacity: .65; font-size: .8rem; text-align: center; padding: 4px 10px; }
+    .hilo-msg__autor { font-weight: 700; font-size: .8rem; margin-bottom: 4px; }
+    .hilo-msg__fecha { font-size: .72rem; opacity: .7; margin-top: 6px; }
+    .hilo-evidencias { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .hilo-evidencia { font-size: .78rem; text-decoration: none; padding: 4px 10px; border-radius: 8px;
+        background: rgba(255,255,255,.25); color: inherit; }
+    .hilo-msg--visor .hilo-evidencia { background: rgba(36,64,98,.12); color: #244062; }
+    .hilo-evidencia--purgada { opacity: .6; cursor: default; }
+    .hilo-form { border: 1px solid rgba(36,64,98,.18); border-radius: 12px; padding: 16px; margin-top: 8px; }
+    .hilo-form textarea { width: 100%; min-height: 80px; padding: 10px; border-radius: 8px;
+        border: 1px solid rgba(36,64,98,.25); font-family: inherit; font-size: .9rem; resize: vertical; }
+    .hilo-form input[type="file"] { margin-top: 8px; font-size: .85rem; }
+    .hilo-form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+    .hilo-btn { padding: 9px 18px; border-radius: 8px; border: none; background: #244062; color: #fff;
+        font-weight: 600; cursor: pointer; font-size: .88rem; }
+    .hilo-btn--secondary { background: #fff; color: #244062; border: 1px solid #244062; }
+    .hilo-btn--danger { background: #8a1c13; }
+    .hilo-panel { border: 1px dashed rgba(36,64,98,.3); border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+    .hilo-panel h3 { margin: 0 0 10px; font-size: .95rem; }
+    .hilo-panel select { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(36,64,98,.25); min-width: 220px; }
+    .hilo-panel-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .hilo-espera { font-size: .85rem; opacity: .7; padding: 10px 0; }
+    dialog.hilo-accion-modal { border: none; border-radius: 12px; padding: 22px; max-width: 360px; width: 90%; }
+    dialog.hilo-accion-modal::backdrop { background: rgba(15,25,40,.5); }
+    dialog.hilo-accion-modal input { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(36,64,98,.3); margin: 10px 0 16px; }
+</style>
+
+<div class="hilo-cabecera">
+    <h2>DNI {{ caso.dni_participante }}{% if caso.nombre_participante %} · {{ caso.nombre_participante }}{% endif %}</h2>
+    <span class="hilo-badge hilo-badge--{{ caso.estado }}">{{ caso.get_estado_display }}</span>
+    <span class="hilo-meta">{{ caso.capacitacion.cap_nombre }}</span>
+</div>
+<p class="hilo-meta">{{ caso.asunto }}</p>
+{% if caso.accion_a_realizar %}
+    <p class="hilo-meta"><strong>Acción a realizar:</strong> {{ caso.accion_a_realizar.nombre }}
+        (definida {{ caso.accion_definida_en|date:"d/m/Y H:i" }} por {{ caso.accion_definida_por }})</p>
+{% endif %}
+
+<div class="hilo-thread">
+    {% for msg in hilo %}
+        <div class="hilo-msg hilo-msg--{{ msg.autor_tipo }}">
+            {% if msg.tipo == "mensaje" %}
+                <div class="hilo-msg__autor">{{ msg.autor_nombre|default:msg.autor_email }}</div>
+            {% endif %}
+            <div>{{ msg.texto|linebreaksbr }}</div>
+            {% if msg.evidencias.all %}
+                <div class="hilo-evidencias">
+                    {% for ev in msg.evidencias.all %}
+                        {% if ev.purgada_en %}
+                            <span class="hilo-evidencia hilo-evidencia--purgada">📎 {{ ev.nombre_original }} (eliminada)</span>
+                        {% else %}
+                            <a class="hilo-evidencia" href="{% url 'core:caso_evidencia' ev.id %}" target="_blank" rel="noopener">📎 {{ ev.nombre_original }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="hilo-msg__fecha">{{ msg.creado_en|date:"d/m/Y H:i" }}</div>
+        </div>
+    {% endfor %}
+</div>
+
+{% if caso.estado == "cerrado" %}
+    <form method="post" class="hilo-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reabrir">
+        <label for="hilo-motivo"><strong>Reabrir caso</strong> — agrega un motivo (opcional) y continúa la conversación.</label>
+        <textarea id="hilo-motivo" name="motivo" placeholder="¿Qué falta revisar?"></textarea>
+        <div class="hilo-form-actions">
+            <button type="submit" class="hilo-btn">Reabrir caso</button>
+        </div>
+    </form>
+{% elif puede_responder %}
+    {% if caso.estado == "en_plataforma" %}
+        <p class="hilo-espera">En plataforma: si necesitas agregar algo nuevo, puedes escribir igual y el caso vuelve a Abierto.</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" class="hilo-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="responder">
+        <textarea name="texto" placeholder="Escribe tu respuesta u observación…" required></textarea>
+        <input type="file" name="evidencias" multiple accept="image/*,.pdf">
+        <div class="hilo-form-actions">
+            <button type="submit" class="hilo-btn">{% if caso.estado == "en_plataforma" %}Enviar y reabrir{% else %}Enviar{% endif %}</button>
+        </div>
+    </form>
+{% else %}
+    <p class="hilo-espera">
+        Esperando respuesta de {% if autor_tipo_actual == "visor" %}el administrador{% else %}el visor{% endif %}.
+    </p>
+{% endif %}
+
+{% if es_admin_actual and caso.estado != "cerrado" %}
+    <div class="hilo-panel">
+        <h3>Pasar a "En plataforma"</h3>
+        <form method="post" class="hilo-panel-row" id="form-pasar-plataforma">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="pasar_plataforma">
+            <select name="accion_id" id="select-accion-plataforma" required>
+                <option value="">— Elegir acción —</option>
+                {% for accion in acciones_plataforma %}
+                    <option value="{{ accion.id }}">{{ accion.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button type="button" class="hilo-btn hilo-btn--secondary" onclick="document.getElementById('dlg-nueva-accion').showModal()">+ Nueva acción</button>
+            <button type="submit" class="hilo-btn">Pasar a plataforma</button>
+        </form>
+    </div>
+
+    <div class="hilo-panel">
+        <h3>Cerrar caso</h3>
+        <form method="post" class="hilo-panel-row" onsubmit="return confirm('¿Cerrar este caso?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="cerrar">
+            <button type="submit" class="hilo-btn hilo-btn--danger">Cerrar caso</button>
+        </form>
+    </div>
+
+    <dialog id="dlg-nueva-accion" class="hilo-accion-modal">
+        <form method="dialog">
+            <strong>Nueva acción de plataforma</strong>
+            <input type="text" id="input-nueva-accion" placeholder="Ej. Corregir DNI en el padrón" maxlength="200">
+            <div class="hilo-form-actions">
+                <button type="button" class="hilo-btn" onclick="crearAccionPlataforma()">Agregar</button>
+                <button type="button" class="hilo-btn hilo-btn--secondary" onclick="document.getElementById('dlg-nueva-accion').close()">Cancelar</button>
+            </div>
+            <p id="error-nueva-accion" style="color:#8a1c13; font-size:.82rem; margin-top:8px;"></p>
+        </form>
+    </dialog>
+
+    <script>
+        function crearAccionPlataforma() {
+            var input = document.getElementById('input-nueva-accion');
+            var errorEl = document.getElementById('error-nueva-accion');
+            var nombre = input.value.trim();
+            errorEl.textContent = '';
+            if (!nombre) { errorEl.textContent = 'Escribe el nombre de la acción.'; return; }
+
+            var body = new URLSearchParams();
+            body.set('nombre', nombre);
+
+            fetch("{% url 'core:casuisticas_accion_crear' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('#form-pasar-plataforma [name=csrfmiddlewaretoken]').value,
+                },
+                body: body.toString(),
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.ok) { errorEl.textContent = data.error || 'No se pudo agregar.'; return; }
+                    var select = document.getElementById('select-accion-plataforma');
+                    var option = document.createElement('option');
+                    option.value = data.id;
+                    option.textContent = data.nombre;
+                    option.selected = true;
+                    select.appendChild(option);
+                    input.value = '';
+                    document.getElementById('dlg-nueva-accion').close();
+                })
+                .catch(function() { errorEl.textContent = 'No se pudo conectar. Intenta de nuevo.'; });
+        }
+    </script>
+{% endif %}

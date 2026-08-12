@@ -16,6 +16,11 @@ from .views import (
     cargar_satisfaccion_aula_virtual_view,
     portal_reportes_view,
     portal_reporte_descargar_view,
+    portal_casos_view,
+    caso_detalle_view,
+    casuistica_evidencia_ver_view,
+    casuisticas_exportar_excel_view,
+    casuisticas_accion_crear_view,
 )
 
 
@@ -75,4 +80,29 @@ urlpatterns = [
         portal_reporte_descargar_view,
         name="portal_reporte_descargar",
     ),  # Descarga del reporte de cumplimiento de un curso autorizado.
+    path(
+        "portal-reportes/<int:cap_id>/casos/",
+        portal_casos_view,
+        name="portal_casos",
+    ),  # Portal externo (rol Visor): casuisticas reportadas sobre un curso.
+    path(
+        "casos/<int:caso_id>/",
+        caso_detalle_view,
+        name="caso_detalle",
+    ),  # Hilo de conversacion de una casuistica (Visor o personal interno).
+    path(
+        "casos/evidencia/<int:evidencia_id>/",
+        casuistica_evidencia_ver_view,
+        name="caso_evidencia",
+    ),  # Sirve una evidencia (foto/PDF) proxied desde Google Drive.
+    path(
+        "casos/exportar-excel/",
+        casuisticas_exportar_excel_view,
+        name="casuisticas_exportar_excel",
+    ),  # Excel "para Plataforma" de casos En plataforma. Solo Administrador.
+    path(
+        "casos/acciones/crear/",
+        casuisticas_accion_crear_view,
+        name="casuisticas_accion_crear",
+    ),  # AJAX: agrega una accion nueva al catalogo del desplegable.
 ]

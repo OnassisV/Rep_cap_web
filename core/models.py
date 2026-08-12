@@ -661,3 +661,157 @@ class AccesoReporte(models.Model):
 
     def __str__(self) -> str:
         return f"{self.email} → cap_id={self.capacitacion_id}"
+
+
+# ---------------------------------------------------------------------------
+# Casuisticas: conversacion Visor <-> administrador sobre un DNI con problemas
+# ---------------------------------------------------------------------------
+class AccionPlataforma(models.Model):
+    """Catalogo editable de acciones que el administrador puede asignar a un
+    caso cuando lo pasa a estado 'En plataforma'. Se elige de un desplegable
+    y puede ampliarse desde un popup sin salir del flujo de revision."""
+
+    nombre = models.CharField(max_length=200, unique=True)
+    activo = models.BooleanField(default=True)
+    creado_por = models.CharField(max_length=150, blank=True, default="")
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "cap_casuistica_accion"
+        ordering = ["nombre"]
+        verbose_name = "Acción de plataforma"
+        verbose_name_plural = "Acciones de plataforma"
+
+    def __str__(self) -> str:
+        return self.nombre
+
+
+class Casuistica(models.Model):
+    """Caso reportado por un Visor sobre un participante (DNI) con problemas
+    de inscripcion/matricula. Es una conversacion por turnos entre el Visor
+    y el administrador; solo el administrador cierra o pasa a 'En plataforma'.
+    """
+
+    class Estado(models.TextChoices):
+        ABIERTO = "abierto", "Abierto"
+        EN_PLATAFORMA = "en_plataforma", "En plataforma"
+        CERRADO = "cerrado", "Cerrado"
+
+    class Turno(models.TextChoices):
+        VISOR = "visor", "Visor"
+        ADMIN = "admin", "Administrador"
+
+    capacitacion = models.ForeignKey(
+        Capacitacion,
+        on_delete=models.CASCADE,
+        related_name="casuisticas",
+    )
+    # Correo del Visor que reporta el caso; se guarda como texto (no FK a
+    # AccesoReporte) para que el historial sobreviva aunque se revoque el acceso.
+    email_visor = models.CharField(max_length=150, db_index=True)
+    nombre_visor = models.CharField(max_length=200, blank=True, default="")
+
+    dni_participante = models.CharField(max_length=15, db_index=True)
+    nombre_participante = models.CharField(max_length=200, blank=True, default="")
+    asunto = models.CharField(max_length=200)
+
+    estado = models.CharField(
+        max_length=20, choices=Estado.choices, default=Estado.ABIERTO, db_index=True
+    )
+    # A quien le toca responder. Vacio cuando el caso esta pausado
+    # ("En plataforma" sin observaciones nuevas) o cerrado.
+    turno = models.CharField(max_length=10, choices=Turno.choices, blank=True, default=Turno.ADMIN)
+
+    accion_a_realizar = models.ForeignKey(
+        AccionPlataforma,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="casuisticas",
+    )
+    accion_definida_en = models.DateTimeField(null=True, blank=True)
+    accion_definida_por = models.CharField(max_length=150, blank=True, default="")
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    cerrado_en = models.DateTimeField(null=True, blank=True)
+    cerrado_por = models.CharField(max_length=150, blank=True, default="")
+    veces_reabierto = models.PositiveIntegerField(default=0)
+
+    # Trazabilidad de la exportacion a Excel para Plataforma: evita reexportar
+    # el mismo caso dos veces por error, sin impedirlo si hace falta repetirlo.
+    exportado_en = models.DateTimeField(null=True, blank=True)
+    exportado_por = models.CharField(max_length=150, blank=True, default="")
+
+    class Meta:
+        db_table = "cap_casuistica"
+        ordering = ["-actualizado_en"]
+        indexes = [
+            models.Index(fields=["capacitacion", "estado"], name="idx_casuistica_cap_estado"),
+            models.Index(fields=["email_visor", "estado"], name="idx_casuistica_visor_estado"),
+        ]
+        verbose_name = "Casuística"
+        verbose_name_plural = "Casuísticas"
+
+    def __str__(self) -> str:
+        return f"DNI {self.dni_participante} · cap_id={self.capacitacion_id} · {self.estado}"
+
+
+class CasuisticaMensaje(models.Model):
+    """Un elemento del hilo: mensaje de texto o evento del ciclo de vida del
+    caso (cambio de estado, accion definida, reapertura). Todo queda en el
+    mismo timeline para que la conversacion sea auditable de punta a punta."""
+
+    class Tipo(models.TextChoices):
+        MENSAJE = "mensaje", "Mensaje"
+        CAMBIO_ESTADO = "cambio_estado", "Cambio de estado"
+        REAPERTURA = "reapertura", "Reapertura"
+
+    class AutorTipo(models.TextChoices):
+        VISOR = "visor", "Visor"
+        ADMIN = "admin", "Administrador"
+        SISTEMA = "sistema", "Sistema"
+
+    casuistica = models.ForeignKey(Casuistica, on_delete=models.CASCADE, related_name="mensajes")
+    tipo = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.MENSAJE)
+    autor_tipo = models.CharField(max_length=10, choices=AutorTipo.choices)
+    autor_nombre = models.CharField(max_length=200, blank=True, default="")
+    autor_email = models.CharField(max_length=150, blank=True, default="")
+    texto = models.TextField(blank=True, default="")
+    creado_en = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "cap_casuistica_mensaje"
+        ordering = ["creado_en"]
+        verbose_name = "Mensaje de casuística"
+        verbose_name_plural = "Mensajes de casuística"
+
+    def __str__(self) -> str:
+        return f"{self.autor_tipo} @ casuistica {self.casuistica_id}"
+
+
+class CasuisticaEvidencia(models.Model):
+    """Adjunto (foto u otro archivo) de un mensaje, alojado en Google Drive.
+
+    Solo se guarda el ID del archivo en Drive (la BD no crece con binarios).
+    El binario se purga automaticamente 30 dias despues de que el caso queda
+    cerrado (ver management command `purgar_evidencias_casuisticas`); esta
+    fila y su metadata se conservan como historial aunque el archivo ya no exista.
+    """
+
+    mensaje = models.ForeignKey(CasuisticaMensaje, on_delete=models.CASCADE, related_name="evidencias")
+    drive_file_id = models.CharField(max_length=100)
+    nombre_original = models.CharField(max_length=255, blank=True, default="")
+    mime_type = models.CharField(max_length=100, blank=True, default="")
+    tamano_bytes = models.PositiveIntegerField(default=0)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    purgada_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "cap_casuistica_evidencia"
+        ordering = ["creado_en"]
+        verbose_name = "Evidencia de casuística"
+        verbose_name_plural = "Evidencias de casuística"
+
+    def __str__(self) -> str:
+        return self.nombre_original or self.drive_file_id

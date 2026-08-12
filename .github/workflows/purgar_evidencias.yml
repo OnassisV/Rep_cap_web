@@ -1,0 +1,40 @@
+name: Purga de evidencias de Casuísticas
+
+on:
+  schedule:
+    # 06:00 hora Perú (UTC-5) = 11:00 UTC. Solo borra evidencias de casos
+    # cerrados hace mas de CASUISTICA_EVIDENCIA_RETENCION_DIAS (30 por defecto).
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+env:
+  TZ: 'America/Lima'
+
+jobs:
+  purgar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Purgar evidencias vencidas en Google Drive
+        env:
+          # DEBUG=1 evita exigir DJANGO_SECRET_KEY: este job solo corre un
+          # management command, no expone la app por HTTP.
+          DJANGO_DEBUG: "1"
+          # Reutiliza el mismo secreto de MySQL que ya usa sincronizar_db.yml.
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        run: python manage.py purgar_evidencias_casuisticas
