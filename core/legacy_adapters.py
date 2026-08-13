@@ -3628,11 +3628,21 @@ def _obtener_mapa_actividad_plataforma(codigo: str, actividad: dict[str, Any]) -
                         """,
                         (int(curso_id), int(codigo_actividad)),
                     )
-                    for row in cursor.fetchall():
+                    filas_encuesta = cursor.fetchall()
+                    dnis_vacios = 0
+                    for row in filas_encuesta:
                         dni = _normalizar_dni(row.get("dni"))
                         if not dni:
+                            dnis_vacios += 1
                             continue
                         resultado[dni] = 1
+                    # DEBUG TEMPORAL: diagnosticar caso c_id=332 / survey_id=399 (33 vs 110).
+                    logger.warning(
+                        "DEBUG encuesta plataforma codigo=%s curso_id=%s survey_id=%s "
+                        "filas_bd=%s dnis_vacios=%s resultado_final=%s",
+                        codigo, curso_id, codigo_actividad,
+                        len(filas_encuesta), dnis_vacios, len(resultado),
+                    )
     except Exception:
         logger.exception("Error en _obtener_mapa_actividad_plataforma")
         return {}
