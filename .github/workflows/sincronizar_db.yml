@@ -54,6 +54,12 @@ jobs:
           MYSQLDATABASE: ${{ secrets.MYSQLDATABASE }}
           SYNC_CONNECT_ATTEMPTS: "10"
           SYNC_CONNECT_DELAY_SECONDS: "5"
+          SYNC_INCLUDE_SURVEY_ANSWER: "true"
+          SYNC_INCLUDE_SURVEYS: "true"
+          SYNC_TABLE_C_SURVEY_ANSWER_FRACTION: "1.0"
+          SYNC_SMALL_TABLE_FRACTION: "1.0"
+          SYNC_MEDIUM_TABLE_FRACTION: "1.0"
+          SYNC_LARGE_TABLE_FRACTION: "1.0"
         run: |
           # 1. Detectar las rutas reales de los archivos SQL descargados
           AULA_PATH=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
