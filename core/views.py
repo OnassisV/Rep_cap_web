@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 
 # Tipado para mantener estructura de datos del menu mas clara.
 from typing import Any
@@ -378,6 +379,15 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                     " conversación, acción a realizar y cierre."
                 ),
                 "adapter": "casuisticas_bandeja",
+            },
+            {
+                "slug": "ambitos-especiales-igeds",
+                "titulo": "IGEDs por Ámbito Especial",
+                "descripcion": (
+                    "Agrega o quita IGEDs de los ámbitos especiales (ACF, FRONTERA, PETROLERO, VRAEM, ...)"
+                    " usados en Operaciones de Plataforma > Ámbitos Especiales."
+                ),
+                "adapter": "ambitos_especiales_admin",
             },
         ],
     },
@@ -2337,6 +2347,12 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
     # Bandeja de Casuisticas: vista propia, fuera del flujo generico de abajo.
     if section_slug == "administracion-seguridad" and submenu_slug == "casuisticas":
         return casuisticas_bandeja_view(request, context)
+
+    # Gestion de IGEDs por Ambito Especial (agregar/quitar codigos por ambito).
+    if section_slug == "administracion-seguridad" and submenu_slug == "ambitos-especiales-igeds":
+        respuesta = _procesar_ambitos_especiales_admin(request)
+        if respuesta is not None:
+            return respuesta
 
     # Procesa creacion de "Registrar nueva capacitacion" en MySQL Railway.
     if (
@@ -4706,6 +4722,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         context.update(build_ambitos_especiales_context(request.GET))
         context["ambitos_download_base_url"] = f"{ambitos_base_url}?{request.GET.urlencode()}" if request.GET else ambitos_base_url
 
+    # ── Adaptacion del submenu "IGEDs por Ambito Especial" en Administracion y Seguridad ──
+    if section_slug == "administracion-seguridad" and submenu_slug == "ambitos-especiales-igeds":
+        context["mostrar_filtro_anio"] = False
+        context.update(_ambitos_especiales_admin_context(request))
+
     # ── Adaptacion del submenu "Estandares de calidad" en Laboratorio de Datos ──
     if section_slug == "laboratorio-datos" and submenu_slug == "estandares-calidad-lab":
         nombre_especialista = str(user_context.get("display_name", ""))
@@ -6260,3 +6281,95 @@ def casuisticas_bandeja_view(request, context: dict[str, Any]):
         ).count(),
     })
     return render(request, "core/casuisticas_bandeja.html", context)
+
+
+def _procesar_ambitos_especiales_admin(request):
+    """Procesa agregar/quitar IGEDs de un ambito especial (solo POST).
+
+    Vive fuera del admin tecnico de Django a proposito: este proyecto no usa
+    Groups/permisos de Django (is_superuser queda siempre en False por diseño
+    del backend de autenticacion en accounts/backends.py), asi que /admin/
+    no muestra modelos a nadie salvo que se configuren permisos aparte.
+    """
+    if request.method != "POST":
+        return None
+
+    from core.models import IgedAmbitoEspecial
+
+    redirect_url = _build_submenu_url("administracion-seguridad", "ambitos-especiales-igeds", {})
+
+    if not es_administrador(request):
+        messages.error(request, "Solo un Administrador puede editar los ámbitos especiales.")
+        return redirect(redirect_url)
+
+    accion = str(request.POST.get("accion", "")).strip()
+
+    if accion == "eliminar":
+        delete_id = str(request.POST.get("delete_id", "")).strip()
+        if delete_id.isdigit():
+            borrado, _ = IgedAmbitoEspecial.objects.filter(pk=int(delete_id)).delete()
+            if borrado:
+                messages.success(request, "IGED eliminado del ámbito.")
+            else:
+                messages.warning(request, "No se encontró el registro a eliminar.")
+        return redirect(redirect_url)
+
+    if accion == "agregar":
+        ambito = str(request.POST.get("ambito", "")).strip().upper()
+        codigos_raw = str(request.POST.get("codigos", "") or "")
+        tokens = [t.strip() for t in re.split(r"[,\s]+", codigos_raw) if t.strip()]
+
+        if not ambito:
+            messages.error(request, "Indica el nombre del ámbito.")
+        elif not tokens:
+            messages.error(request, "Pega al menos un código IGED.")
+        else:
+            creados = 0
+            duplicados = 0
+            invalidos: list[str] = []
+            for token in tokens:
+                if not token.isdigit():
+                    invalidos.append(token)
+                    continue
+                _obj, created = IgedAmbitoEspecial.objects.get_or_create(
+                    codigo_iged=int(token),
+                    ambito=ambito,
+                    defaults={"codigo_iged_texto": token},
+                )
+                if created:
+                    creados += 1
+                else:
+                    duplicados += 1
+
+            if creados:
+                messages.success(request, f"{creados} IGED(s) agregado(s) a {ambito}.")
+            if duplicados:
+                messages.info(request, f"{duplicados} ya existían en {ambito} y se omitieron.")
+            if invalidos:
+                messages.warning(request, f"Códigos inválidos (se ignoraron): {', '.join(invalidos)}")
+
+        return redirect(redirect_url)
+
+    return redirect(redirect_url)
+
+
+def _ambitos_especiales_admin_context(request) -> dict[str, Any]:
+    """Arma el contexto de lectura (GET) para IGEDs por Ambito Especial."""
+    from core.models import IgedAmbitoEspecial
+
+    filtro_ambito = str(request.GET.get("ambito", "")).strip()
+    registros_qs = IgedAmbitoEspecial.objects.all().order_by("ambito", "codigo_iged")
+    if filtro_ambito:
+        registros_qs = registros_qs.filter(ambito=filtro_ambito)
+
+    ambitos_existentes = list(
+        IgedAmbitoEspecial.objects.order_by("ambito").values_list("ambito", flat=True).distinct()
+    )
+
+    return {
+        "ambitos_admin_es_admin": es_administrador(request),
+        "ambitos_admin_registros": registros_qs[:1000],
+        "ambitos_admin_total": registros_qs.count(),
+        "ambitos_admin_ambitos": ambitos_existentes,
+        "ambitos_admin_filtro": filtro_ambito,
+    }

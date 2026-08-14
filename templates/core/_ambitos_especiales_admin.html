@@ -1,0 +1,98 @@
+<p class="module-panel__copy">
+    Catálogo de IGEDs por ámbito especial (ACF, FRONTERA, PETROLERO, VRAEM, ...), usado por
+    Operaciones de Plataforma &gt; Ámbitos Especiales. Un mismo IGED puede estar en varios
+    ámbitos a la vez.
+</p>
+
+{% if not ambitos_admin_es_admin %}
+    <p class="module-panel__note">Puedes ver el catálogo, pero solo un <strong>Administrador</strong> puede agregar o quitar códigos.</p>
+{% endif %}
+
+{% if ambitos_admin_es_admin %}
+<form method="post" class="indicadores-filters">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="agregar">
+
+    <label class="indicadores-filters__group">
+        <span>Ámbito</span>
+        <input type="text" name="ambito" list="ambitos-existentes" placeholder="Ej: VRAEM" required style="padding:8px 10px;border-radius:8px;border:1px solid rgba(36,64,98,.25);">
+        <datalist id="ambitos-existentes">
+            {% for a in ambitos_admin_ambitos %}
+                <option value="{{ a }}">
+            {% endfor %}
+        </datalist>
+    </label>
+
+    <label class="indicadores-filters__group indicadores-filters__group--wide">
+        <span>Códigos IGED (uno por línea, o separados por coma/espacio)</span>
+        <textarea name="codigos" rows="4" placeholder="160003&#10;250001&#10;010010" required style="padding:8px 10px;border-radius:8px;border:1px solid rgba(36,64,98,.25);font-family:monospace;"></textarea>
+    </label>
+
+    <div class="indicadores-filters__actions">
+        <button type="submit" class="btn-primary-soft">Agregar al ámbito</button>
+    </div>
+</form>
+{% endif %}
+
+<form method="get" class="indicadores-filters">
+    <label class="indicadores-filters__group">
+        <span>Filtrar por ámbito</span>
+        <select name="ambito" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            {% for a in ambitos_admin_ambitos %}
+                <option value="{{ a }}" {% if a == ambitos_admin_filtro %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+    </label>
+</form>
+
+<section class="indicadores-block">
+    <header class="indicadores-block__head">
+        <div>
+            <h3>IGEDs cargados</h3>
+            <p>Cada fila es un (IGED, ámbito). Si un código aparece en varios ámbitos, sale en varias filas.</p>
+        </div>
+        <small>{{ ambitos_admin_total }} registro(s)</small>
+    </header>
+
+    {% if ambitos_admin_registros %}
+        <div class="indicadores-table-wrap">
+            <table class="indicadores-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Ámbito</th>
+                        <th scope="col">Código IGED</th>
+                        <th scope="col">Nombre IGED</th>
+                        <th scope="col">Cargado el</th>
+                        {% if ambitos_admin_es_admin %}<th scope="col"></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in ambitos_admin_registros %}
+                        <tr>
+                            <td>{{ registro.ambito }}</td>
+                            <td>{{ registro.codigo_iged_texto|default:registro.codigo_iged }}</td>
+                            <td>{{ registro.nombre_iged|default:"—" }}</td>
+                            <td>{{ registro.creado_en|date:"d/m/Y H:i" }}</td>
+                            {% if ambitos_admin_es_admin %}
+                                <td>
+                                    <form method="post" onsubmit="return confirm('¿Quitar {{ registro.codigo_iged_texto|default:registro.codigo_iged }} de {{ registro.ambito }}?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="eliminar">
+                                        <input type="hidden" name="delete_id" value="{{ registro.id }}">
+                                        <button type="submit" class="btn-secondary-soft" style="padding:4px 10px;font-size:.8rem;">Eliminar</button>
+                                    </form>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if ambitos_admin_total > 1000 %}
+            <p class="indicadores-table__hint">Se muestran los primeros 1000 registros. Total disponible: {{ ambitos_admin_total }}.</p>
+        {% endif %}
+    {% else %}
+        <p class="module-panel__copy">Todavía no hay IGEDs cargados{% if ambitos_admin_filtro %} para {{ ambitos_admin_filtro }}{% endif %}.</p>
+    {% endif %}
+</section>

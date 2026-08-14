@@ -2073,6 +2073,10 @@
                 {% include "core/_ambitos_especiales.html" %}
             {% endif %}
 
+            {% if adapter_kind == "ambitos_especiales_admin" %}
+                {% include "core/_ambitos_especiales_admin.html" %}
+            {% endif %}
+
             <!-- Modulo Editar capacitacion: lista + formulario de edicion. -->
             {% if adapter_kind == "editar_capacitacion" %}
                 {% if editar_cap %}
