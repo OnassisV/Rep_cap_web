@@ -1142,52 +1142,22 @@ def _load_ambito_map() -> pd.DataFrame:
     return frame.dropna(subset=["codigo_iged"])
 
 
-def _calculate_ambito_kpis(oferta_filtrada: pd.DataFrame, bbdd_exploded: pd.DataFrame, iged: pd.DataFrame) -> pd.DataFrame:
-    """KPIs agrupados por ambito, sobre un bbdd ya explotado 1 fila por (participante, ambito)."""
-    kpis, _merged = _calculate_base_kpis(oferta_filtrada, bbdd_exploded, iged, ["ambito"])
-    if kpis.empty:
-        return kpis
-
-    kpis = kpis.rename(columns={"ambito": "Ámbito"})
-    ordered_columns = [
-        "Ámbito",
-        "Postulaciones",
-        "Matriculaciones",
-        "Participaciones",
-        "Varones",
-        "Mujeres",
-        "Retiros",
-        "Finalizaciones",
-        "Certificaciones",
-        "Tasa Varones",
-        "Tasa Mujeres",
-        "Tasa Retencion",
-        "Tasa Finalizacion",
-        "Tasa Certificacion",
-    ]
-    result = kpis[[column for column in ordered_columns if column in kpis.columns]]
-    # A diferencia de region/iged, el bucket "" aqui es puro artefacto del right-join
-    # con oferta (capacitaciones sin ningun participante explotado por ambito) y
-    # siempre sale en cero - no representa "ambito no registrado", asi que se descarta.
-    if "Ámbito" in result.columns:
-        result = result[result["Ámbito"] != ""]
-    result = result.sort_values("Ámbito").reset_index(drop=True)
-    return result
-
-
-def _calculate_iged_export_kpis(
+def _calculate_iged_capacitacion_kpis(
     bbdd_filtrada: pd.DataFrame,
     oferta_filtrada: pd.DataFrame,
     iged: pd.DataFrame,
     ambito_map: pd.DataFrame,
     selected_ambitos: list[str],
 ) -> pd.DataFrame:
-    """Tabla de exportacion: 1 fila por IGED (codigo_iged), sin explotar por ambito -
-    a diferencia de la tabla en pantalla, aqui un IGED en varios ambitos no debe
-    duplicar al participante solo por eso. Si se certifico en 3 cursos de ese IGED,
-    si debe contar 3 veces (una fila de bbdd_difoca por curso, sin deduplicar).
+    """Tabla de detalle: 1 fila por (IGED, capacitacion), sin explotar por ambito -
+    un IGED en varios ambitos no debe duplicar al participante solo por eso. Si se
+    certifico en 3 cursos de ese IGED, si debe contar 3 veces (una fila de
+    bbdd_difoca por curso, sin deduplicar) - cada curso ya es su propia fila.
+
+    Es la misma tabla que se ve en pantalla y la que se exporta a Excel/CSV, para
+    que no haya diferencia entre lo que el usuario filtra y lo que descarga.
     """
-    columnas_salida = ["Código IGED", "Postulantes", "Matriculados", "Participantes", "Certificados"]
+    columnas_salida = ["Código IGED", "Capacitación", "Postulantes", "Matriculados", "Participantes", "Certificados"]
     if ambito_map.empty or bbdd_filtrada.empty:
         return pd.DataFrame(columns=columnas_salida)
 
@@ -1210,13 +1180,14 @@ def _calculate_iged_export_kpis(
     faltantes = bbdd_iged["codigo_iged_texto"].isna()
     bbdd_iged.loc[faltantes, "codigo_iged_texto"] = bbdd_iged.loc[faltantes, "_codigo_iged_num"].astype("Int64").astype(str)
 
-    kpis, _merged = _calculate_base_kpis(oferta_filtrada, bbdd_iged, iged, ["codigo_iged_texto"])
+    kpis, _merged = _calculate_base_kpis(oferta_filtrada, bbdd_iged, iged, ["codigo_iged_texto", "Proceso Formativo"])
     if kpis.empty:
         return pd.DataFrame(columns=columnas_salida)
 
     kpis = kpis.rename(
         columns={
             "codigo_iged_texto": "Código IGED",
+            "Proceso Formativo": "Capacitación",
             "Postulaciones": "Postulantes",
             "Matriculaciones": "Matriculados",
             "Participaciones": "Participantes",
@@ -1224,10 +1195,10 @@ def _calculate_iged_export_kpis(
         }
     )
     result = kpis[[column for column in columnas_salida if column in kpis.columns]]
-    # Mismo caso que en la tabla por ambito: la fila "" es artefacto del right-join
-    # con oferta (capacitaciones sin nadie de estos IGEDs) y siempre sale en cero.
+    # Fila "" es artefacto del right-join con oferta (capacitaciones sin nadie de
+    # estos IGEDs) y siempre sale en cero - se descarta.
     result = result[result["Código IGED"] != ""]
-    return result.sort_values("Código IGED").reset_index(drop=True)
+    return result.sort_values(["Código IGED", "Capacitación"]).reset_index(drop=True)
 
 
 def _ambitos_especiales_filtrado(query_data: Any) -> dict[str, Any]:
@@ -1350,50 +1321,8 @@ def _ambitos_especiales_filtrado(query_data: Any) -> dict[str, Any]:
     }
 
 
-def build_ambitos_especiales_context(query_data: Any) -> dict[str, Any]:
-    """Dashboard de KPIs agrupados por ambito especial, con los mismos filtros del
-    dashboard de indicadores (anio, condicion, proceso, region, IGED, fechas) mas
-    ambito - todos multi-seleccion (checkbox + "Todas"/"Todos").
-
-    Un mismo IGED puede pertenecer a varios ambitos a la vez (ver IgedAmbitoEspecial),
-    asi que un participante puede sumar en mas de un ambito - las categorias no son
-    excluyentes entre si, igual que se le indico al usuario al construir el mapeo.
-    """
-    data = _ambitos_especiales_filtrado(query_data)
-    ambito_map = data["ambito_map"]
-    bbdd_filtrada = data["bbdd_filtrada"]
-    selected_ambitos = data["selected_ambitos"]
-
-    # Explota bbdd_filtrada en 1 fila por (participante, ambito) via el mapeo de IGEDs.
-    # Un IGED en varios ambitos hace que ese participante sume en cada uno.
-    tabla_ambitos = pd.DataFrame()
-    if not ambito_map.empty and not bbdd_filtrada.empty:
-        bbdd_amb = bbdd_filtrada.dropna(subset=["_codigo_iged_num"]).copy()
-        if not bbdd_amb.empty:
-            bbdd_amb["_codigo_iged_num"] = bbdd_amb["_codigo_iged_num"].astype("int64")
-            mapa = ambito_map[["codigo_iged", "ambito"]].rename(columns={"codigo_iged": "_codigo_iged_num"}).copy()
-            mapa["_codigo_iged_num"] = mapa["_codigo_iged_num"].astype("int64")
-            exploded = bbdd_amb.merge(mapa, on="_codigo_iged_num", how="inner")
-            if selected_ambitos:
-                exploded = exploded[exploded["ambito"].isin(selected_ambitos)]
-            if not exploded.empty:
-                tabla_ambitos = _calculate_ambito_kpis(data["oferta_filtrada"], exploded, data["iged"])
-
-    return {
-        "ambitos_filters": data["filters"],
-        "ambitos_table": _table_payload(tabla_ambitos),
-    }
-
-
-def build_ambitos_especiales_download(query_data: Any, export_format: str) -> dict[str, Any] | None:
-    """Exporta el detalle por IGED (codigo, postulantes, matriculados, participantes,
-    certificados) respetando los filtros aplicados en pantalla."""
-    export_format = str(export_format or "xlsx").strip().lower()
-    if export_format not in {"xlsx", "csv"}:
-        return None
-
-    data = _ambitos_especiales_filtrado(query_data)
-    tabla = _calculate_iged_export_kpis(
+def _build_ambitos_tabla_detalle(data: dict[str, Any]) -> pd.DataFrame:
+    return _calculate_iged_capacitacion_kpis(
         data["bbdd_filtrada"],
         data["oferta_filtrada"],
         data["iged"],
@@ -1401,16 +1330,44 @@ def build_ambitos_especiales_download(query_data: Any, export_format: str) -> di
         data["selected_ambitos"],
     )
 
+
+def build_ambitos_especiales_context(query_data: Any) -> dict[str, Any]:
+    """Detalle por (IGED, capacitacion) segun los IGEDs clasificados en ambito
+    especial, con los mismos filtros del dashboard de indicadores (anio, condicion,
+    proceso, region, IGED, fechas) mas ambito - todos multi-seleccion (checkbox +
+    "Todas"/"Todos"). Es la misma tabla que se exporta a Excel/CSV, para que no haya
+    diferencia entre lo que se ve filtrado en pantalla y lo que se descarga.
+    """
+    data = _ambitos_especiales_filtrado(query_data)
+    tabla = _build_ambitos_tabla_detalle(data)
+    return {
+        "ambitos_filters": data["filters"],
+        "ambitos_table": _table_payload(tabla, limit=2000),
+    }
+
+
+def build_ambitos_especiales_download(query_data: Any, export_format: str) -> dict[str, Any] | None:
+    """Exporta el detalle por (IGED, capacitacion): codigo IGED, nombre de la
+    capacitacion, postulantes, matriculados, participantes y certificados -
+    respetando los filtros aplicados en pantalla. Es la misma tabla que se ve
+    filtrada en pantalla, sin resumir."""
+    export_format = str(export_format or "xlsx").strip().lower()
+    if export_format not in {"xlsx", "csv"}:
+        return None
+
+    data = _ambitos_especiales_filtrado(query_data)
+    tabla = _build_ambitos_tabla_detalle(data)
+
     if export_format == "csv":
         return {
             "content": tabla.to_csv(index=False).encode("utf-8-sig"),
             "content_type": "text/csv; charset=utf-8",
-            "filename": "ambitos_especiales_por_iged.csv",
+            "filename": "ambitos_especiales_por_iged_capacitacion.csv",
         }
     return {
-        "content": _excel_bytes([("Por IGED", tabla)]),
+        "content": _excel_bytes([("Por IGED y capacitación", tabla)]),
         "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "filename": "ambitos_especiales_por_iged.xlsx",
+        "filename": "ambitos_especiales_por_iged_capacitacion.xlsx",
     }
 
 

@@ -1,7 +1,7 @@
 <p class="module-panel__copy">
-    KPIs agrupados por ámbito especial (ACF, FRONTERA, PETROLERO, VRAEM, ...) según los IGEDs
-    clasificados en cada uno. Un mismo IGED puede pertenecer a varios ámbitos a la vez, así que
-    un participante puede sumar en más de una fila de la tabla.
+    Detalle por IGED y capacitación, para los IGEDs clasificados en ámbito especial
+    (ACF, FRONTERA, PETROLERO, VRAEM, ...). Si un participante se certificó en varios
+    cursos de un mismo IGED, cuenta una vez por cada curso (no se deduplica).
 </p>
 
 <form method="get" class="indicadores-filters">
@@ -166,8 +166,8 @@
 <section class="indicadores-block">
     <header class="indicadores-block__head">
         <div>
-            <h3>KPIs por ámbito especial</h3>
-            <p>Postulaciones, matriculaciones, participaciones, finalizaciones y certificaciones por ámbito, con los filtros aplicados.</p>
+            <h3>Detalle por IGED y capacitación</h3>
+            <p>Código IGED, nombre de la capacitación, postulantes, matriculados, participantes y certificados, con los filtros aplicados. Es la misma tabla que se exporta abajo.</p>
         </div>
         <small>{{ ambitos_table.total_rows }} fila(s)</small>
     </header>
@@ -176,7 +176,7 @@
 
 {% if ambitos_download_base_url %}
     <div class="indicadores-export-actions indicadores-export-actions--footer">
-        <span class="module-panel__note" style="margin-right:.5rem;">Exportar por IGED (código, postulantes, matriculados, participantes, certificados) con los filtros aplicados:</span>
+        <span class="module-panel__note" style="margin-right:.5rem;">Exportar esta misma tabla (código IGED, capacitación, postulantes, matriculados, participantes, certificados) con los filtros aplicados:</span>
         <a href="{{ ambitos_download_base_url }}{% if '?' in ambitos_download_base_url %}&{% else %}?{% endif %}download=xlsx" class="btn-primary-soft">Exportar Excel</a>
         <a href="{{ ambitos_download_base_url }}{% if '?' in ambitos_download_base_url %}&{% else %}?{% endif %}download=csv" class="btn-secondary-soft">Exportar CSV</a>
     </div>
