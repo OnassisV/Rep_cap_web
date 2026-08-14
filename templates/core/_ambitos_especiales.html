@@ -174,6 +174,14 @@
     {% include "core/_indicadores_table.html" with table=ambitos_table empty_message="No hay datos para los filtros seleccionados. Revisa que existan IGEDs cargados en /admin (Ámbitos especiales) y que coincidan con los codigo_iged de bbdd_difoca." %}
 </section>
 
+{% if ambitos_download_base_url %}
+    <div class="indicadores-export-actions indicadores-export-actions--footer">
+        <span class="module-panel__note" style="margin-right:.5rem;">Exportar por IGED (código, postulantes, matriculados, participantes, certificados) con los filtros aplicados:</span>
+        <a href="{{ ambitos_download_base_url }}{% if '?' in ambitos_download_base_url %}&{% else %}?{% endif %}download=xlsx" class="btn-primary-soft">Exportar Excel</a>
+        <a href="{{ ambitos_download_base_url }}{% if '?' in ambitos_download_base_url %}&{% else %}?{% endif %}download=csv" class="btn-secondary-soft">Exportar CSV</a>
+    </div>
+{% endif %}
+
 <script>
 (function(){
     document.querySelectorAll('.ms-dropdown').forEach(function(dd){

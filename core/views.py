@@ -94,6 +94,7 @@ from .caracterizacion_schema import (
 )
 from .indicadores_adapters import (
     build_ambitos_especiales_context,
+    build_ambitos_especiales_download,
     build_caracterizacion_export,
     build_gestion_dashboard_context,
     build_indicadores_dashboard_context,
@@ -4689,8 +4690,21 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
 
     # ── Adaptacion del submenu "Ambitos Especiales" en Operaciones de Plataforma ──
     if section_slug == "operaciones-plataforma" and submenu_slug == "ambitos-especiales":
+        ambitos_download_format = str(request.GET.get("download", "")).strip().lower()
+        if ambitos_download_format:
+            download_payload = build_ambitos_especiales_download(request.GET, ambitos_download_format)
+            if download_payload is not None:
+                response = HttpResponse(
+                    download_payload.get("content", b""),
+                    content_type=str(download_payload.get("content_type", "application/octet-stream")),
+                )
+                response["Content-Disposition"] = f'attachment; filename="{download_payload.get("filename", "ambitos_especiales")}"'
+                return response
+
+        ambitos_base_url = f"/app/seccion/{section_slug}/submenu/{submenu_slug}/"
         context["mostrar_filtro_anio"] = False
         context.update(build_ambitos_especiales_context(request.GET))
+        context["ambitos_download_base_url"] = f"{ambitos_base_url}?{request.GET.urlencode()}" if request.GET else ambitos_base_url
 
     # ── Adaptacion del submenu "Estandares de calidad" en Laboratorio de Datos ──
     if section_slug == "laboratorio-datos" and submenu_slug == "estandares-calidad-lab":
