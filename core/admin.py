@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CapacitacionAuditLog, DniExcluido
+from .models import CapacitacionAuditLog, DniExcluido, IgedAmbitoEspecial
 
 
 @admin.register(DniExcluido)
@@ -8,6 +8,14 @@ class DniExcluidoAdmin(admin.ModelAdmin):
     list_display = ("dni", "motivo", "creado_en")
     search_fields = ("dni", "motivo")
     ordering = ("dni",)
+
+
+@admin.register(IgedAmbitoEspecial)
+class IgedAmbitoEspecialAdmin(admin.ModelAdmin):
+    list_display = ("ambito", "codigo_iged_texto", "codigo_iged", "nombre_iged", "creado_en")
+    list_filter = ("ambito",)
+    search_fields = ("codigo_iged_texto", "nombre_iged")
+    ordering = ("ambito", "codigo_iged")
 
 
 @admin.register(CapacitacionAuditLog)

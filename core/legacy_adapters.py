@@ -832,6 +832,61 @@ def construir_alertas_seguimiento(metricas: dict[str, Any]) -> list[dict[str, st
     return alertas
 
 
+def obtener_reporte_ambitos_especiales() -> list[dict[str, Any]]:
+    """Metricas de bbdd_difoca agrupadas por ambito especial (ACF, FRONTERA,
+    PETROLERO, VRAEM, etc.), segun el mapeo de IGEDs cargado en
+    cap_iged_ambitos_especiales (ver modelo IgedAmbitoEspecial).
+
+    Un mismo IGED puede pertenecer a varios ambitos a la vez, asi que un
+    postulante puede sumar en mas de una fila del resultado - las categorias
+    no son excluyentes entre si.
+    """
+    query = """
+        SELECT
+            a.ambito,
+            COUNT(DISTINCT a.codigo_iged) AS igeds,
+            COUNT(DISTINCT b.codigo) AS capacitaciones,
+            COUNT(DISTINCT b.dni) AS postulaciones,
+            SUM(CASE WHEN b.estado = 2 THEN 1 ELSE 0 END) AS matriculaciones,
+            SUM(CASE WHEN b.estado = 2 AND b.compromiso = 20 THEN 1 ELSE 0 END) AS participaciones,
+            SUM(CASE WHEN (b.aprobados_certificados = 1 OR b.desaprobado_permanente = 1) THEN 1 ELSE 0 END) AS finalizaciones,
+            SUM(CASE WHEN b.aprobados_certificados = 1 THEN 1 ELSE 0 END) AS certificaciones,
+            SUM(CASE WHEN (b.retiros = 1 OR b.desaprobado_abandono = 1) THEN 1 ELSE 0 END) AS retiros
+        FROM cap_iged_ambitos_especiales a
+        JOIN bbdd_difoca b ON CAST(b.codigo_iged AS SIGNED) = a.codigo_iged
+        GROUP BY a.ambito
+        ORDER BY a.ambito
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                filas = cursor.fetchall() or []
+    except Exception:
+        logger.exception("Error en obtener_reporte_ambitos_especiales")
+        return []
+
+    resultado = []
+    for fila in filas:
+        postulaciones = _a_int(fila.get("postulaciones"))
+        matriculaciones = _a_int(fila.get("matriculaciones"))
+        resultado.append(
+            {
+                "ambito": fila.get("ambito"),
+                "igeds": _a_int(fila.get("igeds")),
+                "capacitaciones": _a_int(fila.get("capacitaciones")),
+                "postulaciones": postulaciones,
+                "matriculaciones": matriculaciones,
+                "participaciones": _a_int(fila.get("participaciones")),
+                "finalizaciones": _a_int(fila.get("finalizaciones")),
+                "certificaciones": _a_int(fila.get("certificaciones")),
+                "retiros": _a_int(fila.get("retiros")),
+                "tasa_matricula": round(matriculaciones / postulaciones * 100, 1) if postulaciones else 0.0,
+            }
+        )
+    return resultado
+
+
 @contextmanager
 def _get_aula_connection():
     """Context manager que abre y cierra garantizado la conexión al Aula Virtual."""

@@ -590,6 +590,35 @@ class DniExcluido(models.Model):
         return self.dni
 
 
+class IgedAmbitoEspecial(models.Model):
+    """Clasificacion de un IGED (UGEL/DRE) dentro de un ambito especial
+    (ACF, FRONTERA, PETROLERO, VRAEM, etc.).
+
+    Un mismo IGED puede pertenecer a varios ambitos a la vez (ej. una UGEL
+    puede ser FRONTERA y PETROLERO simultaneamente), por eso la clave unica es
+    el par (codigo_iged, ambito) y no codigo_iged solo. codigo_iged se guarda
+    como entero para calzar con bbdd_difoca.codigo_iged (columna double) al
+    hacer el join del reporte; codigo_iged_texto conserva el codigo tal como
+    fue provisto (con ceros a la izquierda) solo para referencia visual.
+    """
+
+    codigo_iged = models.IntegerField(db_index=True)
+    codigo_iged_texto = models.CharField(max_length=10, blank=True, default="")
+    ambito = models.CharField(max_length=50, db_index=True)
+    nombre_iged = models.CharField(max_length=255, blank=True, default="")
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "cap_iged_ambitos_especiales"
+        ordering = ["ambito", "codigo_iged"]
+        unique_together = [("codigo_iged", "ambito")]
+        verbose_name = "IGED en ámbito especial"
+        verbose_name_plural = "IGEDs en ámbitos especiales"
+
+    def __str__(self) -> str:
+        return f"{self.ambito} · {self.codigo_iged_texto or self.codigo_iged}"
+
+
 # ---------------------------------------------------------------------------
 # Audit trail de capacitaciones
 # ---------------------------------------------------------------------------
