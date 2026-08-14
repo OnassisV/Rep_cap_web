@@ -8,6 +8,11 @@ on:
     # 2. Corre a las 19:15 hora Perú (00:15 UTC del día siguiente)
     - cron: '15 0 * * *'
   workflow_dispatch:
+    inputs:
+      aula_course_filter:
+        description: 'Backfill puntual: filtro de curso (ej: 338 o 305,311,315+). Vacio = corrida normal.'
+        required: false
+        default: ''
 
 # Define la zona horaria de Perú para todo el workflow
 env:
@@ -56,10 +61,12 @@ jobs:
           SYNC_CONNECT_DELAY_SECONDS: "5"
           SYNC_INCLUDE_SURVEY_ANSWER: "true"
           SYNC_INCLUDE_SURVEYS: "true"
+          SYNC_INCLUDE_STUDENT_PUBLICATION: "true"
           SYNC_TABLE_C_SURVEY_ANSWER_FRACTION: "1.0"
           SYNC_SMALL_TABLE_FRACTION: "1.0"
           SYNC_MEDIUM_TABLE_FRACTION: "1.0"
           SYNC_LARGE_TABLE_FRACTION: "1.0"
+          SYNC_AULA_COURSE_FILTER: ${{ github.event.inputs.aula_course_filter }}
         run: |
           # 1. Detectar las rutas reales de los archivos SQL descargados
           AULA_PATH=$(find backups_temp -type f \( -name "*aula*" -o -name "*edutalentos*" \) | head -n 1)
