@@ -93,6 +93,7 @@ from .caracterizacion_schema import (
     iterar_campos_caracterizacion,
 )
 from .indicadores_adapters import (
+    build_ambitos_especiales_context,
     build_caracterizacion_export,
     build_gestion_dashboard_context,
     build_indicadores_dashboard_context,
@@ -297,6 +298,13 @@ MENU_GEOMETRICO: list[dict[str, Any]] = [
                 "titulo": "Detalle de Cuestionarios",
                 "descripcion": "Lista los ejercicios de un curso del Aula Virtual y descarga participantes y notas por ejercicio, cruzados con sysdifoca.",
                 "adapter": "detalle_cuestionario",
+            },
+            {
+                "slug": "ambitos-especiales",
+                "titulo": "Ámbitos Especiales",
+                "descripcion": "KPIs por ámbito especial (ACF, FRONTERA, PETROLERO, VRAEM, ...) según los IGEDs clasificados, con los mismos filtros del Reporte de Indicadores.",
+                "adapter": "ambitos_especiales",
+                "legacy_module": "core/indicadores_adapters.py",
             },
         ],
     },
@@ -4678,6 +4686,11 @@ def submenu_detail_view(request, section_slug: str, submenu_slug: str):
         indicadores_context["indicadores_download_base_url"] = f"{base_url}?{request.GET.urlencode()}" if request.GET else base_url
         context["mostrar_filtro_anio"] = False
         context.update(indicadores_context)
+
+    # ── Adaptacion del submenu "Ambitos Especiales" en Operaciones de Plataforma ──
+    if section_slug == "operaciones-plataforma" and submenu_slug == "ambitos-especiales":
+        context["mostrar_filtro_anio"] = False
+        context.update(build_ambitos_especiales_context(request.GET))
 
     # ── Adaptacion del submenu "Estandares de calidad" en Laboratorio de Datos ──
     if section_slug == "laboratorio-datos" and submenu_slug == "estandares-calidad-lab":

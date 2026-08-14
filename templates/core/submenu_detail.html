@@ -2069,6 +2069,10 @@
                 {% include "core/_indicadores_dashboard.html" %}
             {% endif %}
 
+            {% if adapter_kind == "ambitos_especiales" %}
+                {% include "core/_ambitos_especiales.html" %}
+            {% endif %}
+
             <!-- Modulo Editar capacitacion: lista + formulario de edicion. -->
             {% if adapter_kind == "editar_capacitacion" %}
                 {% if editar_cap %}

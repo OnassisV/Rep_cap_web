@@ -1123,6 +1123,190 @@ def build_indicadores_dashboard_context(query_data: Any) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Reporte de Ámbitos Especiales (ACF, FRONTERA, PETROLERO, VRAEM, ...)
+# ---------------------------------------------------------------------------
+
+def _load_ambito_map() -> pd.DataFrame:
+    """Carga el mapeo IGED -> ambito especial desde cap_iged_ambitos_especiales."""
+    from core.models import IgedAmbitoEspecial
+
+    try:
+        rows = list(IgedAmbitoEspecial.objects.values("codigo_iged", "ambito"))
+    except Exception:
+        logger.exception("Error al leer cap_iged_ambitos_especiales")
+        rows = []
+    if not rows:
+        return pd.DataFrame(columns=["codigo_iged", "ambito"])
+    frame = pd.DataFrame(rows)
+    frame["codigo_iged"] = pd.to_numeric(frame["codigo_iged"], errors="coerce").astype("Int64")
+    return frame.dropna(subset=["codigo_iged"])
+
+
+def _calculate_ambito_kpis(oferta_filtrada: pd.DataFrame, bbdd_exploded: pd.DataFrame, iged: pd.DataFrame) -> pd.DataFrame:
+    """KPIs agrupados por ambito, sobre un bbdd ya explotado 1 fila por (participante, ambito)."""
+    kpis, _merged = _calculate_base_kpis(oferta_filtrada, bbdd_exploded, iged, ["ambito"])
+    if kpis.empty:
+        return kpis
+
+    kpis = kpis.rename(columns={"ambito": "Ámbito"})
+    ordered_columns = [
+        "Ámbito",
+        "Postulaciones",
+        "Matriculaciones",
+        "Participaciones",
+        "Varones",
+        "Mujeres",
+        "Retiros",
+        "Finalizaciones",
+        "Certificaciones",
+        "Tasa Varones",
+        "Tasa Mujeres",
+        "Tasa Retencion",
+        "Tasa Finalizacion",
+        "Tasa Certificacion",
+    ]
+    result = kpis[[column for column in ordered_columns if column in kpis.columns]]
+    # A diferencia de region/iged, el bucket "" aqui es puro artefacto del right-join
+    # con oferta (capacitaciones sin ningun participante explotado por ambito) y
+    # siempre sale en cero - no representa "ambito no registrado", asi que se descarta.
+    if "Ámbito" in result.columns:
+        result = result[result["Ámbito"] != ""]
+    result = result.sort_values("Ámbito").reset_index(drop=True)
+    return result
+
+
+def build_ambitos_especiales_context(query_data: Any) -> dict[str, Any]:
+    """Dashboard de KPIs agrupados por ambito especial, con los mismos filtros del
+    dashboard de indicadores (anio, condicion, proceso, region, IGED, fechas) mas
+    ambito - todos multi-seleccion (checkbox + "Todas"/"Todos").
+
+    Un mismo IGED puede pertenecer a varios ambitos a la vez (ver IgedAmbitoEspecial),
+    asi que un participante puede sumar en mas de un ambito - las categorias no son
+    excluyentes entre si, igual que se le indico al usuario al construir el mapeo.
+    """
+    _getlist = getattr(query_data, "getlist", None)
+
+    oferta, bbdd, _satisfaccion, iged = _load_base_tables()
+    ambito_map = _load_ambito_map()
+
+    oferta = oferta.copy()
+    oferta.loc[:, "anio_text"] = oferta.get("anio", pd.Series(index=oferta.index, dtype=object)).fillna("").astype(str).str.strip()
+    oferta.loc[:, "Proceso Formativo"] = _build_process_label(oferta)
+
+    year_options = _series_options(oferta.get("anio_text", pd.Series(dtype=str)), reverse=True)
+    condition_options = _series_options(oferta.get("condicion", pd.Series(dtype=str)))
+    ambito_options = sorted(ambito_map["ambito"].dropna().astype(str).unique().tolist()) if not ambito_map.empty else []
+
+    raw_years = _getlist("anio") if _getlist else query_data.get("anio")
+    selected_years = _selected_values(raw_years, year_options, "")
+
+    # A diferencia del dashboard de indicadores (condicion es single-select ahi),
+    # aqui Condiciones tambien es multi-seleccion, por pedido explicito del usuario.
+    raw_conditions = _getlist("condicion") if _getlist else query_data.get("condicion")
+    selected_conditions = _selected_values(raw_conditions, condition_options, "")
+
+    fecha_inicio = str(query_data.get("fecha_inicio", "")).strip()
+    fecha_fin = str(query_data.get("fecha_fin", "")).strip()
+
+    def _filtrar_oferta(df: pd.DataFrame) -> pd.DataFrame:
+        filtrado = df
+        if selected_years:
+            filtrado = filtrado[filtrado["anio_text"].isin(selected_years)]
+        if selected_conditions:
+            filtrado = filtrado[filtrado.get("condicion", "").fillna("").astype(str).str.strip().isin(selected_conditions)]
+        if fecha_inicio or fecha_fin:
+            fechas = pd.to_datetime(filtrado.get("implementacion_final"), errors="coerce")
+            if fecha_inicio:
+                filtrado = filtrado[fechas >= pd.to_datetime(fecha_inicio)]
+                fechas = pd.to_datetime(filtrado.get("implementacion_final"), errors="coerce")
+            if fecha_fin:
+                filtrado = filtrado[fechas <= pd.to_datetime(fecha_fin)]
+        return filtrado
+
+    oferta_for_processes = _filtrar_oferta(oferta)
+    process_options = _series_options(oferta_for_processes.get("Proceso Formativo", pd.Series(dtype=str)))
+    raw_processes = _getlist("proceso") if _getlist else query_data.get("proceso")
+    selected_processes = _selected_values(raw_processes, process_options, "")
+
+    oferta_filtrada_base = oferta_for_processes
+    if selected_processes:
+        oferta_filtrada_base = oferta_filtrada_base[oferta_filtrada_base["Proceso Formativo"].isin(selected_processes)]
+
+    codigos_filtrados = oferta_filtrada_base[["codigo"]].copy() if "codigo" in oferta_filtrada_base.columns else pd.DataFrame(columns=["codigo"])
+    participantes_base = (
+        pd.merge(bbdd, codigos_filtrados.drop_duplicates(), on="codigo", how="inner")
+        if not codigos_filtrados.empty
+        else pd.DataFrame(columns=bbdd.columns)
+    )
+
+    region_options = _series_options(_normalize_region_name(participantes_base.get("region", pd.Series(dtype=str))))
+    raw_regions = _getlist("region") if _getlist else query_data.get("region")
+    selected_regions = _selected_values(raw_regions, region_options, "")
+
+    participantes_iged = participantes_base.copy()
+    if selected_regions and not participantes_iged.empty:
+        participantes_iged = participantes_iged[
+            _normalize_region_name(participantes_iged.get("region", pd.Series(dtype=str))).isin(selected_regions)
+        ]
+    iged_options = _series_options(_normalize_iged_name(participantes_iged.get("nombre_iged", pd.Series(dtype=str))))
+    raw_igeds = _getlist("iged") if _getlist else query_data.get("iged")
+    selected_igeds = _selected_values(raw_igeds, iged_options, "")
+
+    raw_ambitos = _getlist("ambito") if _getlist else query_data.get("ambito")
+    selected_ambitos = _selected_values(raw_ambitos, ambito_options, "")
+
+    bbdd_filtrada = _filter_participants(participantes_base, selected_regions, selected_igeds)
+
+    oferta_filtrada = oferta_filtrada_base
+    if not bbdd_filtrada.empty and (selected_regions or selected_igeds):
+        codigos_visibles = bbdd_filtrada.get("codigo", pd.Series(dtype=object)).fillna("").astype(str).str.strip().unique().tolist()
+        oferta_filtrada = oferta_filtrada_base[
+            oferta_filtrada_base.get("codigo", pd.Series(dtype=object)).fillna("").astype(str).str.strip().isin(codigos_visibles)
+        ]
+    elif selected_regions or selected_igeds:
+        oferta_filtrada = oferta_filtrada_base.iloc[0:0].copy()
+
+    # Explota bbdd_filtrada en 1 fila por (participante, ambito) via el mapeo de IGEDs.
+    # Un IGED en varios ambitos hace que ese participante sume en cada uno.
+    tabla_ambitos = pd.DataFrame()
+    if not ambito_map.empty and not bbdd_filtrada.empty:
+        bbdd_amb = bbdd_filtrada.copy()
+        bbdd_amb["_codigo_iged_num"] = pd.to_numeric(bbdd_amb.get("codigo_iged"), errors="coerce")
+        bbdd_amb = bbdd_amb.dropna(subset=["_codigo_iged_num"])
+        if not bbdd_amb.empty:
+            bbdd_amb["_codigo_iged_num"] = bbdd_amb["_codigo_iged_num"].astype("int64")
+            mapa = ambito_map.rename(columns={"codigo_iged": "_codigo_iged_num"}).copy()
+            mapa["_codigo_iged_num"] = mapa["_codigo_iged_num"].astype("int64")
+            exploded = bbdd_amb.merge(mapa, on="_codigo_iged_num", how="inner")
+            if selected_ambitos:
+                exploded = exploded[exploded["ambito"].isin(selected_ambitos)]
+            if not exploded.empty:
+                tabla_ambitos = _calculate_ambito_kpis(oferta_filtrada, exploded, iged)
+
+    filters = {
+        "year_options": year_options,
+        "condition_options": condition_options,
+        "process_options": process_options,
+        "region_options": region_options,
+        "iged_options": iged_options,
+        "ambito_options": ambito_options,
+        "selected_years": selected_years,
+        "selected_conditions": selected_conditions,
+        "selected_processes": selected_processes,
+        "selected_regions": selected_regions,
+        "selected_igeds": selected_igeds,
+        "selected_ambitos": selected_ambitos,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+    }
+
+    return {
+        "ambitos_filters": filters,
+        "ambitos_table": _table_payload(tabla_ambitos),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Resumen de "Gestión de la Capacitación": tarjetas por estado, distribución
 # por tipo y Gantt de capacitaciones en proceso.
 # ---------------------------------------------------------------------------

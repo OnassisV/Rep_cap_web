@@ -1,0 +1,208 @@
+<p class="module-panel__copy">
+    KPIs agrupados por ámbito especial (ACF, FRONTERA, PETROLERO, VRAEM, ...) según los IGEDs
+    clasificados en cada uno. Un mismo IGED puede pertenecer a varios ámbitos a la vez, así que
+    un participante puede sumar en más de una fila de la tabla.
+</p>
+
+<form method="get" class="indicadores-filters">
+    <div class="indicadores-filters__header">
+        <div>
+            <h3>Filtros del reporte</h3>
+            <p>Los mismos filtros del Reporte de Indicadores, más Ámbito. Todos permiten marcar varias opciones.</p>
+        </div>
+    </div>
+
+    <div class="indicadores-filters__group indicadores-filters__group--wide">
+        <span>Ámbito</span>
+        <div class="ms-dropdown" data-name="ambito" data-placeholder="Todos">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todos</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in ambitos_filters.ambito_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="ambito" value="{{ option }}" {% if option in ambitos_filters.selected_ambitos %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="indicadores-filters__group">
+        <span>Años</span>
+        <div class="ms-dropdown" data-name="anio" data-placeholder="Todos">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todos</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in ambitos_filters.year_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="anio" value="{{ option }}" {% if option in ambitos_filters.selected_years %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="indicadores-filters__group">
+        <span>Condiciones</span>
+        <div class="ms-dropdown" data-name="condicion" data-placeholder="Todas">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todas</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in ambitos_filters.condition_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="condicion" value="{{ option }}" {% if option in ambitos_filters.selected_conditions %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="indicadores-filters__group indicadores-filters__group--wide">
+        <span>Procesos formativos</span>
+        <div class="ms-dropdown" data-name="proceso" data-placeholder="Todos">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todos</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in ambitos_filters.process_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="proceso" value="{{ option }}" {% if option in ambitos_filters.selected_processes %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="indicadores-filters__group">
+        <span>Región</span>
+        <div class="ms-dropdown" data-name="region" data-placeholder="Todas">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todas</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in ambitos_filters.region_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="region" value="{{ option }}" {% if option in ambitos_filters.selected_regions %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="indicadores-filters__group indicadores-filters__group--wide">
+        <span>IGED</span>
+        <div class="ms-dropdown" data-name="iged" data-placeholder="Todas">
+            <div class="ms-dropdown__trigger" tabindex="0">
+                <span class="ms-dropdown__label">Todas</span>
+                <svg class="ms-dropdown__arrow" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </div>
+            <div class="ms-dropdown__menu">
+                {% for option in ambitos_filters.iged_options %}
+                <label class="ms-dropdown__item">
+                    <input type="checkbox" name="iged" value="{{ option }}" {% if option in ambitos_filters.selected_igeds %}checked{% endif %}>
+                    <span>{{ option }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <label class="indicadores-filters__group">
+        <span>Desde</span>
+        <input type="date" name="fecha_inicio" value="{{ ambitos_filters.fecha_inicio }}">
+    </label>
+
+    <label class="indicadores-filters__group">
+        <span>Hasta</span>
+        <input type="date" name="fecha_fin" value="{{ ambitos_filters.fecha_fin }}">
+    </label>
+
+    <div class="indicadores-filters__actions">
+        <button type="submit" class="btn-primary-soft">Aplicar filtros</button>
+        <a href="{% url 'core:submenu_detail' section.slug submenu.slug %}" class="btn-secondary-soft">Limpiar</a>
+    </div>
+</form>
+
+<section class="indicadores-filter-pills" aria-label="Filtros activos">
+    {% for a in ambitos_filters.selected_ambitos %}
+        <span class="indicadores-filter-pill">Ámbito: {{ a }}</span>
+    {% endfor %}
+    {% for y in ambitos_filters.selected_years %}
+        <span class="indicadores-filter-pill">Año: {{ y }}</span>
+    {% endfor %}
+    {% for c in ambitos_filters.selected_conditions %}
+        <span class="indicadores-filter-pill">Condición: {{ c }}</span>
+    {% endfor %}
+    {% for p in ambitos_filters.selected_processes %}
+        <span class="indicadores-filter-pill">Proceso: {{ p }}</span>
+    {% endfor %}
+    {% for r in ambitos_filters.selected_regions %}
+        <span class="indicadores-filter-pill">Región: {{ r }}</span>
+    {% endfor %}
+    {% for i in ambitos_filters.selected_igeds %}
+        <span class="indicadores-filter-pill">IGED: {{ i }}</span>
+    {% endfor %}
+    {% if ambitos_filters.fecha_inicio %}
+        <span class="indicadores-filter-pill">Desde: {{ ambitos_filters.fecha_inicio }}</span>
+    {% endif %}
+    {% if ambitos_filters.fecha_fin %}
+        <span class="indicadores-filter-pill">Hasta: {{ ambitos_filters.fecha_fin }}</span>
+    {% endif %}
+</section>
+
+<section class="indicadores-block">
+    <header class="indicadores-block__head">
+        <div>
+            <h3>KPIs por ámbito especial</h3>
+            <p>Postulaciones, matriculaciones, participaciones, finalizaciones y certificaciones por ámbito, con los filtros aplicados.</p>
+        </div>
+        <small>{{ ambitos_table.total_rows }} fila(s)</small>
+    </header>
+    {% include "core/_indicadores_table.html" with table=ambitos_table empty_message="No hay datos para los filtros seleccionados. Revisa que existan IGEDs cargados en /admin (Ámbitos especiales) y que coincidan con los codigo_iged de bbdd_difoca." %}
+</section>
+
+<script>
+(function(){
+    document.querySelectorAll('.ms-dropdown').forEach(function(dd){
+        var trigger = dd.querySelector('.ms-dropdown__trigger');
+        var menu = dd.querySelector('.ms-dropdown__menu');
+        var label = dd.querySelector('.ms-dropdown__label');
+        var placeholder = dd.getAttribute('data-placeholder') || 'Todos';
+        var checkboxes = dd.querySelectorAll('input[type="checkbox"]');
+
+        function updateLabel(){
+            var sel = [];
+            checkboxes.forEach(function(cb){ if(cb.checked) sel.push(cb.parentElement.querySelector('span').textContent.trim()); });
+            if(!sel.length){ label.textContent = placeholder; label.classList.add('ms-dropdown__label--placeholder'); }
+            else if(sel.length <= 2){ label.textContent = sel.join(', '); label.classList.remove('ms-dropdown__label--placeholder'); }
+            else { label.textContent = sel.length + ' seleccionados'; label.classList.remove('ms-dropdown__label--placeholder'); }
+        }
+
+        trigger.addEventListener('click', function(e){
+            e.preventDefault(); e.stopPropagation();
+            var wasOpen = dd.classList.contains('is-open');
+            document.querySelectorAll('.ms-dropdown.is-open').forEach(function(d){ d.classList.remove('is-open'); });
+            if(!wasOpen) dd.classList.add('is-open');
+        });
+
+        menu.addEventListener('click', function(e){ e.stopPropagation(); });
+        checkboxes.forEach(function(cb){ cb.addEventListener('change', updateLabel); });
+        updateLabel();
+    });
+
+    document.addEventListener('click', function(){ document.querySelectorAll('.ms-dropdown.is-open').forEach(function(d){ d.classList.remove('is-open'); }); });
+})();
+</script>
