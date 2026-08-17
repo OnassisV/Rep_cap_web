@@ -725,6 +725,7 @@ class Casuistica(models.Model):
         ABIERTO = "abierto", "Abierto"
         EN_PLATAFORMA = "en_plataforma", "En plataforma"
         CERRADO = "cerrado", "Cerrado"
+        ANULADO = "anulado", "Anulado"
 
     class Turno(models.TextChoices):
         VISOR = "visor", "Visor"

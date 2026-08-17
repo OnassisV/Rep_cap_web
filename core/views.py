@@ -6087,7 +6087,7 @@ def caso_detalle_view(request, caso_id: int):
     cambian segun quien mira."""
     from core.models import AccionPlataforma, Casuistica, CasuisticaMensaje
     from core.casuisticas_adapter import (
-        CasuisticaError, cerrar_caso, pasar_a_plataforma, reabrir_caso, responder_caso,
+        CasuisticaError, anular_caso, cerrar_caso, pasar_a_plataforma, reabrir_caso, responder_caso,
     )
 
     caso = get_object_or_404(
@@ -6122,6 +6122,9 @@ def caso_detalle_view(request, caso_id: int):
             elif action == "cerrar" and admin_ok:
                 cerrar_caso(caso, admin_nombre=nombre, admin_email=email, nota=str(request.POST.get("nota", "")))
                 messages.success(request, "Caso cerrado.")
+            elif action == "anular" and admin_ok:
+                anular_caso(caso, admin_nombre=nombre, admin_email=email, motivo=str(request.POST.get("motivo", "")))
+                messages.success(request, "Caso anulado.")
             elif action == "pasar_plataforma" and admin_ok:
                 accion = AccionPlataforma.objects.filter(
                     id=request.POST.get("accion_id", ""), activo=True
@@ -6145,8 +6148,8 @@ def caso_detalle_view(request, caso_id: int):
 
     # El caso puede responderse si es el turno de quien mira, o si esta "En
     # plataforma" (una observacion nueva lo regresa a Abierto). Si esta
-    # Cerrado no se usa este formulario: se reabre con el panel dedicado.
-    puede_responder = caso.estado != Casuistica.Estado.CERRADO and (
+    # Cerrado o Anulado no se usa este formulario: se reabre con el panel dedicado.
+    puede_responder = caso.estado not in (Casuistica.Estado.CERRADO, Casuistica.Estado.ANULADO) and (
         caso.turno == autor_tipo or caso.estado == Casuistica.Estado.EN_PLATAFORMA
     )
 
@@ -6276,6 +6279,7 @@ def casuisticas_bandeja_view(request, context: dict[str, Any]):
         "total_abiertos": Casuistica.objects.filter(estado=Casuistica.Estado.ABIERTO).count(),
         "total_en_plataforma": Casuistica.objects.filter(estado=Casuistica.Estado.EN_PLATAFORMA).count(),
         "total_cerrados": Casuistica.objects.filter(estado=Casuistica.Estado.CERRADO).count(),
+        "total_anulados": Casuistica.objects.filter(estado=Casuistica.Estado.ANULADO).count(),
         "total_pendientes_exportar": Casuistica.objects.filter(
             estado=Casuistica.Estado.EN_PLATAFORMA, exportado_en__isnull=True
         ).count(),

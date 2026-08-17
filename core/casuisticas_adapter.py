@@ -150,7 +150,7 @@ def responder_caso(
         _validar_archivo(archivo)
 
     with transaction.atomic():
-        if caso.estado == Casuistica.Estado.CERRADO:
+        if caso.estado == Casuistica.Estado.CERRADO or caso.estado == Casuistica.Estado.ANULADO:
             caso.estado = Casuistica.Estado.ABIERTO
             caso.veces_reabierto += 1
             CasuisticaMensaje.objects.create(
@@ -204,8 +204,8 @@ def pasar_a_plataforma(
     si la acción es "Cambiar correo"): se guarda aparte para poder exportarlo
     como columna propia en el Excel, no solo mezclado en el texto del hilo.
     """
-    if caso.estado == Casuistica.Estado.CERRADO:
-        raise CasuisticaError("El caso está cerrado; reábrelo antes de definir una acción.")
+    if caso.estado == Casuistica.Estado.CERRADO or caso.estado == Casuistica.Estado.ANULADO:
+        raise CasuisticaError("El caso está cerrado o anulado; reábrelo antes de definir una acción.")
     with transaction.atomic():
         caso.estado = Casuistica.Estado.EN_PLATAFORMA
         caso.turno = ""
@@ -240,6 +240,26 @@ def cerrar_caso(caso: Casuistica, *, admin_nombre: str, admin_email: str, nota: 
         texto = f"Caso cerrado por {admin_nombre or admin_email}."
         if nota.strip():
             texto += f" Nota: {nota.strip()}"
+        CasuisticaMensaje.objects.create(
+            casuistica=caso, tipo=CasuisticaMensaje.Tipo.CAMBIO_ESTADO,
+            autor_tipo=CasuisticaMensaje.AutorTipo.ADMIN, autor_nombre=admin_nombre,
+            autor_email=admin_email, texto=texto,
+        )
+
+
+def anular_caso(caso: Casuistica, *, admin_nombre: str, admin_email: str, motivo: str = "") -> None:
+    """Solo el administrador puede anular un caso (desestimado sin atención), desde cualquier estado previo."""
+    if caso.estado == Casuistica.Estado.ANULADO:
+        raise CasuisticaError("El caso ya está anulado.")
+    with transaction.atomic():
+        caso.estado = Casuistica.Estado.ANULADO
+        caso.turno = ""
+        caso.cerrado_en = timezone.now()
+        caso.cerrado_por = admin_email or admin_nombre
+        caso.save(update_fields=["estado", "turno", "cerrado_en", "cerrado_por", "actualizado_en"])
+        texto = f"Caso anulado por {admin_nombre or admin_email}."
+        if motivo.strip():
+            texto += f" Motivo: {motivo.strip()}"
         CasuisticaMensaje.objects.create(
             casuistica=caso, tipo=CasuisticaMensaje.Tipo.CAMBIO_ESTADO,
             autor_tipo=CasuisticaMensaje.AutorTipo.ADMIN, autor_nombre=admin_nombre,

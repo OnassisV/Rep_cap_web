@@ -39,7 +39,7 @@ class Command(BaseCommand):
         candidatas = (
             CasuisticaEvidencia.objects.filter(
                 purgada_en__isnull=True,
-                mensaje__casuistica__estado=Casuistica.Estado.CERRADO,
+                mensaje__casuistica__estado__in=[Casuistica.Estado.CERRADO, Casuistica.Estado.ANULADO],
                 mensaje__casuistica__cerrado_en__lte=limite,
             )
             .select_related("mensaje__casuistica")
