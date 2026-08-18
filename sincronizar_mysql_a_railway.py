@@ -1484,10 +1484,8 @@ def prune_orphaned_course_rel_user(
     "fantasma" para siempre. Esta funcion la detecta y la borra, acotado a los cursos
     del filtro (aula_scope) para no barrer datos fuera de alcance.
     """
-    if aula_scope is None or aula_scope.course_filter is None:
-        return 0
-
     ids_en_dump: set[int] = set()
+    cursos_en_dump: set[int] = set()
     for statement in iter_sql_statements(aula_sql):
         insert_parts = extract_insert_parts(statement)
         if not insert_parts:
@@ -1497,12 +1495,21 @@ def prune_orphaned_course_rel_user(
             continue
         for row in iter_insert_rows(values_sql):
             row_map = dict(zip(columns, row))
-            if not aula_scope.course_filter.matches(row_map.get("c_id")):
+            if aula_scope is not None and aula_scope.course_filter is not None:
+                if not aula_scope.course_filter.matches(row_map.get("c_id")):
+                    continue
+            try:
+                cursos_en_dump.add(int(row_map.get("c_id")))
+            except (TypeError, ValueError):
                 continue
             try:
                 ids_en_dump.add(int(row_map.get("id")))
             except (TypeError, ValueError):
                 continue
+
+    if not cursos_en_dump:
+        print("[INFO] prune_orphaned_course_rel_user: sin cursos en el dump.")
+        return 0
 
     cursor = target_connection.cursor()
     try:
@@ -1520,7 +1527,7 @@ def prune_orphaned_course_rel_user(
     ids_a_borrar = [
         _row_id(row)
         for row in railway_rows
-        if aula_scope.course_filter.matches(_row_c_id(row)) and _row_id(row) not in ids_en_dump
+        if _row_c_id(row) in cursos_en_dump and _row_id(row) not in ids_en_dump
     ]
     if not ids_a_borrar:
         print("[INFO] prune_orphaned_course_rel_user: sin filas fantasma para eliminar.")
