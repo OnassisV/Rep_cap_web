@@ -2868,6 +2868,26 @@ def _leer_excel_postulantes_dni(path_excel: str) -> list[str]:
         logger.exception("Error en _leer_excel_postulantes_dni")
         return []
 
+def _construir_dnis_objetivo_plantilla(
+    codigo: str,
+    postulantes_info: dict[str, Any],
+) -> tuple[list[str], bool]:
+    """Construye el universo sin retirar DNI de una lista cargada."""
+    tiene_excel = bool(postulantes_info.get("exists"))
+    if tiene_excel:
+        dnis_base = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
+    else:
+        dnis_base = _obtener_todos_dnis_por_codigo(codigo)
+
+    dnis_matriculados = _obtener_dnis_matriculados_aula(codigo)
+    dnis_objetivo: list[str] = []
+    vistos: set[str] = set()
+    for dni in dnis_base + dnis_matriculados:
+        if dni and dni not in vistos:
+            vistos.add(dni)
+            dnis_objetivo.append(dni)
+    return dnis_objetivo, tiene_excel
+
 
 def _leer_excel_fuera_dni_nota(path_excel: str) -> dict[str, Any]:
     """Lee mapa DNI->NOTA (o valor equivalente) desde Excel de actividad fuera."""
@@ -5317,30 +5337,21 @@ def generar_plantilla_seguimiento(
     nominal_config = obtener_config_nominal_reporte(codigo, estructura)
     postulantes_info = obtener_postulantes_excel_info(codigo)
 
-    # Prioriza lista de postulantes cargada, pero preserva también el histórico de bbdd_difoca
-    # y las matrículas actuales de Chamilo, para que retirados solo cambien de estado y no se pierdan.
-    dnis_objetivo: list[str] = []
-    if postulantes_info.get("exists"):
-        dnis_objetivo = _leer_excel_postulantes_dni(str(postulantes_info.get("path", "")))
-
-    dnis_bbdd = _obtener_todos_dnis_por_codigo(codigo)
-    dnis_aula = _obtener_dnis_matriculados_aula(codigo)
-
-    vistos: set[str] = set()
-    for dni in (dnis_objetivo + dnis_bbdd + dnis_aula):
-        if dni and dni not in vistos:
-            vistos.add(dni)
-            dnis_objetivo.append(dni)
+    # El Excel, si existe, es la lista protegida: solo se agregan matriculados.
+    dnis_objetivo, tiene_excel_postulantes = _construir_dnis_objetivo_plantilla(
+        codigo,
+        postulantes_info,
+    )
 
     filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, dnis_objetivo)
-    if not filas_bbdd and not dnis_objetivo:
-        # Fallback final cuando no hay postulantes/matriculados: usa todo el codigo.
+    if not filas_bbdd and not dnis_objetivo and not tiene_excel_postulantes:
+        # Fallback final cuando Railway no devolvio DNIs del codigo.
         filas_bbdd = _obtener_filas_bbdd_por_codigo_y_dnis(codigo, [])
 
     if not filas_bbdd and not dnis_objetivo:
         return {
             "ok": False,
-            "error": "No hay datos en bbdd_difoca ni matriculados en el aula virtual para este codigo.",
+            "error": "No hay postulantes ni matriculados para este codigo.",
         }
 
     # Construye mapa base por DNI y asegura presencia de todos los DNIs objetivo.
