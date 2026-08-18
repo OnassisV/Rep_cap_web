@@ -1093,7 +1093,7 @@ def build_active_specs() -> dict[str, TableSpec]:
     specs = dict(TABLE_SPECS)
     if not env_flag("SYNC_INCLUDE_SURVEY_ANSWER", default=False):
         specs.pop("c_survey_answer", None)
-    if not env_flag("SYNC_INCLUDE_STUDENT_PUBLICATION", default=False):
+    if not env_flag("SYNC_INCLUDE_STUDENT_PUBLICATION", default=True):
         specs.pop("c_student_publication", None)
     if not env_flag("SYNC_INCLUDE_SURVEYS", default=False):
         specs.pop("c_survey", None)
