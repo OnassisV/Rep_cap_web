@@ -3084,6 +3084,12 @@ def _obtener_dnis_matriculados_aula(codigo: str) -> list[str]:
         WHERE cru.c_id = %s
           AND cru.status = 5
           AND cru.is_tutor IS NULL
+                    AND cru.id = (
+                            SELECT MAX(cru_actual.id)
+                            FROM course_rel_user cru_actual
+                            WHERE cru_actual.c_id = cru.c_id
+                                AND cru_actual.user_id = cru.user_id
+                    )
         ORDER BY u.official_code ASC
     """
     try:
