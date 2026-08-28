@@ -3431,9 +3431,10 @@
                         function iniciarPolling(progressId) {
                             detenerPolling();
                             var pollCount = 0;
+                            // Límite alineado con el timeout de 30 min del cache en el backend.
                             pollTimer = setInterval(function () {
                                 pollCount++;
-                                if (pollCount > 300) {
+                                if (pollCount > 1700) {
                                     detenerPolling();
                                     mostrarError("La generación tardó demasiado. Actualiza la página e inténtalo nuevamente.");
                                     return;
@@ -4093,9 +4094,10 @@
                                                         // Endpoint de progreso vive en el modulo de certificacion regular.
                                                         var pollUrl = "{% url 'core:submenu_detail' 'gestion-capacitacion' 'certificacion' %}";
                                                         var pollCount = 0;
+                                                        // Límite alineado con el timeout de 30 min del cache en el backend.
                                                         pollTimer = setInterval(function () {
                                                             pollCount++;
-                                                            if (pollCount > 300) {
+                                                            if (pollCount > 1700) {
                                                                 detenerPolling();
                                                                 mostrarError("La generación tardó demasiado. Actualiza la página e inténtalo nuevamente.");
                                                                 return;

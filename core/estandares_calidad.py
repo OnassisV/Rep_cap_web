@@ -78,7 +78,7 @@ PREGUNTAS_CAPITULOS: dict[str, list[dict[str, Any]]] = {
         {"pregunta": "A.13 Duración (horas cronológicas)", "tipo": "autollenado", "source": "horas_certificacion"},
         {"pregunta": "A.14 Fecha de inicio planificada", "tipo": "autollenado", "source": "implementacion_inicio"},
         {"pregunta": "A.15 Fecha de finalización planificada", "tipo": "autollenado", "source": "implementacion_final"},
-        {"pregunta": "A.16 Modalidad", "tipo": "texto"},
+        {"pregunta": "A.16 Modalidad", "tipo": "autollenado", "source": "modalidad"},
         {"pregunta": "A.17 Fórmula de evaluación", "tipo": "texto"},
         {"pregunta": "A.18 Indicar cuánto recursos se estimó para el desarrollo e implementación de esta capacitación (según corresponda)", "tipo": "texto"},
         {"pregunta": "A.19 Describir la manera en la que esta capacitación aseguró el cumplimiento de actividades y el logro de los aprendizajes y los desempeños fortalecidos (A través de la entrega de producto, reuniones de asesoría, tutoría y retroalimentación, otros.)", "tipo": "texto"},
@@ -223,6 +223,7 @@ def obtener_procesos_formativos(
                 "publico_objetivo": cap.publico_objetivo_oferta,
                 "objetivo_capacitacion": cap.mi_objetivo_capacitacion,
                 "horas_certificacion": cap.pt_horas,
+                "modalidad": cap.pt_modalidad,
                 "implementacion_inicio": cap.pt_implementacion_inicio,
                 "implementacion_final": cap.pt_implementacion_fin,
             }
@@ -258,6 +259,7 @@ def obtener_datos_proceso(codigo: str) -> dict[str, Any]:
                 "publico_objetivo": cap.publico_objetivo_oferta,
                 "objetivo_capacitacion": cap.mi_objetivo_capacitacion,
                 "horas_certificacion": cap.pt_horas,
+                "modalidad": cap.pt_modalidad,
                 "implementacion_inicio": cap.pt_implementacion_inicio,
                 "implementacion_final": cap.pt_implementacion_fin,
             }

@@ -344,8 +344,6 @@ def obtener_cursos_aula_virtual(anio_param: str = "") -> dict[str, Any]:
         "total": total,
         "sin_ficha": sin_ficha,
     }
-
-
 def obtener_cap_sin_aplicativo(anio_param: str = "") -> dict[str, Any]:
     """Retorna codigos presentes en bbdd_difoca que no tienen registro en cap_capacitaciones.
 
@@ -2916,6 +2914,7 @@ def _leer_excel_fuera_dni_nota(path_excel: str) -> dict[str, Any]:
                 idx_dni = i
             if norm in {"nota", "puntaje", "calificacion"} and idx_nota is None:
                 idx_nota = i
+
 
         if idx_dni is None:
             return {}
@@ -5565,5 +5564,93 @@ def obtener_caracterizacion_por_dnis(dnis_texto: str) -> dict[str, Any]:
         "no_encontrados": no_encontrados,
         "total": len(dnis),
         "encontrados": len(rows),
+    }
+
+
+def diagnosticar_estado_chamilo(codigo: str) -> dict[str, Any]:
+    """DEBUG: Verifica estado actual de matriculas en Chamilo para un codigo.
+    
+    Útil para diagnosticar cuando la plantilla sigue mostrando matriculados
+    después de desmatricularlos en Chamilo.
+    
+    Retorna:
+    - status_por_estado: contador de cada status en course_rel_user
+    - matriculados_status5: DNIs con status=5
+    - no_status5: DNIs que existían pero NO tienen status=5
+    - total_en_curso: total de registros en course_rel_user
+    """
+    curso_id = extraer_id_capacitacion(codigo)
+    if not curso_id:
+        return {"error": "No se pudo extraer curso_id del código"}
+    
+    try:
+        curso_id_num = int(curso_id)
+    except (ValueError, TypeError):
+        return {"error": f"curso_id '{curso_id}' no es número válido"}
+    
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Obtener distribución de status
+                query_status = """
+                    SELECT cru.status, COUNT(*) as cantidad
+                    FROM course_rel_user cru
+                    WHERE cru.c_id = %s
+                    GROUP BY cru.status
+                    ORDER BY cru.status
+                """
+                cur.execute(query_status, (curso_id_num,))
+                status_dist = {row["status"]: row["cantidad"] for row in cur.fetchall()}
+                
+                # Obtener DNIs con status=5 (matriculados)
+                query_status5 = """
+                    SELECT DISTINCT u.official_code AS dni
+                    FROM course_rel_user cru
+                    LEFT JOIN user u ON cru.user_id = u.user_id
+                    WHERE cru.c_id = %s
+                      AND cru.status = 5
+                      AND cru.is_tutor IS NULL
+                    ORDER BY u.official_code ASC
+                """
+                cur.execute(query_status5, (curso_id_num,))
+                dnis_status5 = [_normalizar_dni(row["dni"]) for row in cur.fetchall() if row.get("dni")]
+                
+                # Obtener todos los DNIs registrados (cualquier status)
+                query_todos = """
+                    SELECT DISTINCT u.official_code AS dni, cru.status
+                    FROM course_rel_user cru
+                    LEFT JOIN user u ON cru.user_id = u.user_id
+                    WHERE cru.c_id = %s
+                      AND cru.is_tutor IS NULL
+                    ORDER BY u.official_code ASC
+                """
+                cur.execute(query_todos, (curso_id_num,))
+                todos_dnis = [
+                    {
+                        "dni": _normalizar_dni(row["dni"]),
+                        "status": row["status"]
+                    }
+                    for row in cur.fetchall()
+                    if row.get("dni")
+                ]
+                
+                # Total general
+                query_total = "SELECT COUNT(*) as total FROM course_rel_user WHERE c_id = %s"
+                cur.execute(query_total, (curso_id_num,))
+                total_general = cur.fetchone()["total"] or 0
+                
+    except Exception as e:
+        logger.exception("Error en diagnosticar_estado_chamilo para codigo=%s", codigo)
+        return {"error": f"Excepción: {str(e)}"}
+    
+    return {
+        "codigo": codigo,
+        "curso_id": curso_id_num,
+        "total_registros_curso": total_general,
+        "distribucion_por_status": status_dist,
+        "cantidad_status5": len(dnis_status5),
+        "dnis_status5": dnis_status5[:100],  # Limita a 100 para no sobrecargar respuesta
+        "todos_dnis": todos_dnis[:100],
+        "total_dnis_distintos": len(set(d["dni"] for d in todos_dnis)),
     }
 
