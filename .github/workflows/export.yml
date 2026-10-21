@@ -1,9 +1,8 @@
 name: Exportar a Drive
 on:
   schedule:
-    # Hora Peru (UTC-5): cada hora de 7:30 a 19:30
-    - cron: "30 12-23 * * *"   # 7:30 a 18:30 Peru
-    - cron: "30 0 * * *"       # 19:30 Peru
+    # 7:00 y 15:00 hora Peru (UTC-5)
+    - cron: "0 12,20 * * *"
   workflow_dispatch:
 jobs:
   export:
@@ -16,7 +15,7 @@ jobs:
       - run: pip install pandas sqlalchemy pymysql google-api-python-client google-auth
       - run: python scripts/exportar_a_drive.py
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
-          TABLAS: ${{ secrets.TABLAS }}
-          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID_exportpbi }}
+          TABLAS: ${{ secrets.TABLAS_export_pbi }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON_EXPORT_PBI }}
