@@ -1,7 +1,9 @@
 name: Exportar a Drive
 on:
   schedule:
-    - cron: "0 11 * * *"   # diario 6:00 am Peru (UTC-5)
+    # Hora Peru (UTC-5): cada hora de 7:30 a 19:30
+    - cron: "30 12-23 * * *"   # 7:30 a 18:30 Peru
+    - cron: "30 0 * * *"       # 19:30 Peru
   workflow_dispatch:
 jobs:
   export:
