@@ -16,3 +16,6 @@ abrir_firewall_8501_admin.ps1
 arrancar_waitress_login.ps1
 iniciar_lan_waitress.bat
 reiniciar_lan_8501.bat
+
+sa.json
+powerbi-export-*.json
