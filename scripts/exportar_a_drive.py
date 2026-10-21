@@ -8,7 +8,10 @@ from googleapiclient.http import MediaIoBaseUpload
 TABLAS = [t.strip() for t in os.environ["TABLAS"].split(",")]
 FOLDER_ID = os.environ["DRIVE_FOLDER_ID"]
 
-engine = create_engine(os.environ["DATABASE_URL"])  # mysql+pymysql://user:pass@host:port/db
+db_url = os.environ["DATABASE_URL"].strip()
+if db_url.startswith("mysql://"):
+    db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+engine = create_engine(db_url)  # mysql+pymysql://user:pass@host:port/db
 info = json.loads(os.environ["GOOGLE_SA_JSON"])
 creds = service_account.Credentials.from_service_account_info(
     info, scopes=["https://www.googleapis.com/auth/drive"])
