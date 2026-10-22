@@ -2,8 +2,8 @@ name: Sincronización Automática DIFOCA -> Railway
 
 on:
   schedule:
-    # 1. Corre desde las 07:15 hasta las 18:15 hora Perú (12:15 a 23:15 UTC)
-    - cron: '15 12-23 * * *'
+    # 1. Cada 2 horas de 07:15 a 17:15 hora Perú (12:15 a 22:15 UTC)
+    - cron: '15 12-22/2 * * *'
     
     # 2. Corre a las 19:15 hora Perú (00:15 UTC del día siguiente)
     - cron: '15 0 * * *'
